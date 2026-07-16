@@ -1,0 +1,84 @@
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import { ChevronDown, LogOut, Search, UserCircle2 } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { cn } from '@/lib/cn'
+
+// Placeholder until Phase 2 wires GET /api/auth/me. Kept obvious rather than
+// convincing -- a fake name that looks real is how stubs survive to production.
+const PLACEHOLDER_USER = { name: 'Not signed in', role: 'Phase 2 — auth' }
+
+export function Topbar({
+  navTrigger,
+}: {
+  onOpenNav?: () => void
+  navTrigger?: ReactNode
+}) {
+  return (
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border-subtle bg-surface-raised px-4 lg:px-6">
+      {navTrigger}
+
+      <div className="relative hidden min-w-0 flex-1 sm:block">
+        <Search
+          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-muted"
+          aria-hidden="true"
+        />
+        <input
+          type="search"
+          placeholder="Search properties, clients, phone numbers…"
+          aria-label="Global search"
+          className={cn(
+            'h-9 w-full max-w-md rounded-md border border-border-default bg-surface pr-3 pl-9',
+            'text-base text-text-primary placeholder:text-text-muted',
+            'transition-colors duration-[120ms] hover:border-border-strong',
+            'focus-visible:border-brand-500 focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-brand-500',
+          )}
+        />
+      </div>
+
+      <div className="flex-1 sm:hidden" />
+
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger
+          className={cn(
+            'flex items-center gap-2 rounded-md px-2 py-1.5 text-left',
+            'transition-colors duration-[120ms] hover:bg-surface-hover',
+            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
+          )}
+        >
+          <UserCircle2 className="size-6 shrink-0 text-text-muted" aria-hidden="true" />
+          <span className="hidden min-w-0 sm:block">
+            <span className="block truncate text-xs font-medium text-text-primary">
+              {PLACEHOLDER_USER.name}
+            </span>
+            <span className="block truncate text-2xs text-text-muted">
+              {PLACEHOLDER_USER.role}
+            </span>
+          </span>
+          <ChevronDown className="size-3.5 shrink-0 text-text-muted" aria-hidden="true" />
+        </DropdownMenu.Trigger>
+
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            align="end"
+            sideOffset={6}
+            className={cn(
+              'z-50 min-w-44 rounded-md border border-border-subtle bg-surface-raised p-1 shadow-e2',
+              // Radix drives these from data-state; no AnimatePresence needed
+              // for a menu, and CSS keeps it off the JS main thread.
+              'data-[state=open]:animate-in data-[state=closed]:animate-out',
+              'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+            )}
+          >
+            <DropdownMenu.Item
+              disabled
+              className="flex cursor-default items-center gap-2 rounded px-2 py-1.5 text-base text-text-secondary outline-none data-[highlighted]:bg-surface-hover data-[disabled]:opacity-50"
+            >
+              <LogOut className="size-4" aria-hidden="true" />
+              Sign out
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+    </header>
+  )
+}
