@@ -350,7 +350,7 @@ npm run db:studio    # prisma studio
 | 2 · Auth + RBAC end-to-end | ✅ done — verified: agent sees 2/4 clients, `budget` absent from the payload, suspension locks out on the next request |
 | 3 · Properties (CRUD, media, dashboard) | ✅ done — read, write, live dashboard, authorized media upload/stream |
 | 4 · Clients + Agents | ✅ done — client CRUD + interactions (lastContactAt in tx), agent CRUD + activate/deactivate (revokes sessions), commission redaction |
-| 5 · Requirement + match + bulk assign (core feature) | ⬜ |
+| 5 · Requirement + match + bulk assign (core feature) | ✅ done — atomic new-client create + existing-client bulk assign, two-form matching screen, one log per assignment |
 | 6 · Activity log + dashboard | ⬜ |
 | 7 · Global search | ⬜ |
 | 8 · Reports | ⬜ |

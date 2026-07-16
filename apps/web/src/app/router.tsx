@@ -12,6 +12,7 @@ const Properties = lazy(() => import('@/features/properties/pages/PropertiesPage
 const PropertyDetail = lazy(() => import('@/features/properties/pages/PropertyDetailPage'))
 const PropertyCreate = lazy(() => import('@/features/properties/pages/PropertyCreatePage'))
 const Agents = lazy(() => import('@/features/agents/pages/AgentsPage'))
+const RequirementMatch = lazy(() => import('@/features/requirements/pages/RequirementMatchPage'))
 const DesignSystem = lazy(() => import('@/features/design-system/pages/DesignSystemPage'))
 const Login = lazy(() => import('@/features/auth/pages/LoginPage'))
 const NotFound = lazy(() => import('@/features/misc/pages/NotFoundPage'))
@@ -58,8 +59,17 @@ export const router = createBrowserRouter([
           </RequirePermission>,
         ),
       },
+      // The matching screen is admin territory — it creates clients and assigns
+      // properties. Gated by client.assignProperty, which agents don't hold.
+      {
+        path: 'requirements',
+        element: lazyRoute(
+          <RequirePermission permission="client.assignProperty">
+            <RequirementMatch />
+          </RequirePermission>,
+        ),
+      },
       { path: 'design-system', element: lazyRoute(<DesignSystem />) },
-      { path: 'requirements', element: lazyRoute(<Placeholder />) },
       { path: 'activity', element: lazyRoute(<Placeholder />) },
       { path: 'search', element: lazyRoute(<Placeholder />) },
       { path: 'settings/roles', element: lazyRoute(<Placeholder />) },

@@ -6,11 +6,12 @@ import type {
 } from '@app/shared'
 import type { Request } from 'express'
 import type { Actor } from '../auth/permissions.js'
-import { scopeForClient } from '../auth/scope.js'
+import { scopeForClient, scopeForProperty } from '../auth/scope.js'
 import { notFound, validationFailed } from '../lib/errors.js'
 import { prisma } from '../lib/prisma.js'
 import type { Prisma } from '../generated/prisma/client.js'
 import { diffForLog, logActivityTx } from './activity-service.js'
+import { assignPropertiesTx } from './assignment-service.js'
 
 /** Digits only, India country code stripped. Must match the seed's normaliser. */
 function normalisePhone(raw: string): string {
@@ -40,7 +41,19 @@ export async function createClient(actor: Actor, input: ClientCreateInput, req: 
   await assertAssignableAgent(input.assignedAgentId)
   if (input.requirement) await assertAmenitiesExist(input.requirement.amenityIds)
 
-  const { requirement, ...client } = input
+  // Validate the shortlisted properties BEFORE opening the transaction — a bad
+  // id should 400, not roll back a half-built client.
+  if (input.propertyIds?.length) {
+    const found = await prisma.property.findMany({
+      where: { ...scopeForProperty(actor), id: { in: input.propertyIds } },
+      select: { id: true },
+    })
+    if (found.length !== input.propertyIds.length) {
+      throw validationFailed({ propertyIds: ['One or more properties are unavailable'] })
+    }
+  }
+
+  const { requirement, propertyIds, ...client } = input
 
   return prisma.$transaction(async (tx) => {
     const created = await tx.client.create({
@@ -84,6 +97,19 @@ export async function createClient(actor: Actor, input: ClientCreateInput, req: 
       summary: `Created ${created.code} — ${created.fullName}`,
       req,
     })
+
+    // The shortlisted properties, in the SAME transaction. This is what makes
+    // the whole Requirement screen atomic: client, requirement and assignments
+    // commit together or not at all.
+    if (propertyIds?.length) {
+      await assignPropertiesTx(tx, {
+        actorId: actor.userId,
+        clientId: created.id,
+        clientCode: created.code,
+        propertyIds,
+        req,
+      })
+    }
 
     return created
   })

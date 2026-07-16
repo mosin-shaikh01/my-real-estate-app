@@ -7,6 +7,43 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — Phase 5: the requirement → match → assign flow (core feature)
+
+The screen the product is built around. `RequirementMatchPage` at `/requirements`.
+
+- **Two structurally separate forms.** The requirement is a real `<form>`; the
+  search filters are controls *outside* it, as siblings. That's the fix for the
+  spec's trap — nest the search inside the requirement form and Enter in a filter
+  submits the wrong thing. As siblings, Enter in a filter does nothing.
+- **Search prefills from the requirement** (`requirementToFilters`: budget → price
+  band, city, beds, type). "Match from requirement" re-syncs on demand rather
+  than fighting the admin every keystroke.
+- **Two modes, one screen.** New client → atomic `POST /clients` carrying
+  `{ client, requirement, propertyIds }`. Existing client (`?clientId=`) →
+  requirement prefilled, `POST /clients/:id/properties` bulk-assign.
+- Entry from the client detail page ("Find matches"), gated by
+  `client.assignProperty`.
+
+Assignment backend (`assignment-service.ts`), one shared transaction helper for
+both paths so the rules can't drift:
+
+- **One ActivityLog row per assignment**, never a batched "assigned 5". The
+  question an admin asks is *which* properties and *when* — a count can't answer.
+- **Idempotent**: re-ticking an already-assigned property is a genuine no-op
+  (no write, no log). A previously-removed assignment is **revived** (its row
+  reused), not duplicated — so the log rows referencing it stay valid.
+- Property ids validated against the actor's scope before the transaction opens.
+
+Verified against the running stack:
+
+| Check | Result |
+|---|---|
+| Atomic create (client + requirement + 2 properties) | 2 assignments, **2 log rows** — one per property |
+| Re-assign same 2 + 1 new | response `assigned: 1`; only the new one logged |
+| Remove then re-add | same row revived, **not** duplicated (3 rows, not 4) |
+| Agent bulk-assign | 403 (no `client.assignProperty`) |
+| Existing-client assign | 2 → 3 active assignments |
+
 ### Added — Phase 4: clients & agents write paths
 
 Clients:

@@ -68,3 +68,15 @@ export function useAddInteraction(clientId: string) {
     },
   })
 }
+
+export function useBulkAssign(clientId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (propertyIds: string[]) =>
+      api.post<{ data: { assigned: number } }>(`/clients/${clientId}/properties`, { propertyIds }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['clients', clientId] })
+      void qc.invalidateQueries({ queryKey: ['properties'] })
+    },
+  })
+}

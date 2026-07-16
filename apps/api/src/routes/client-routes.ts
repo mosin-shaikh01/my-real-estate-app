@@ -1,6 +1,8 @@
 import { Router } from 'express'
+import { z } from 'zod'
 import {
   assignAgentSchema,
+  bulkAssignSchema,
   clientCreateSchema,
   clientListQuerySchema,
   clientUpdateSchema,
@@ -18,6 +20,7 @@ import {
   updateClient,
   upsertRequirement,
 } from '../services/client-write-service.js'
+import { bulkAssignProperties, removeAssignment } from '../services/assignment-service.js'
 import {
   toClientDetailDTO,
   toClientDTO,
@@ -87,5 +90,22 @@ clientRouter.post('/:id/assign-agent', requirePermission('client.assignAgent'), 
   const { id } = idParamSchema.parse(req.params)
   const { agentId } = assignAgentSchema.parse(req.body)
   await assignClientAgent(req.actor!, id, agentId, req)
+  res.status(204).end()
+})
+
+// The bulk-assign endpoint — the existing-client half of the matching screen.
+// (New clients assign atomically via POST /. The new-client case cannot use
+// this because there is no id yet, which is the whole reason create is atomic.)
+clientRouter.post('/:id/properties', requirePermission('client.assignProperty'), async (req, res) => {
+  const { id } = idParamSchema.parse(req.params)
+  const { propertyIds } = bulkAssignSchema.parse(req.body)
+  const result = await bulkAssignProperties(req.actor!, id, propertyIds, req)
+  res.status(201).json({ data: result })
+})
+
+clientRouter.delete('/:id/properties/:propertyId', requirePermission('client.assignProperty'), async (req, res) => {
+  const { id } = idParamSchema.parse(req.params)
+  const propertyId = z.string().min(1).parse(req.params.propertyId)
+  await removeAssignment(req.actor!, id, propertyId, req)
   res.status(204).end()
 })

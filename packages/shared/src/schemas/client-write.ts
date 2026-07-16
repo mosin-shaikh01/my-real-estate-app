@@ -68,17 +68,29 @@ const clientFields = z.object({
 })
 
 /**
- * Create is ATOMIC — client + first requirement in one call.
+ * Create is ATOMIC — client + first requirement + shortlisted properties in one
+ * call.
  *
- * This is the shape Phase 5's Requirement screen posts. A brand-new client has
- * no id to attach a requirement to until it is saved, so both travel together
- * and are written in one transaction. `requirement` is optional so a plain
- * "add a contact" flow still works.
+ * This is the shape the Requirement screen posts. A brand-new client has no id
+ * to attach a requirement or an assignment to until it is saved, so all three
+ * travel together and are written in one transaction. Everything but the
+ * contact fields is optional, so a plain "add a contact" flow still works.
+ *
+ * `propertyIds` are the rows the admin ticked in the match results — the whole
+ * point of the screen. Assigning them atomically means the client never exists
+ * in a half-built state the matching view would misrender.
  */
 export const clientCreateSchema = clientFields.extend({
   requirement: requirementSchema.optional(),
+  propertyIds: z.array(z.string()).optional(),
 })
 export type ClientCreateInput = z.infer<typeof clientCreateSchema>
+
+/** Bulk-assign to an EXISTING client. Idempotent — safe to re-send. */
+export const bulkAssignSchema = z.object({
+  propertyIds: z.array(z.string()).min(1, 'Select at least one property'),
+})
+export type BulkAssignInput = z.infer<typeof bulkAssignSchema>
 
 /** PATCH: partial, no defaults to leak. */
 export const clientUpdateSchema = clientFields.partial()

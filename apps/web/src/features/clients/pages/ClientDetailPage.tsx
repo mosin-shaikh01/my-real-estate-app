@@ -1,4 +1,4 @@
-import { ArrowLeft, Mail, MessageCircle, Phone } from 'lucide-react'
+import { ArrowLeft, Mail, MessageCircle, Phone, Wand2 } from 'lucide-react'
 import { Link, useParams } from 'react-router'
 import {
   ASSIGNMENT_STATUS_LABELS,
@@ -63,9 +63,19 @@ export default function ClientDetailPage() {
         title={c.fullName}
         description={`${c.code} · ${FOLLOW_UP_STATUS_LABELS[c.followUpStatus as FollowUpStatus] ?? c.followUpStatus}`}
         action={
-          <span className={cn('rounded px-2 py-1 text-xs font-medium', PRIORITY_TONE[c.priority])}>
-            {c.priority} priority
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={cn('rounded px-2 py-1 text-xs font-medium', PRIORITY_TONE[c.priority])}>
+              {c.priority} priority
+            </span>
+            <Can permission="client.assignProperty">
+              <Button variant="primary" size="sm" asChild>
+                <Link to={`/requirements?clientId=${c.id}`}>
+                  <Wand2 aria-hidden="true" />
+                  Find matches
+                </Link>
+              </Button>
+            </Can>
+          </div>
         }
       />
 
