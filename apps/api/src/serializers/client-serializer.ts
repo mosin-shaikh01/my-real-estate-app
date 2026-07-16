@@ -143,6 +143,83 @@ export function toClientDTO(row: ClientRow, actor: Actor): ClientDTO {
 }
 
 // ============================================================================
+// Detail view — the list DTO plus interactions and a fuller requirement
+// ============================================================================
+// A separate DTO rather than bloating the list row: the list renders 25 clients
+// and must stay lean, while the detail page shows one client in full. Same
+// redaction rules apply — the timeline and requirement obey the same
+// permissions as everything else.
+
+export interface InteractionRow {
+  id: string
+  type: string
+  body: string | null
+  occurredAt: Date
+  scheduledAt: Date | null
+  outcome: string | null
+  author: { id: string; fullName: string } | null
+}
+
+export interface ClientDetailDTO extends ClientDTO {
+  interactions: Array<{
+    id: string
+    type: string
+    body: string | null
+    occurredAt: string
+    scheduledAt: string | null
+    outcome: string | null
+    authorName: string | null
+  }>
+  assignedProperties: Array<{
+    id: string
+    propertyId: string
+    code: string
+    title: string
+    status: string
+    assignmentStatus: string
+  }>
+}
+
+export interface AssignmentRow {
+  id: string
+  status: string
+  property: { id: string; code: string; title: string; status: string }
+}
+
+export function toClientDetailDTO(
+  row: ClientRow & { interactions?: InteractionRow[]; assignments?: AssignmentRow[] },
+  actor: Actor,
+): ClientDetailDTO {
+  const base = toClientDTO(row, actor)
+
+  return {
+    ...base,
+    interactions: (row.interactions ?? []).map((i) => ({
+      id: i.id,
+      type: i.type,
+      // Interaction bodies are NOT gated. This is the shared operational
+      // timeline — an agent logs "called, no answer" and must read it back.
+      // The admin-only commercial notes live on Client.notes, which IS gated by
+      // client.internalNotes.view. Two different kinds of note; don't conflate
+      // them, or agents can't see their own call log.
+      body: i.body,
+      occurredAt: i.occurredAt.toISOString(),
+      scheduledAt: i.scheduledAt?.toISOString() ?? null,
+      outcome: i.outcome,
+      authorName: i.author?.fullName ?? null,
+    })),
+    assignedProperties: (row.assignments ?? []).map((a) => ({
+      id: a.id,
+      propertyId: a.property.id,
+      code: a.property.code,
+      title: a.property.title,
+      status: a.property.status,
+      assignmentStatus: a.status,
+    })),
+  }
+}
+
+// ============================================================================
 // Permission-filtered sort/filter allowlists
 // ============================================================================
 // THE LEAK MOST DESIGNS MISS. An agent without client.budget.view who can sort

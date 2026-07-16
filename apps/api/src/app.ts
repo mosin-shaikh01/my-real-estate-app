@@ -4,6 +4,7 @@ import { authenticate } from './middleware/authenticate.js'
 import { errorHandler, notFoundHandler, requestId } from './middleware/error-handler.js'
 import { requestLog } from './middleware/request-log.js'
 import { publicRoute } from './middleware/route-registry.js'
+import { agentRouter } from './routes/agent-routes.js'
 import { authRouter } from './routes/auth-routes.js'
 import { clientRouter } from './routes/client-routes.js'
 import { dashboardRouter } from './routes/dashboard-routes.js'
@@ -31,6 +32,7 @@ export const ROUTE_MOUNTS: ReadonlyArray<{
   { path: '/api/auth', router: authRouter, requiresAuth: false },
   { path: '/api/clients', router: clientRouter, requiresAuth: true },
   { path: '/api/properties', router: propertyRouter, requiresAuth: true },
+  { path: '/api/agents', router: agentRouter, requiresAuth: true },
   { path: '/api/dashboard', router: dashboardRouter, requiresAuth: true },
   { path: '/api/media', router: mediaRouter, requiresAuth: true },
 ]

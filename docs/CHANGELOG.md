@@ -7,6 +7,35 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — Phase 4: clients & agents write paths
+
+Clients:
+- `POST /api/clients` — **atomic**: client + first requirement in one
+  transaction (the shape Phase 5's matching screen posts). `PATCH /:id`,
+  `POST /:id/interactions`, `POST /:id/requirements`, `POST /:id/assign-agent`.
+- Client detail page: interactions timeline + "log interaction" form (type +
+  note + follow-up in one action), shared-properties list, redacted contact card.
+- The **`lastContactAt`-in-transaction** pattern: logging an interaction writes
+  the interaction AND advances `lastContactAt`/`followUpStatus`/`nextFollowUp`
+  in one transaction. `lastContactAt` only moves forward (a backdated note can't
+  clobber a newer contact). Verified live: one call updated all three atomically.
+
+Agents (admin-only surface):
+- `GET /api/agents`, `POST /` (creates User + AgentProfile + agent role in one
+  tx, argon2 temp password), `PATCH /:id`, `POST /:id/status`, `GET /assignable`.
+- Agents list with activate/deactivate; create dialog (Radix `Dialog` primitive).
+- **Commission redaction**: `commissionRate` gated by `agent.commission.view`.
+- **Deactivation revokes sessions in the same transaction** — verified through
+  the admin endpoint: a live agent session went 200 → 401 on the next request.
+
+Bug caught before shipping: I first gated interaction bodies behind
+`client.internalNotes.view`. But agents hold `client.interaction.create` and
+*not* `internalNotes.view` — so an agent would have logged a call note and never
+read it back. Interaction notes are the shared operational timeline; the
+admin-only commercial notes live on `Client.notes` (still gated). Two different
+kinds of note — a test now asserts an agent sees their own interaction bodies
+while `Client.notes` stays redacted.
+
 ### Added — Phase 3 (media): authorized upload & streaming
 
 - `POST /api/properties/:id/media` (multer, memory storage), `GET /api/media/:id`

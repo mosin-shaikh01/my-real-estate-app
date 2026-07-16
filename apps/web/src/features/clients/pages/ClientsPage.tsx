@@ -1,7 +1,7 @@
-import { Search } from 'lucide-react'
-import { useSearchParams } from 'react-router'
+import { Plus, Search } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router'
 import { FOLLOW_UP_STATUS_LABELS, type FollowUpStatus } from '@app/shared'
-import { Locked } from '@/components/auth/Can'
+import { Can, Locked } from '@/components/auth/Can'
 import { PageHeader } from '@/components/layout/AppShell'
 import { Button } from '@/components/ui/Button'
 import {
@@ -63,6 +63,16 @@ export default function ClientsPage() {
         title="Clients"
         description={
           data ? `${data.meta.total} ${data.meta.total === 1 ? 'client' : 'clients'} visible to you` : undefined
+        }
+        action={
+          <Can permission="client.create">
+            <Button variant="primary" asChild>
+              <Link to="/clients/new">
+                <Plus aria-hidden="true" />
+                New client
+              </Link>
+            </Button>
+          </Can>
         }
       />
 
@@ -167,7 +177,12 @@ function ClientRow({
     <TR>
       <TD className="font-mono text-xs text-text-muted">{client.code}</TD>
       <TD>
-        <span className="font-medium">{client.fullName}</span>
+        <Link
+          to={`/clients/${client.id}`}
+          className="font-medium text-text-primary hover:text-brand-700 hover:underline"
+        >
+          {client.fullName}
+        </Link>
         <span
           className={cn(
             'ml-2 rounded px-1.5 py-0.5 text-2xs font-medium',

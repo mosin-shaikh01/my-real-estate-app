@@ -14,6 +14,12 @@ import {
   toPropertyDTO,
   type PropertyRow,
 } from '../src/serializers/property-serializer.js'
+import { toAgentDTO, type AgentRow } from '../src/serializers/agent-serializer.js'
+import {
+  toClientDetailDTO,
+  type AssignmentRow,
+  type InteractionRow,
+} from '../src/serializers/client-serializer.js'
 
 // ============================================================================
 // The four tests that matter.
@@ -209,6 +215,88 @@ describe('redaction serializer', () => {
 // ---------------------------------------------------------------------------
 // 4. The leak most designs miss
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Agent serializer — commission redaction
+// ---------------------------------------------------------------------------
+const AGENT_ROW: AgentRow = {
+  id: 'u2',
+  fullName: 'Rohan Kulkarni',
+  email: 'rohan@demo.local',
+  phone: '+91 98201 44556',
+  status: 'ACTIVE',
+  createdAt: new Date('2026-07-01'),
+  agentProfile: {
+    address: 'Mumbai',
+    experienceYears: 6,
+    specialization: 'Residential',
+    commissionRate: dec('2.50'),
+    photoStorageKey: null,
+  },
+  _count: { assignedClients: 4, assignedProperties: 3 },
+}
+
+describe('agent serializer', () => {
+  it('redacts commission from an actor without agent.commission.view', () => {
+    // An agent that could read peers' commission rates is a leak even though
+    // agents cannot list agents at all — defence in the serializer regardless.
+    const noComm = actorWith(SUPER_ADMIN_PERMISSIONS.filter((p) => p !== 'agent.commission.view'))
+    const dto = toAgentDTO(AGENT_ROW, noComm)
+    expect('commissionRate' in dto).toBe(false)
+    expect(dto._redacted).toContain('commissionRate')
+  })
+
+  it('shows commission as a string to admin', () => {
+    const dto = toAgentDTO(AGENT_ROW, ADMIN)
+    expect(dto.commissionRate).toBe('2.50')
+    expect(dto._redacted).toEqual([])
+  })
+
+  it('surfaces assignment counts', () => {
+    const dto = toAgentDTO(AGENT_ROW, ADMIN)
+    expect(dto.assignedClientCount).toBe(4)
+    expect(dto.assignedPropertyCount).toBe(3)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Client detail — interactions timeline is NOT gated; client.notes IS
+// ---------------------------------------------------------------------------
+describe('client detail serializer', () => {
+  const interactions: InteractionRow[] = [
+    {
+      id: 'i1',
+      type: 'CALL',
+      body: 'Called, no answer. Will retry tomorrow.',
+      occurredAt: new Date('2026-07-14'),
+      scheduledAt: null,
+      outcome: 'No answer',
+      author: { id: 'agent-1', fullName: 'Rohan' },
+    },
+  ]
+  const assignments: AssignmentRow[] = [
+    { id: 'a1', status: 'SHARED', property: { id: 'p1', code: 'PROP-00001', title: 'Flat', status: 'AVAILABLE' } },
+  ]
+
+  it('shows interaction bodies to an agent — it is their own operational log', () => {
+    // The bug I nearly shipped: gating interaction bodies behind
+    // internalNotes.view would hide an agent's own call notes from them, while
+    // they hold client.interaction.create. Operational timeline != admin notes.
+    const dto = toClientDetailDTO({ ...ROW, interactions, assignments }, AGENT)
+    expect(dto.interactions[0]?.body).toContain('no answer')
+    expect(dto.interactions[0]?.authorName).toBe('Rohan')
+  })
+
+  it('still redacts the admin-only client.notes field from an agent', () => {
+    const dto = toClientDetailDTO({ ...ROW, interactions, assignments }, AGENT)
+    expect('notes' in dto).toBe(false)
+  })
+
+  it('lists assigned properties with their assignment status', () => {
+    const dto = toClientDetailDTO({ ...ROW, interactions, assignments }, ADMIN)
+    expect(dto.assignedProperties[0]).toMatchObject({ code: 'PROP-00001', assignmentStatus: 'SHARED' })
+  })
+})
+
 describe('sort/filter allowlists are permission-filtered', () => {
   it('does not let an agent sort by a budget they cannot see', () => {
     // Sorting by a hidden column leaks it: row order IS the value.

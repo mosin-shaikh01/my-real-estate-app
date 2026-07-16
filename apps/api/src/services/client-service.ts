@@ -106,3 +106,38 @@ export async function getClient(actor: Actor, id: string) {
   if (!row) throw notFound('Client not found')
   return row
 }
+
+const DETAIL_SELECT = {
+  ...LIST_SELECT,
+  interactions: {
+    orderBy: { occurredAt: 'desc' },
+    take: 50,
+    select: {
+      id: true,
+      type: true,
+      body: true,
+      occurredAt: true,
+      scheduledAt: true,
+      outcome: true,
+      author: { select: { id: true, fullName: true } },
+    },
+  },
+  assignments: {
+    where: { removedAt: null },
+    orderBy: { assignedAt: 'desc' },
+    select: {
+      id: true,
+      status: true,
+      property: { select: { id: true, code: true, title: true, status: true } },
+    },
+  },
+} as const
+
+export async function getClientDetail(actor: Actor, id: string) {
+  const row = await prisma.client.findFirst({
+    where: { ...scopeForClient(actor), id },
+    select: DETAIL_SELECT,
+  })
+  if (!row) throw notFound('Client not found')
+  return row
+}
