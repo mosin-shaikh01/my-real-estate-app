@@ -32,6 +32,11 @@ const ROWS = [
   { id: '3', code: 'PROP-00003', price: '1250000.00' },
 ] as const
 
+// Hoisted out of render: Date.now() is impure, and calling it during render
+// makes the component non-idempotent (React 19's purity rule flags it). For a
+// static demo value, module scope is the honest home.
+const THREE_DAYS_AGO = new Date(Date.now() - 3 * 86_400_000)
+
 export default function DesignSystemPage() {
   const [selected, setSelected] = useState<string[]>(['2'])
   const [err, setErr] = useState(false)
@@ -228,7 +233,7 @@ export default function DesignSystemPage() {
               <Row k='formatMoney("72500000.00")' v={formatMoney('72500000.00')} />
               <Row k='formatMoneyShort("72500000.00")' v={formatMoneyShort('72500000.00')} />
               <Row k='formatMoneyShort("850000.00")' v={formatMoneyShort('850000.00')} />
-              <Row k="formatRelative(3 days ago)" v={formatRelative(new Date(Date.now() - 2.6e8))} />
+              <Row k="formatRelative(3 days ago)" v={formatRelative(THREE_DAYS_AGO)} />
             </dl>
           </Card.Body>
         </Card>

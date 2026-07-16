@@ -7,6 +7,38 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — Phase 2: auth + the RBAC spine
+
+- **Express 5 API** with the error envelope, request logging, and boot-time env
+  validation. `/api/health` verified through the Vite proxy.
+- **Auth**: argon2 (`@node-rs/argon2`, prebuilt — no node-gyp on this machine),
+  `jose` JWTs in httpOnly cookies, refresh rotation with **reuse detection**
+  (a replayed revoked token revokes every session for that user and logs it),
+  single-flight client refresh so parallel queries can't trigger a
+  reuse-detection self-nuke.
+- **The three RBAC layers**, each a different problem: `requirePermission`
+  (authorization), `scopeFor` (row scoping), `toClientDTO` (field projection).
+- **Vertical slice**: `GET /api/clients`, guarded + scoped + redacted.
+- **Frontend auth**: typed API client, `useMe`/`usePermissions`, `<Can>`,
+  `<Locked>`, `<RequirePermission>`, `<RequireAuth>`, login page, clients page.
+- **ESLint guardrail**: `no-restricted-imports` blocks the Prisma client outside
+  `src/services/**`. It immediately caught `auth-routes.ts` doing raw user
+  lookups — that code now lives in `auth-service.ts`.
+- **58 tests**, including the four that matter: permission resolver, redaction
+  serializer, scope resolver, route manifest.
+
+Verified end-to-end, not assumed:
+
+| Property | Result |
+|---|---|
+| Agent scoping | sees 2 of 4 clients |
+| Field redaction | `budget` **absent from the JSON**, not null, not CSS-hidden |
+| Filter leak (RBAC §7) | agent's `?minBudget` ignored — 2 rows at any value; admin's honoured (3, then 1) |
+| Scope miss | **404**, identical to a nonexistent id — no existence disclosure |
+| Instant revocation | suspension → 403 on the **next request**, same cookie |
+| Logout | session revoked server-side, not just cookie cleared |
+| Phone normalisation | `9876543210` matches `+91 98765 43210` |
+
 ### Added
 
 - **npm workspaces**: `apps/web`, `apps/api`, `packages/shared`. Exists so the

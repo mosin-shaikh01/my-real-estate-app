@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { Menu, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router'
 import { Button } from '@/components/ui/Button'
 import { Sidebar } from './Sidebar'
@@ -11,9 +11,17 @@ export function AppShell() {
   const { pathname } = useLocation()
 
   // Navigating should close the drawer, or it covers the page you just opened.
-  useEffect(() => {
+  //
+  // Adjusted DURING render, not in an effect. An effect would render the new
+  // page with the drawer still open, then immediately re-render to close it —
+  // a visible flash and a cascading render. This is React's documented pattern
+  // for "reset state when a prop changes", and it's what the
+  // react-hooks/set-state-in-effect rule is steering toward.
+  const [lastPath, setLastPath] = useState(pathname)
+  if (pathname !== lastPath) {
+    setLastPath(pathname)
     setMobileNavOpen(false)
-  }, [pathname])
+  }
 
   return (
     <div className="flex h-dvh overflow-hidden bg-surface-sunken">

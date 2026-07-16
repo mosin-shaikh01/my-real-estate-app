@@ -9,3 +9,6 @@ export const APP_NAME = 'Real Estate CRM'
 
 export * from './permissions.js'
 export * from './enums.js'
+export * from './errors.js'
+export * from './schemas/auth.js'
+export * from './schemas/client.js'

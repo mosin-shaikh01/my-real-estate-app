@@ -14,6 +14,7 @@ export default defineConfig({
           name: 'api',
           environment: 'node',
           include: ['apps/api/test/**/*.test.ts', 'packages/*/test/**/*.test.ts'],
+          setupFiles: ['./apps/api/test/setup.ts'],
         },
         resolve: { alias: { '@app/shared': r('./packages/shared/src/index.ts') } },
       },

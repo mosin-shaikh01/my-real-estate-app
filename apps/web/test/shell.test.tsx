@@ -1,32 +1,65 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import type { ReactNode } from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryRouter, RouterProvider } from 'react-router'
+import type { MeResponse } from '@app/shared'
 import { AppShell } from '@/components/layout/AppShell'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import DashboardPage from '@/features/dashboard/pages/DashboardPage'
 import { formatMoney, formatMoneyShort } from '@/lib/format'
 
 // A smoke test, not a suite. It answers the one question a passing build
-// cannot: does the app actually mount, or does it white-screen? Everything
-// below would be caught only by opening a browser otherwise.
+// cannot: does the app actually mount, or does it white-screen?
 
-function renderAt(path: string) {
+const ME: MeResponse = {
+  user: { id: 'u1', email: 'admin@demo.local', fullName: 'Priya Deshmukh', phone: null },
+  roles: [{ slug: 'super_admin', name: 'Super Admin' }],
+  permissions: ['client.list', 'property.list'],
+}
+
+beforeEach(() => {
+  // The shell reads /auth/me through TanStack Query. Stub the transport, not
+  // the hook — mocking the hook would test the mock rather than the wiring.
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: string | URL) => {
+      const url = String(input)
+      if (url.includes('/api/auth/me')) {
+        return new Response(JSON.stringify(ME), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }),
+  )
+})
+
+function withProviders(ui: ReactNode) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  })
+  return <QueryClientProvider client={qc}>{ui}</QueryClientProvider>
+}
+
+function renderShell(path = '/') {
   const router = createMemoryRouter(
     [{ element: <AppShell />, children: [{ index: true, element: <DashboardPage /> }] }],
     { initialEntries: [path] },
   )
-  return render(<RouterProvider router={router} />)
+  return render(withProviders(<RouterProvider router={router} />))
 }
 
 describe('app shell', () => {
   it('mounts and renders the dashboard inside the shell', () => {
-    renderAt('/')
+    renderShell()
     expect(screen.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeDefined()
   })
 
   it('renders one navigation, shared by admin and agent', () => {
-    renderAt('/')
+    renderShell()
     const navs = screen.getAllByRole('navigation', { name: 'Main' })
     // Two route trees would mean two navs. There is deliberately one.
     expect(navs).toHaveLength(1)
@@ -34,10 +67,15 @@ describe('app shell', () => {
   })
 
   it('exposes the mobile nav trigger with an accessible name', async () => {
-    renderAt('/')
-    const trigger = screen.getByRole('button', { name: 'Open navigation' })
-    await userEvent.click(trigger)
+    renderShell()
+    await userEvent.click(screen.getByRole('button', { name: 'Open navigation' }))
     expect(screen.getByRole('button', { name: 'Close navigation' })).toBeDefined()
+  })
+
+  it('shows the signed-in user once /me resolves', async () => {
+    renderShell()
+    expect(await screen.findByText('Priya Deshmukh')).toBeDefined()
+    expect(screen.getByText('Super Admin')).toBeDefined()
   })
 })
 
@@ -60,8 +98,8 @@ describe('status badge', () => {
 
 describe('money formatting', () => {
   it('uses Indian lakh/crore grouping', () => {
-    // 7,25,00,000 — not 72,500,000. Getting this wrong is instantly visible
-    // to the client and invisible to a developer who doesn't look.
+    // 7,25,00,000 — not 72,500,000. Instantly visible to the client, and
+    // invisible to a developer who doesn't look.
     expect(formatMoney('72500000.00')).toBe('₹7,25,00,000')
   })
 
@@ -78,7 +116,6 @@ describe('money formatting', () => {
   })
 
   it('takes strings, because Decimal does not survive a JS number', () => {
-    // ₹99,99,99,999.99 — the value Int-paise and Float both mangle.
     expect(formatMoney('999999999.99')).toBe('₹1,00,00,00,000')
   })
 })

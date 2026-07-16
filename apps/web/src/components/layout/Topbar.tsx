@@ -1,11 +1,9 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { ChevronDown, LogOut, Search, UserCircle2 } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { useNavigate } from 'react-router'
+import { useLogout, useMe } from '@/features/auth/api/use-auth'
 import { cn } from '@/lib/cn'
-
-// Placeholder until Phase 2 wires GET /api/auth/me. Kept obvious rather than
-// convincing -- a fake name that looks real is how stubs survive to production.
-const PLACEHOLDER_USER = { name: 'Not signed in', role: 'Phase 2 — auth' }
 
 export function Topbar({
   navTrigger,
@@ -13,6 +11,15 @@ export function Topbar({
   onOpenNav?: () => void
   navTrigger?: ReactNode
 }) {
+  const { data: me } = useMe()
+  const logout = useLogout()
+  const navigate = useNavigate()
+
+  const onSignOut = async () => {
+    await logout.mutateAsync()
+    void navigate('/login', { replace: true })
+  }
+
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border-subtle bg-surface-raised px-4 lg:px-6">
       {navTrigger}
@@ -48,10 +55,10 @@ export function Topbar({
           <UserCircle2 className="size-6 shrink-0 text-text-muted" aria-hidden="true" />
           <span className="hidden min-w-0 sm:block">
             <span className="block truncate text-xs font-medium text-text-primary">
-              {PLACEHOLDER_USER.name}
+              {me?.user.fullName ?? '—'}
             </span>
             <span className="block truncate text-2xs text-text-muted">
-              {PLACEHOLDER_USER.role}
+              {me?.roles.map((r) => r.name).join(', ') ?? ''}
             </span>
           </span>
           <ChevronDown className="size-3.5 shrink-0 text-text-muted" aria-hidden="true" />
@@ -70,8 +77,8 @@ export function Topbar({
             )}
           >
             <DropdownMenu.Item
-              disabled
-              className="flex cursor-default items-center gap-2 rounded px-2 py-1.5 text-base text-text-secondary outline-none data-[highlighted]:bg-surface-hover data-[disabled]:opacity-50"
+              onSelect={() => void onSignOut()}
+              className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-base text-text-secondary outline-none data-[highlighted]:bg-surface-hover data-[highlighted]:text-text-primary"
             >
               <LogOut className="size-4" aria-hidden="true" />
               Sign out

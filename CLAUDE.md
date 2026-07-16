@@ -321,6 +321,17 @@ npm run db:studio    # prisma studio
   dev-only `@prisma/dev` transitive we don't use.
 - If a Prisma command hangs on "advisory lock", a killed migration left a
   backend open: terminate it via `pg_locks` / `pg_terminate_backend`.
+- **Express 5 removed `layer.regexp`** (opaque `matchers` functions now), so
+  mount paths are not recoverable from router internals. `ROUTE_MOUNTS` in
+  `app.ts` declares them — that's what the route-manifest test reads.
+- **Express 5 types `req.params.x` as `string | string[] | undefined`.** Parse
+  with `idParamSchema`, don't cast.
+- **`erasableSyntaxOnly` bans constructor parameter properties.** Assign fields
+  explicitly in `apps/web`. (`apps/api` doesn't set the flag.)
+- **TS 6 raises `TS2882`** on side-effect imports of CSS-only packages — declare
+  the module in `src/types/globals.d.ts`.
+- **React Hooks v7 lint is compiler-aware**: no `setState` in an effect (adjust
+  during render instead), no impure calls like `Date.now()` during render.
 
 ---
 
@@ -329,8 +340,8 @@ npm run db:studio    # prisma studio
 | Phase | Status |
 |---|---|
 | 0 · De-risk (install spike, strict, gitignore, Postgres) | ✅ done |
-| 1 · Foundation (workspaces, tokens, schema, seed, docs, shell) | 🔄 in progress |
-| 2 · Auth + RBAC end-to-end | ⬜ |
+| 1 · Foundation (workspaces, tokens, schema, seed, docs, shell) | ✅ done |
+| 2 · Auth + RBAC end-to-end | ✅ done — verified: agent sees 2/4 clients, `budget` absent from the payload, suspension locks out on the next request |
 | 3 · Properties (CRUD, media, search) | ⬜ |
 | 4 · Clients + Agents | ⬜ |
 | 5 · Requirement + match + bulk assign (core feature) | ⬜ |
