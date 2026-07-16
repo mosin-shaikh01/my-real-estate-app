@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import type { ReactNode } from 'react'
+import { ThemeProvider } from './theme-provider'
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,8 +24,10 @@ export const queryClient = new QueryClient({
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <Tooltip.Provider delayDuration={300}>{children}</Tooltip.Provider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <Tooltip.Provider delayDuration={300}>{children}</Tooltip.Provider>
+      </QueryClientProvider>
+    </ThemeProvider>
   )
 }

@@ -4,9 +4,27 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="description" content="Real Estate CRM — property, client and agent management." />
     <title>Real Estate CRM</title>
+    <!-- Applied BEFORE the first paint so the saved (or system) theme never
+         flashes the wrong palette. Mirror the logic in src/lib/theme.ts. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('estate-theme')
+          var theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+          var root = document.documentElement
+          if (theme === 'dark') root.classList.add('dark')
+          root.style.colorScheme = theme
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

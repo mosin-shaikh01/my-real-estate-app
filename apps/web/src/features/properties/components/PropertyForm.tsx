@@ -467,7 +467,7 @@ export function PropertyForm({ mode, property }: Props) {
       </Card>
 
       {errors.root ? (
-        <p role="alert" className="rounded-md border border-danger-100 bg-danger-100/40 px-3 py-2 text-xs text-danger-700">
+        <p role="alert" className="rounded-md border border-border-danger-soft bg-surface-danger-soft/40 px-3 py-2 text-xs text-text-danger">
           {errors.root.message}
         </p>
       ) : null}

@@ -120,7 +120,7 @@ export function Sidebar({ className }: { className?: string }) {
                         'transition-colors duration-[120ms]',
                         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
                         isActive
-                          ? 'bg-surface-selected font-medium text-brand-700'
+                          ? 'bg-surface-selected font-medium text-text-brand'
                           : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary',
                       )
                     }
@@ -130,7 +130,7 @@ export function Sidebar({ className }: { className?: string }) {
                         <item.icon
                           className={cn(
                             'size-4 shrink-0',
-                            isActive ? 'text-brand-600' : 'text-text-muted',
+                            isActive ? 'text-text-brand' : 'text-text-muted',
                           )}
                           aria-hidden="true"
                         />

@@ -183,7 +183,7 @@ export default function PropertiesPage() {
         {isError ? (
           <div
             role="alert"
-            className="rounded-lg border border-danger-100 bg-danger-100/40 p-4 text-base text-danger-700"
+            className="rounded-lg border border-border-danger-soft bg-surface-danger-soft/40 p-4 text-base text-text-danger"
           >
             {(error as Error).message}
           </div>
@@ -269,7 +269,7 @@ function PropertyRow({ property, canSeePrice }: { property: PropertyDTO; canSeeP
       <TD className="max-w-0">
         <Link
           to={`/properties/${property.id}`}
-          className="block truncate font-medium text-text-primary hover:text-brand-700 hover:underline"
+          className="block truncate font-medium text-text-primary hover:text-text-brand hover:underline"
         >
           {property.title}
         </Link>

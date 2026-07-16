@@ -62,7 +62,7 @@ export function VideoLinkEditor({
                 placeholder="https://youtube.com/watch?v=…"
               />
               {invalid ? (
-                <p className="mt-1 text-xs text-danger-700">Enter a valid URL, e.g. https://…</p>
+                <p className="mt-1 text-xs text-text-danger">Enter a valid URL, e.g. https://…</p>
               ) : parsed ? (
                 <p className="mt-1 text-2xs text-text-muted">
                   {parsed.kind === 'youtube'
@@ -80,7 +80,7 @@ export function VideoLinkEditor({
               type="button"
               aria-label={`Remove video link ${i + 1}`}
               onClick={() => removeAt(i)}
-              className="mt-1.5 rounded p-1.5 text-text-muted hover:bg-surface-hover hover:text-danger-700 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-500"
+              className="mt-1.5 rounded p-1.5 text-text-muted hover:bg-surface-hover hover:text-text-danger focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-500"
             >
               <X className="size-4" aria-hidden="true" />
             </button>

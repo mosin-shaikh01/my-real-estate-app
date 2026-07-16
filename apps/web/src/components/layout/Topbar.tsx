@@ -2,6 +2,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { ChevronDown, LogOut, UserCircle2, UserCog } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { useLogout, useMe } from '@/features/auth/api/use-auth'
 import { GlobalSearch } from '@/features/search/components/GlobalSearch'
 import { cn } from '@/lib/cn'
@@ -28,6 +29,8 @@ export function Topbar({
       <GlobalSearch />
 
       <div className="flex-1 sm:hidden" />
+
+      <ThemeToggle />
 
       <DropdownMenu.Root>
         <DropdownMenu.Trigger

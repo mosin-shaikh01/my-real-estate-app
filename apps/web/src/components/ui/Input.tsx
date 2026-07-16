@@ -54,7 +54,7 @@ export function FormField({ label, error, hint, required, children }: FieldProps
 
       {error ? (
         // role="alert" so a screen reader announces it on async validation.
-        <p id={errorId} role="alert" className="text-xs text-danger-700">
+        <p id={errorId} role="alert" className="text-xs text-text-danger">
           {error}
         </p>
       ) : null}

@@ -286,7 +286,7 @@ export default function RequirementMatchPage() {
 
             <Card.Footer>
               {submitError ? (
-                <p role="alert" className="mr-auto text-xs text-danger-700">{submitError}</p>
+                <p role="alert" className="mr-auto text-xs text-text-danger">{submitError}</p>
               ) : (
                 <p className="mr-auto text-xs text-text-muted">
                   {isExisting ? 'Assigns to this client.' : 'Creates the client and shares these in one step.'}

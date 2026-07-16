@@ -74,7 +74,7 @@ export function MediaStagePicker({
       </div>
 
       {error ? (
-        <p role="alert" className="text-xs text-danger-700">
+        <p role="alert" className="text-xs text-text-danger">
           {error}
         </p>
       ) : null}

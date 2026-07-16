@@ -10,8 +10,8 @@ export default function ForbiddenPage() {
   return (
     <div className="grid min-h-full place-items-center px-6 py-20">
       <div className="max-w-sm text-center">
-        <div className="mx-auto grid size-11 place-items-center rounded-full bg-danger-100">
-          <ShieldX className="size-5 text-danger-700" aria-hidden="true" />
+        <div className="mx-auto grid size-11 place-items-center rounded-full bg-surface-danger-soft">
+          <ShieldX className="size-5 text-text-danger" aria-hidden="true" />
         </div>
         <p className="mt-4 text-2xs font-semibold tracking-widest text-text-muted uppercase">
           403

@@ -60,7 +60,7 @@ export function AmenityPicker({
                     'transition-colors duration-[120ms]',
                     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
                     isOn
-                      ? 'border-brand-500 bg-surface-selected font-medium text-brand-700'
+                      ? 'border-brand-500 bg-surface-selected font-medium text-text-brand'
                       : 'border-border-default bg-surface text-text-secondary hover:border-border-strong hover:text-text-primary',
                   )}
                 >

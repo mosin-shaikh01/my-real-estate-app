@@ -90,7 +90,7 @@ export default function LoginPage() {
           {form.formState.errors.root ? (
             <p
               role="alert"
-              className="rounded-md border border-danger-100 bg-danger-100/40 px-3 py-2 text-xs text-danger-700"
+              className="rounded-md border border-border-danger-soft bg-surface-danger-soft/40 px-3 py-2 text-xs text-text-danger"
             >
               {form.formState.errors.root.message}
             </p>

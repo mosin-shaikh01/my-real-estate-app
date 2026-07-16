@@ -97,7 +97,7 @@ export default function RolesPage() {
                       {roles.map((r) => (
                         <td key={r.id} className="px-3 py-1.5 text-center">
                           {roleHas(r, p.key) ? (
-                            <Check className="mx-auto size-4 text-success-700" aria-label="granted" />
+                            <Check className="mx-auto size-4 text-text-success" aria-label="granted" />
                           ) : (
                             <Minus className="mx-auto size-3.5 text-border-strong" aria-label="not granted" />
                           )}

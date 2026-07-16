@@ -129,6 +129,23 @@
   --text-muted: var(--color-neutral-500);
   --text-inverted: var(--color-neutral-0);
 
+  /* Brand + status TEXT, as it sits on a page surface. The raw -700 ramp steps
+     are tuned for contrast on a LIGHT surface; on a dark surface they read as
+     mud. These semantic names carry the light value now and a lighter one under
+     .dark, so every link, inline error and pill flips correctly. */
+  --text-brand: var(--color-brand-700);
+  --text-danger: var(--color-danger-700);
+  --text-success: var(--color-success-700);
+  --text-warning: var(--color-warning-700);
+
+  /* Soft feedback SURFACES (error banners, priority pills). Light values equal
+     the previous hardcoded -100 tints exactly, so light mode is pixel-identical;
+     .dark remaps them to deep tints that keep the lighter text readable. */
+  --surface-danger-soft: var(--color-danger-100);
+  --surface-success-soft: var(--color-success-100);
+  --surface-warning-soft: var(--color-warning-100);
+  --border-danger-soft: var(--color-danger-100);
+
   --status-available: var(--color-success-500);
   --status-under-offer: var(--color-warning-500);
   --status-rented: var(--color-info-500);
@@ -152,7 +169,10 @@
   --surface-sunken: oklch(0.115 0.008 257);
   --surface-raised: var(--color-neutral-900);
   --surface-hover: var(--color-neutral-800);
-  --surface-selected: var(--color-brand-950);
+  /* A visible indigo tint, not brand-950 — that sat a hair above the raised
+     surface and the selected row/nav item vanished. This reads as "selected"
+     while staying calm, and it's dark enough for the lighter --text-brand. */
+  --surface-selected: oklch(0.32 0.085 275);
 
   --border-subtle: var(--color-neutral-800);
   --border-default: var(--color-neutral-700);
@@ -160,8 +180,23 @@
 
   --text-primary: var(--color-neutral-50);
   --text-secondary: var(--color-neutral-400);
-  --text-muted: var(--color-neutral-500);
+  /* Lifted above the raw neutral-500 ramp step so muted body text clears WCAG
+     AA (≈5.3:1 on the raised surface) while staying a clear step below
+     secondary, preserving the hierarchy. Light mode keeps neutral-500. */
+  --text-muted: oklch(0.64 0.015 257);
   --text-inverted: var(--color-neutral-950);
+
+  /* Lighter brand/status text so it clears WCAG on dark surfaces. */
+  --text-brand: var(--color-brand-300);
+  --text-danger: oklch(0.72 0.16 25);
+  --text-success: oklch(0.76 0.13 155);
+  --text-warning: oklch(0.82 0.13 78);
+
+  /* Deep, low-chroma tints — a feedback wash that doesn't glare on dark. */
+  --surface-danger-soft: oklch(0.30 0.075 25);
+  --surface-success-soft: oklch(0.30 0.055 155);
+  --surface-warning-soft: oklch(0.32 0.06 78);
+  --border-danger-soft: oklch(0.44 0.11 25);
 
   /* Shadows don't read on dark surfaces -- elevation becomes a border. */
   --elevation-1: 0 0 0 1px var(--color-neutral-800);
@@ -190,6 +225,15 @@
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
   --color-text-inverted: var(--text-inverted);
+  --color-text-brand: var(--text-brand);
+  --color-text-danger: var(--text-danger);
+  --color-text-success: var(--text-success);
+  --color-text-warning: var(--text-warning);
+
+  --color-surface-danger-soft: var(--surface-danger-soft);
+  --color-surface-success-soft: var(--surface-success-soft);
+  --color-surface-warning-soft: var(--surface-warning-soft);
+  --color-border-danger-soft: var(--border-danger-soft);
 
   --color-status-available: var(--status-available);
   --color-status-under-offer: var(--status-under-offer);

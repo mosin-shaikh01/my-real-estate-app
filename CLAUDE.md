@@ -201,7 +201,13 @@ currently zero camelCase columns; keep it that way.
 - **Tokens**: `@theme` for primitives (it *snapshots* values); `:root` +
   **`@theme inline`** for anything that remaps at runtime. Miss this and dark
   mode silently no-ops.
-- **Dark mode**: architecture exists, not shipped. Keep it that way until asked.
+- **Dark mode**: SHIPPED. A `ThemeProvider` (`app/theme-provider.tsx`) toggles
+  `.dark` on `<html>`; the token layer remaps every semantic var. Preference is
+  saved to `localStorage` (`estate-theme`), falls back to `prefers-color-scheme`,
+  and a boot script in `index.html` applies it before first paint (no FOUC).
+  The header `ThemeToggle` is visible to every signed-in user. Raw `-700` brand/
+  status text and `-100` tints don't adapt on dark surfaces — use the semantic
+  `text-brand/danger/success/warning` and `surface-*-soft` tokens instead.
 
 ### Accessibility (WCAG 2.1 AA — treat as a requirement, not a nicety)
 
@@ -365,7 +371,7 @@ the pattern on one vertical slice, then generalize.
 Notifications (email/WhatsApp/SMS — the WhatsApp Business API alone is a
 multi-week compliance project), video upload (URL field instead), radius/map
 search (no PostGIS), a calendar UI (`scheduledAt` + a list), outbound messaging
-(`tel:`/`wa.me` links only), dark mode, an editable permission matrix
+(`tel:`/`wa.me` links only), an editable permission matrix
 (read-only in v1), and global search beyond properties + clients.
 
 ### Future

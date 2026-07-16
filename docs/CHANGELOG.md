@@ -7,6 +7,29 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — global dark / light theme switcher
+
+The token layer was built dark-aware from day one; this ships it.
+
+- **ThemeProvider** (`app/theme-provider.tsx`) centralizes theme state and
+  toggles `.dark` on `<html>`, which the semantic token layer keys off — no
+  duplicated theme logic, and every existing component adapts for free.
+- **Persistence**: the choice is saved to `localStorage` (`estate-theme`). With
+  no saved choice we follow the OS `prefers-color-scheme` **live**; once the user
+  picks, we stop tracking it. A boot script in `index.html` applies the resolved
+  theme before first paint, so there's no flash of the wrong palette.
+- **Header toggle** (`ThemeToggle`): a Sun/Moon button in the top bar, visible to
+  every signed-in user (admin and agent), with a Framer Motion icon swap and a
+  brief cross-fade between palettes — both gated on `prefers-reduced-motion`.
+- **Contrast**: added semantic `text-brand/danger/success/warning` and
+  `surface-*-soft` / `border-danger-soft` tokens that remap lighter on dark
+  surfaces, and refactored ~45 hardcoded `-700` text / `-100` tint usages onto
+  them. Light mode is pixel-identical; dark-mode text pairs verified ≥ 4.5:1
+  (muted lifted to clear AA while staying a step below secondary). `color-scheme`
+  now follows the theme so native controls and scrollbars match.
+
+Verified: typecheck, build, lint, 119 tests (incl. new theme-toggle tests) green.
+
 ### Added — split media galleries (image lightbox + video gallery) & multiple video links
 
 The detail page never rendered the external video link — a pasted YouTube URL was

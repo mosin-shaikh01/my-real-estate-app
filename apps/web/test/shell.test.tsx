@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import type { MeResponse } from '@app/shared'
 import { PERMISSION_KEYS } from '@app/shared'
+import { ThemeProvider } from '@/app/theme-provider'
 import { AppShell } from '@/components/layout/AppShell'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -66,7 +67,11 @@ function withProviders(ui: ReactNode) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   })
-  return <QueryClientProvider client={qc}>{ui}</QueryClientProvider>
+  return (
+    <ThemeProvider>
+      <QueryClientProvider client={qc}>{ui}</QueryClientProvider>
+    </ThemeProvider>
+  )
 }
 
 function renderShell(path = '/') {

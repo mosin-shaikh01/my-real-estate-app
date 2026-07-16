@@ -18,7 +18,7 @@ import { cn } from '@/lib/cn'
 import { formatDate, formatMoneyShort, formatRelative } from '@/lib/format'
 
 const PRIORITY_TONE: Record<string, string> = {
-  HIGH: 'text-danger-700 bg-danger-100',
+  HIGH: 'text-text-danger bg-surface-danger-soft',
   MEDIUM: 'text-text-secondary bg-surface-hover',
   LOW: 'text-text-muted bg-surface-hover',
 }
@@ -144,7 +144,7 @@ export default function ClientDetailPage() {
                     <li key={p.id} className="flex items-center justify-between gap-3">
                       <Link
                         to={`/properties/${p.propertyId}`}
-                        className="min-w-0 flex-1 truncate text-sm text-text-primary hover:text-brand-700 hover:underline"
+                        className="min-w-0 flex-1 truncate text-sm text-text-primary hover:text-text-brand hover:underline"
                       >
                         <span className="font-mono text-xs text-text-muted">{p.code}</span> {p.title}
                       </Link>
@@ -169,7 +169,7 @@ export default function ClientDetailPage() {
               {phoneHidden ? (
                 <Locked label="Phone hidden" />
               ) : c.phone ? (
-                <a href={`tel:${c.phone}`} className="flex items-center gap-2 text-sm text-text-secondary hover:text-brand-700">
+                <a href={`tel:${c.phone}`} className="flex items-center gap-2 text-sm text-text-secondary hover:text-text-brand">
                   <Phone className="size-3.5 text-text-muted" aria-hidden="true" />
                   {c.phone}
                 </a>
@@ -179,7 +179,7 @@ export default function ClientDetailPage() {
                   href={`https://wa.me/${c.whatsapp.replace(/\D/g, '')}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-2 text-sm text-text-secondary hover:text-brand-700"
+                  className="flex items-center gap-2 text-sm text-text-secondary hover:text-text-brand"
                 >
                   <MessageCircle className="size-3.5 text-text-muted" aria-hidden="true" />
                   WhatsApp
@@ -187,7 +187,7 @@ export default function ClientDetailPage() {
               ) : null}
               {'email' in c ? (
                 c.email ? (
-                  <a href={`mailto:${c.email}`} className="flex items-center gap-2 text-sm text-text-secondary hover:text-brand-700">
+                  <a href={`mailto:${c.email}`} className="flex items-center gap-2 text-sm text-text-secondary hover:text-text-brand">
                     <Mail className="size-3.5 text-text-muted" aria-hidden="true" />
                     {c.email}
                   </a>

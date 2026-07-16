@@ -121,7 +121,7 @@ export default function DashboardPage() {
                         <TD className="max-w-0">
                           <Link
                             to={`/properties/${p.id}`}
-                            className="block truncate hover:text-brand-700 hover:underline"
+                            className="block truncate hover:text-text-brand hover:underline"
                           >
                             {p.title}
                           </Link>

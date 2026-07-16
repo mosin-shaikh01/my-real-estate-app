@@ -30,7 +30,7 @@ import { formatMoneyShort, formatRelative } from '@/lib/format'
 // ============================================================================
 
 const PRIORITY_TONE: Record<string, string> = {
-  HIGH: 'text-danger-700 bg-danger-100',
+  HIGH: 'text-text-danger bg-surface-danger-soft',
   MEDIUM: 'text-text-secondary bg-surface-hover',
   LOW: 'text-text-muted bg-surface-hover',
 }
@@ -95,7 +95,7 @@ export default function ClientsPage() {
         </div>
 
         {isError ? (
-          <div role="alert" className="rounded-lg border border-danger-100 bg-danger-100/40 p-4 text-base text-danger-700">
+          <div role="alert" className="rounded-lg border border-border-danger-soft bg-surface-danger-soft/40 p-4 text-base text-text-danger">
             {(error as Error).message}
           </div>
         ) : (
@@ -179,7 +179,7 @@ function ClientRow({
       <TD>
         <Link
           to={`/clients/${client.id}`}
-          className="font-medium text-text-primary hover:text-brand-700 hover:underline"
+          className="font-medium text-text-primary hover:text-text-brand hover:underline"
         >
           {client.fullName}
         </Link>
@@ -198,7 +198,7 @@ function ClientRow({
       <TD>
         {canSeePhone ? (
           client.phone ? (
-            <a href={`tel:${client.phone}`} className="text-text-secondary hover:text-brand-700 hover:underline">
+            <a href={`tel:${client.phone}`} className="text-text-secondary hover:text-text-brand hover:underline">
               {client.phone}
             </a>
           ) : (

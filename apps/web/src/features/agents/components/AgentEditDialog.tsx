@@ -98,7 +98,7 @@ export function AgentEditDialog({ agent, onClose }: { agent: AgentDTO; onClose: 
         </FormField>
 
         {form.formState.errors.root ? (
-          <p role="alert" className="text-xs text-danger-700 sm:col-span-2">
+          <p role="alert" className="text-xs text-text-danger sm:col-span-2">
             {form.formState.errors.root.message}
           </p>
         ) : null}

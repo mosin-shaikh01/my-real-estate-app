@@ -271,7 +271,7 @@ export default function PropertyDetailPage() {
                   href={p.googleMapUrl ?? maps ?? undefined}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs text-brand-700 hover:underline"
+                  className="inline-flex items-center gap-1.5 text-xs text-text-brand hover:underline"
                 >
                   <MapPin className="size-3.5" aria-hidden="true" />
                   Open in Google Maps
