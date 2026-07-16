@@ -67,9 +67,14 @@ export function useLogout() {
   return useMutation({
     mutationFn: () => api.post<void>('/auth/logout'),
     onSuccess: () => {
-      // clear(), not invalidate(): another user may sign in on this machine and
-      // must never see a flash of the previous user's cached clients.
-      qc.clear()
+      // resetQueries(), NOT clear()/removeQueries(). All three drop the cached
+      // data — so a new user on this machine never sees a flash of the previous
+      // user's clients — but clear()/removeQueries() also *orphan* long-lived
+      // observers: the ThemeProvider's useMe would freeze on the old user and
+      // keep applying their theme until a full refresh. reset() empties the data
+      // AND keeps observers subscribed, so /me re-resolves to the next user and
+      // the theme follows them. (Root cause of the cross-user theme bug.)
+      void qc.resetQueries()
       // Forget who was here so neither the boot script nor the ThemeProvider can
       // resurface this user's theme for whoever logs in next.
       clearActiveUser()

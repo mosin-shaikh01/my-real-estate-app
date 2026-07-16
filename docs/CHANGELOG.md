@@ -7,6 +7,29 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Fixed — the REAL cause of the cross-user theme leak: logout orphaned the theme observer
+
+The earlier fix (per-user cache, logout reset) wasn't enough — the theme still
+showed the previous user until a refresh. The actual root cause was in `useLogout`:
+it called `queryClient.clear()`, which drops cached data but **orphans long-lived
+observers**. The `ThemeProvider`'s `useMe` would freeze on the previous user and
+keep applying their theme; only a full refresh (which remounts everything) fixed
+it — exactly the reported symptom.
+
+- **Fix:** `useLogout` now calls `queryClient.resetQueries()` instead of
+  `clear()`. Both empty the cache (so a new user never sees the previous user's
+  cached clients), but `resetQueries()` keeps observers **subscribed**, so `/me`
+  re-resolves to the next user and the theme follows them with no refresh.
+- **Provider simplified.** The applied theme is now derived purely from the
+  `['me']` query (`serverTheme ?? resolveBootTheme()`) with no local mirror of
+  server state that could drift — removing the fragile during-render state that
+  the previous attempt relied on.
+- **Regression test** (`theme-flow.test.tsx`) drives the REAL `useLogin`/
+  `useLogout` hooks through Admin(light) → logout → Agent(dark) → logout → Admin,
+  four times, asserting the theme is always the current user's. This is the only
+  setup that reproduces the observer-orphaning; the isolated provider tests
+  didn't (they used `resetQueries`, which sidesteps the bug).
+
 ### Fixed — theme no longer leaks the previous user's preference across logins
 
 On the same browser, logging in as a second user (or back as the first) could

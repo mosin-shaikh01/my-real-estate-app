@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -123,45 +123,6 @@ describe('authenticated (DB-backed)', () => {
   })
 })
 
-describe('cross-user handoff on the same browser (the bug)', () => {
-  it('never shows the previous user’s theme after logout + new login', async () => {
-    // Admin is Light, Agent is Dark. system (matchMedia) is mocked Light.
-    const { state } = stubApi({ userId: 'admin', theme: 'light' })
-    const { qc } = renderApp(<ThemeToggle />)
-
-    // resetQueries is the reliable way to drive the ['me'] query through a full
-    // logout/login in the test harness (a bare clear()+invalidate leaves stale
-    // data because react-query keeps data across a background-refetch error).
-    const applySession = (session: typeof state.session) =>
-      act(async () => {
-        state.session = session
-        await qc.resetQueries({ queryKey: ['me'] })
-      })
-
-    // Admin logs in → Light.
-    await waitFor(() => expect(isDark()).toBe(false))
-
-    // Repeat the handoff several times — the bug only surfaced across repeated
-    // logout/login cycles on the same browser, so prove it stays fixed.
-    for (let i = 0; i < 3; i++) {
-      // Agent logs in → Dark.
-      await applySession({ userId: 'agent', theme: 'dark' })
-      await waitFor(() => expect(isDark()).toBe(true))
-
-      // Agent logs out: fall back to SYSTEM (light), never linger on the Agent's
-      // dark, and clear the active-user pointer.
-      await applySession(null)
-      await waitFor(() => expect(isDark()).toBe(false))
-      expect(localStorage.getItem(THEME_LAST_USER_KEY)).toBeNull()
-
-      // Admin logs back in → immediately Light, no dark flash from the Agent.
-      await applySession({ userId: 'admin', theme: 'light' })
-      await waitFor(() => expect(isDark()).toBe(false))
-      expect(screen.getByRole('button', { name: 'Switch to dark mode' })).toBeDefined()
-
-      // Admin logs out too, so the next iteration starts clean.
-      await applySession(null)
-      await waitFor(() => expect(isDark()).toBe(false))
-    }
-  })
-})
+// The full cross-user logout/login handoff (the reported bug) is covered by
+// theme-flow.test.tsx, which drives the REAL useLogin/useLogout hooks — the only
+// setup that reproduces the observer-orphaning that clear() caused.
