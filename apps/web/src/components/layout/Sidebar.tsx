@@ -3,7 +3,6 @@ import {
   ClipboardList,
   LayoutDashboard,
   ScrollText,
-  Search,
   Settings2,
   Users,
   UserSquare2,
@@ -34,8 +33,8 @@ interface NavItem {
 const NAV: ReadonlyArray<{ heading?: string; items: readonly NavItem[] }> = [
   {
     items: [
+      // Search is global, in the top bar — no standalone page.
       { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-      { to: '/search', label: 'Search', icon: Search },
     ],
   },
   {

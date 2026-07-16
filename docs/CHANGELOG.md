@@ -7,6 +7,30 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — Phases 6–8: activity log, global search, roles matrix
+
+- **Activity log page** (`/activity`, admin-only). The data has accumulated
+  since Phase 2 — every mutation wrote a row; this surfaces it. Safe to render
+  in full because sensitive fields are logged by name, never value.
+- **Global search** in the top bar: debounced, scoped, across properties +
+  clients, with phone normalization ("9876543210" matches "+91 98765 43210").
+  A results popover; scope runs on the query so it can't leak what the lists
+  wouldn't.
+- **Read-only roles matrix** (`/settings/roles`): roles × the 43-permission
+  catalog, grouped by resource. Makes the "catalog is code, grants are data"
+  split visible. Editing deferred (schema/resolver already support it).
+
+**Security fix caught by end-to-end verification.** The first search
+implementation spread `scopeForProperty(actor)` and then added its own
+top-level `OR` for the search terms. `scopeForProperty` for an agent *contains*
+an `OR` (the "assigned to me OR to my client" clause), so the second `OR` key
+**silently overwrote the scope's** — an agent's search returned every property,
+including other agents' inventory. Every unit test passed; only diffing search
+results against the scoped list exposed it. Fixed by composing scope and search
+with `AND` (as the list endpoints already do), and pinned with a regression test
+that reproduces the clobber. Verified: agent search now equals the agent's
+scoped list exactly, and returns nothing for another agent's property.
+
 ### Added — Phase 5: the requirement → match → assign flow (core feature)
 
 The screen the product is built around. `RequirementMatchPage` at `/requirements`.

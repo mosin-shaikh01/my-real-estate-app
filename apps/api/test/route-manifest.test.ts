@@ -2,6 +2,7 @@ import type { Router } from 'express'
 import { describe, expect, it } from 'vitest'
 import { isPermissionKey } from '@app/shared'
 import { ROUTE_MOUNTS } from '../src/app.js'
+import { activityRouter, rbacRouter, searchRouter } from '../src/routes/admin-routes.js'
 import { agentRouter } from '../src/routes/agent-routes.js'
 import { authRouter } from '../src/routes/auth-routes.js'
 import { clientRouter } from '../src/routes/client-routes.js'
@@ -72,6 +73,9 @@ const ALL_ROUTES: RouteInfo[] = [
   ...routesOf(agentRouter, '/api/agents'),
   ...routesOf(dashboardRouter, '/api/dashboard'),
   ...routesOf(mediaRouter, '/api/media'),
+  ...routesOf(activityRouter, '/api/activity-logs'),
+  ...routesOf(searchRouter, '/api/search'),
+  ...routesOf(rbacRouter, '/api/rbac'),
 ]
 
 describe('route manifest', () => {
@@ -85,12 +89,15 @@ describe('route manifest', () => {
     // If someone adds a router to createApp() but not to ROUTE_MOUNTS, its
     // routes would never be audited here. Catch that.
     expect(ROUTE_MOUNTS.map((m) => m.path).sort()).toEqual([
+      '/api/activity-logs',
       '/api/agents',
       '/api/auth',
       '/api/clients',
       '/api/dashboard',
       '/api/media',
       '/api/properties',
+      '/api/rbac',
+      '/api/search',
     ])
   })
 

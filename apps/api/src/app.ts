@@ -4,6 +4,7 @@ import { authenticate } from './middleware/authenticate.js'
 import { errorHandler, notFoundHandler, requestId } from './middleware/error-handler.js'
 import { requestLog } from './middleware/request-log.js'
 import { publicRoute } from './middleware/route-registry.js'
+import { activityRouter, rbacRouter, searchRouter } from './routes/admin-routes.js'
 import { agentRouter } from './routes/agent-routes.js'
 import { authRouter } from './routes/auth-routes.js'
 import { clientRouter } from './routes/client-routes.js'
@@ -35,6 +36,9 @@ export const ROUTE_MOUNTS: ReadonlyArray<{
   { path: '/api/agents', router: agentRouter, requiresAuth: true },
   { path: '/api/dashboard', router: dashboardRouter, requiresAuth: true },
   { path: '/api/media', router: mediaRouter, requiresAuth: true },
+  { path: '/api/activity-logs', router: activityRouter, requiresAuth: true },
+  { path: '/api/search', router: searchRouter, requiresAuth: true },
+  { path: '/api/rbac', router: rbacRouter, requiresAuth: true },
 ]
 
 export function createApp() {

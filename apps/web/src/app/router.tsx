@@ -13,10 +13,11 @@ const PropertyDetail = lazy(() => import('@/features/properties/pages/PropertyDe
 const PropertyCreate = lazy(() => import('@/features/properties/pages/PropertyCreatePage'))
 const Agents = lazy(() => import('@/features/agents/pages/AgentsPage'))
 const RequirementMatch = lazy(() => import('@/features/requirements/pages/RequirementMatchPage'))
+const Activity = lazy(() => import('@/features/activity/pages/ActivityPage'))
+const Roles = lazy(() => import('@/features/rbac/pages/RolesPage'))
 const DesignSystem = lazy(() => import('@/features/design-system/pages/DesignSystemPage'))
 const Login = lazy(() => import('@/features/auth/pages/LoginPage'))
 const NotFound = lazy(() => import('@/features/misc/pages/NotFoundPage'))
-const Placeholder = lazy(() => import('@/features/misc/pages/PlaceholderPage'))
 
 function Fallback() {
   return (
@@ -69,10 +70,23 @@ export const router = createBrowserRouter([
           </RequirePermission>,
         ),
       },
+      {
+        path: 'activity',
+        element: lazyRoute(
+          <RequirePermission permission="activity.list">
+            <Activity />
+          </RequirePermission>,
+        ),
+      },
+      {
+        path: 'settings/roles',
+        element: lazyRoute(
+          <RequirePermission permission="rbac.role.list">
+            <Roles />
+          </RequirePermission>,
+        ),
+      },
       { path: 'design-system', element: lazyRoute(<DesignSystem />) },
-      { path: 'activity', element: lazyRoute(<Placeholder />) },
-      { path: 'search', element: lazyRoute(<Placeholder />) },
-      { path: 'settings/roles', element: lazyRoute(<Placeholder />) },
       { path: '*', element: lazyRoute(<NotFound />) },
     ],
   },
