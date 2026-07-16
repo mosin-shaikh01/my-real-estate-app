@@ -178,6 +178,58 @@ export async function setPropertyStatus(
   })
 }
 
+/**
+ * Assign (or clear) the agent responsible for a property.
+ *
+ * A dedicated endpoint with its OWN permission (property.assignAgent), separate
+ * from property.update: a manager might reassign inventory without being able to
+ * edit prices or descriptions. Reassigning also changes who can SEE the
+ * property — scopeForProperty keys off assignedAgentId — so it is a genuine
+ * authorization action, not just a field edit.
+ */
+export async function assignPropertyAgent(
+  actor: Actor,
+  id: string,
+  agentId: string | null,
+  req: Request,
+) {
+  const before = await prisma.property.findFirst({
+    where: { ...scopeForProperty(actor), id },
+    select: { id: true, code: true, assignedAgentId: true },
+  })
+  if (!before) throw notFound('Property not found')
+  await assertAssignableAgent(agentId)
+  if (before.assignedAgentId === agentId) {
+    return { id: before.id, code: before.code }
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const property = await tx.property.update({
+      where: { id },
+      data: { assignedAgentId: agentId },
+      select: { id: true, code: true },
+    })
+
+    const agentName = agentId
+      ? (await tx.user.findUnique({ where: { id: agentId }, select: { fullName: true } }))?.fullName
+      : null
+
+    await logActivityTx(tx, {
+      actorUserId: actor.userId,
+      action: agentId ? 'property.agent.assigned' : 'property.agent.unassigned',
+      entityType: 'property',
+      entityId: id,
+      summary: agentId
+        ? `Assigned ${agentName} to ${property.code}`
+        : `Unassigned the agent from ${property.code}`,
+      metadata: { agentId },
+      req,
+    })
+
+    return property
+  })
+}
+
 export async function archiveProperty(actor: Actor, id: string, archived: boolean, req: Request) {
   const before = await prisma.property.findFirst({
     where: { ...scopeForProperty(actor), id },

@@ -7,6 +7,34 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Fixed — Super Admin can now assign an agent to a property
+
+The property↔agent relationship (`assignedAgentId`) and the `property.assignAgent`
+permission both existed, but **nothing in the UI ever set it** — the property
+pages only *displayed* the agent name. Now:
+
+- **Property detail** has an "Assigned agent" selector (gated by
+  `property.assignAgent`; a plain read-out for everyone else). Choosing an agent
+  — or clearing it — calls a new `POST /api/properties/:id/assign-agent`.
+- **The create form** offers the same selector, so a property can be assigned at
+  creation.
+- A **dedicated endpoint with its own permission**, separate from
+  `property.update`: a manager can reassign inventory without being able to edit
+  prices. Reassigning also **changes who can see the property** (scope keys off
+  `assignedAgentId`), so it's a real authorization action — verified: an agent
+  couldn't see a BKC property, was assigned it, and it appeared in their scoped
+  list.
+- The suspended-agent guard applies (assigning an inactive agent → 400), and an
+  agent without the permission is 403.
+- `/agents/assignable` is now guarded by the **union** of the assignment
+  permissions (`requireAnyPermission`) so it serves both the client- and
+  property-assignment flows, not just the client one.
+
+**Seed hardening** (this test-induced drift bit twice): reseed now restores each
+demo user's email, password, name and status, and clears any per-agent
+permission overrides. A changed password or a stray override no longer survives
+`npm run db:seed` — the demo logins always work after a reseed.
+
 ### Added — self-service profile page
 
 Every authenticated user — Super Admin and Agent alike — now has a **Your

@@ -7,10 +7,13 @@ import {
   propertyCreateSchema,
   type PropertyCreateInput,
 } from '@app/shared'
+import { Can } from '@/components/auth/Can'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FormField, Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
+import { useAssignableAgents } from '@/features/agents/api/use-assignable-agents'
+import { usePermissions } from '@/features/auth/api/use-auth'
 import { useCreateProperty } from '@/features/properties/api/use-property-mutations'
 import { ApiClientError } from '@/lib/api'
 
@@ -29,6 +32,9 @@ const LISTING_OPTIONS = [
 export function PropertyForm() {
   const navigate = useNavigate()
   const create = useCreateProperty()
+  const { has } = usePermissions()
+  // Only fetch the agent list if this actor can actually assign one.
+  const { data: agents } = useAssignableAgents(has('property.assignAgent'))
 
   const form = useForm<PropertyCreateInput>({
     resolver: zodResolver(propertyCreateSchema),
@@ -104,6 +110,21 @@ export function PropertyForm() {
               <Select options={LISTING_OPTIONS} {...form.register('listingType')} value={listingType} />
             )}
           </FormField>
+          {/* Assign the responsible agent at creation. Only rendered for actors
+              who may assign — the create call carries assignedAgentId, which the
+              server re-validates against active agents regardless. */}
+          <Can permission="property.assignAgent">
+            <FormField label="Assigned agent" error={form.formState.errors.assignedAgentId?.message}>
+              {() => (
+                <Select
+                  placeholder="Unassigned"
+                  options={(agents ?? []).map((a) => ({ value: a.id, label: a.fullName }))}
+                  {...form.register('assignedAgentId')}
+                  value={form.watch('assignedAgentId') ?? ''}
+                />
+              )}
+            </FormField>
+          </Can>
         </Card.Body>
       </Card>
 

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import {
+  assignAgentSchema,
   propertyCreateSchema,
   propertyListQuerySchema,
   propertyStatusUpdateSchema,
@@ -18,6 +19,7 @@ import {
 } from '../services/property-service.js'
 import {
   archiveProperty,
+  assignPropertyAgent,
   createProperty,
   deleteProperty,
   setPropertyStatus,
@@ -85,6 +87,12 @@ propertyRouter.post('/:id/status', requirePermission('property.status.update'), 
   const { id } = idParamSchema.parse(req.params)
   const { status } = propertyStatusUpdateSchema.parse(req.body)
   res.json({ data: await setPropertyStatus(req.actor!, id, status, req) })
+})
+
+propertyRouter.post('/:id/assign-agent', requirePermission('property.assignAgent'), async (req, res) => {
+  const { id } = idParamSchema.parse(req.params)
+  const { agentId } = assignAgentSchema.parse(req.body)
+  res.json({ data: await assignPropertyAgent(req.actor!, id, agentId, req) })
 })
 
 propertyRouter.post('/:id/archive', requirePermission('property.archive'), async (req, res) => {

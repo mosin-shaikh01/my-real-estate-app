@@ -5,7 +5,7 @@ import {
   agentStatusSchema,
   agentUpdateSchema,
 } from '@app/shared'
-import { requirePermission } from '../middleware/authenticate.js'
+import { requireAnyPermission, requirePermission } from '../middleware/authenticate.js'
 import { idParamSchema } from '../lib/params.js'
 import {
   createAgent,
@@ -28,12 +28,17 @@ agentRouter.get('/', requirePermission('agent.list'), async (req, res) => {
   res.json({ data: rows.map((r) => toAgentDTO(r, req.actor!)) })
 })
 
-// A lighter list for assignment dropdowns. Guarded by client.assignAgent, not
-// agent.list: an admin assigning an agent to a client needs the names, but that
-// is not the same authority as managing agents.
-agentRouter.get('/assignable', requirePermission('client.assignAgent'), async (_req, res) => {
-  res.json({ data: await listAssignableAgents() })
-})
+// A lighter list for assignment dropdowns — used by BOTH "assign agent to a
+// client" and "assign agent to a property". Guarded by the union of those
+// permissions, not agent.list: needing the names is not the authority to manage
+// agents, and a role with only one assignment power must still get the list.
+agentRouter.get(
+  '/assignable',
+  requireAnyPermission('client.assignAgent', 'client.assignProperty', 'property.assignAgent'),
+  async (_req, res) => {
+    res.json({ data: await listAssignableAgents() })
+  },
+)
 
 agentRouter.post('/', requirePermission('agent.create'), async (req, res) => {
   const input = agentCreateSchema.parse(req.body)
