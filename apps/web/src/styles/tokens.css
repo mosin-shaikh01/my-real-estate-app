@@ -1,0 +1,203 @@
+/* ============================================================================
+ * DESIGN TOKENS
+ * ============================================================================
+ * Two layers, and the order matters:
+ *
+ *   1. PRIMITIVES  (@theme)        raw ramps. Static. Never referenced by
+ *                                  components directly.
+ *   2. SEMANTICS   (:root + @theme inline)
+ *                                  meaning-carrying names. What components use.
+ *
+ * Why `@theme inline` for layer 2: `@theme` SNAPSHOTS values at build time. A
+ * semantic token that must remap at runtime (light -> dark) has to live in
+ * :root as a plain custom property, then be exposed to Tailwind via
+ * `@theme inline` so the generated utility references var(--x) instead of
+ * baking the light value in. Get this wrong and dark mode silently no-ops.
+ *
+ * Colors are oklch: perceptually uniform, so a ramp stepped by lightness
+ * actually looks evenly spaced. Hex ramps don't.
+ * ========================================================================= */
+
+@theme {
+  /* --- Neutral: slightly cool. A CRM is 90% gray; this ramp is most of what
+     "premium" means here, so it gets 12 steps and the most care. --------- */
+  --color-neutral-0: oklch(1 0 0);
+  --color-neutral-50: oklch(0.985 0.002 257);
+  --color-neutral-100: oklch(0.967 0.003 257);
+  --color-neutral-200: oklch(0.928 0.006 257);
+  --color-neutral-300: oklch(0.871 0.009 257);
+  --color-neutral-400: oklch(0.708 0.013 257);
+  --color-neutral-500: oklch(0.554 0.015 257);
+  --color-neutral-600: oklch(0.446 0.015 257);
+  --color-neutral-700: oklch(0.372 0.014 257);
+  --color-neutral-800: oklch(0.279 0.012 257);
+  --color-neutral-900: oklch(0.208 0.010 257);
+  --color-neutral-950: oklch(0.145 0.008 257);
+
+  /* --- Brand: deep indigo. Deliberately not generic-SaaS-blue (hue ~250)
+     and not realtor-red. Reads as considered, institutional, calm. ------- */
+  --color-brand-50: oklch(0.970 0.014 275);
+  --color-brand-100: oklch(0.936 0.031 275);
+  --color-brand-200: oklch(0.884 0.058 275);
+  --color-brand-300: oklch(0.812 0.093 275);
+  --color-brand-400: oklch(0.712 0.140 275);
+  --color-brand-500: oklch(0.612 0.181 275);
+  --color-brand-600: oklch(0.535 0.192 275);
+  --color-brand-700: oklch(0.457 0.171 275);
+  --color-brand-800: oklch(0.386 0.140 275);
+  --color-brand-900: oklch(0.329 0.110 275);
+  --color-brand-950: oklch(0.235 0.077 275);
+
+  /* --- Accent: warm brass. Used SPARINGLY -- featured badges, empty-state
+     highlights. If it shows up on every screen it stops meaning anything. */
+  --color-accent-100: oklch(0.945 0.052 85);
+  --color-accent-300: oklch(0.855 0.115 82);
+  --color-accent-500: oklch(0.760 0.148 76);
+  --color-accent-700: oklch(0.598 0.128 68);
+  --color-accent-900: oklch(0.425 0.089 62);
+
+  /* --- Status. Semantic, and deliberately independent of brand.
+     NOTE: sold is NEUTRAL, not red. Red means destructive. Sold is a
+     terminal success -- it must not shout over the actionable rows. ------ */
+  --color-success-100: oklch(0.945 0.048 155);
+  --color-success-500: oklch(0.696 0.150 155);
+  --color-success-700: oklch(0.527 0.122 155);
+
+  --color-warning-100: oklch(0.958 0.055 92);
+  --color-warning-500: oklch(0.769 0.157 70);
+  --color-warning-700: oklch(0.577 0.130 63);
+
+  --color-info-100: oklch(0.948 0.037 240);
+  --color-info-500: oklch(0.647 0.152 245);
+  --color-info-700: oklch(0.495 0.132 248);
+
+  --color-danger-100: oklch(0.943 0.039 22);
+  --color-danger-500: oklch(0.629 0.221 26);
+  --color-danger-700: oklch(0.494 0.184 27);
+
+  /* --- Type. Base 14px for app chrome and tables -- the honest CRM call
+     (Linear, Stripe dashboard), not the 16px web-page default. ---------- */
+  --font-sans: 'Inter var', 'Inter', ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
+
+  --text-2xs: 0.6875rem; /* 11px  micro labels, table meta */
+  --text-2xs--line-height: 1rem;
+  --text-xs: 0.75rem; /* 12px  captions */
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.8125rem; /* 13px  table cells */
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.875rem; /* 14px  body / default */
+  --text-base--line-height: 1.375rem;
+  --text-md: 1rem; /* 16px  emphasis */
+  --text-md--line-height: 1.5rem;
+  --text-lg: 1.25rem; /* 20px  section heads */
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.5rem; /* 24px  page titles */
+  --text-xl--line-height: 2rem;
+  --text-2xl: 1.875rem; /* 30px  display */
+  --text-2xl--line-height: 2.25rem;
+
+  /* --- Motion. Overlays only; never data grids. Animating rows on filter
+     change makes a CRM feel slower, which is the one thing it can't be. -- */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in-quart: cubic-bezier(0.5, 0, 0.75, 0);
+
+  /* --- Table density. Tokens now; the toggle is not built in v1. -------- */
+  --spacing-row-compact: 2rem; /* 32px */
+  --spacing-row: 2.5rem; /* 40px */
+  --spacing-row-comfortable: 3rem; /* 48px */
+}
+
+/* ============================================================================
+ * SEMANTIC LAYER -- runtime-remappable
+ * ==========================================================================*/
+
+:root {
+  --surface: var(--color-neutral-0);
+  --surface-sunken: var(--color-neutral-50);
+  --surface-raised: var(--color-neutral-0);
+  --surface-hover: var(--color-neutral-100);
+  --surface-selected: var(--color-brand-50);
+
+  --border-subtle: var(--color-neutral-200);
+  --border-default: var(--color-neutral-300);
+  --border-strong: var(--color-neutral-400);
+
+  --text-primary: var(--color-neutral-900);
+  --text-secondary: var(--color-neutral-600);
+  --text-muted: var(--color-neutral-500);
+  --text-inverted: var(--color-neutral-0);
+
+  --status-available: var(--color-success-500);
+  --status-under-offer: var(--color-warning-500);
+  --status-rented: var(--color-info-500);
+  --status-sold: var(--color-neutral-500);
+  --status-archived: var(--color-neutral-400);
+
+  /* Elevation is SEMANTIC, not raw shadow utilities at call sites. In dark
+     mode shadows stop reading and must become borders + lighter surfaces --
+     that substitution is exactly what breaks retrofitted dark mode. */
+  --elevation-1: 0 1px 2px 0 oklch(0.145 0.008 257 / 0.06);
+  --elevation-2: 0 4px 12px -2px oklch(0.145 0.008 257 / 0.10),
+    0 2px 4px -2px oklch(0.145 0.008 257 / 0.06);
+  --elevation-3: 0 12px 32px -8px oklch(0.145 0.008 257 / 0.16),
+    0 4px 8px -4px oklch(0.145 0.008 257 / 0.08);
+}
+
+/* Dark mode: architecture only. Not shipped in v1 -- see UI_UX_GUIDELINES.md.
+   The token layer exists so enabling it later is a day, not a week. */
+.dark {
+  --surface: var(--color-neutral-950);
+  --surface-sunken: oklch(0.115 0.008 257);
+  --surface-raised: var(--color-neutral-900);
+  --surface-hover: var(--color-neutral-800);
+  --surface-selected: var(--color-brand-950);
+
+  --border-subtle: var(--color-neutral-800);
+  --border-default: var(--color-neutral-700);
+  --border-strong: var(--color-neutral-600);
+
+  --text-primary: var(--color-neutral-50);
+  --text-secondary: var(--color-neutral-400);
+  --text-muted: var(--color-neutral-500);
+  --text-inverted: var(--color-neutral-950);
+
+  /* Shadows don't read on dark surfaces -- elevation becomes a border. */
+  --elevation-1: 0 0 0 1px var(--color-neutral-800);
+  --elevation-2: 0 0 0 1px var(--color-neutral-800),
+    0 4px 12px -2px oklch(0 0 0 / 0.4);
+  --elevation-3: 0 0 0 1px var(--color-neutral-700),
+    0 12px 32px -8px oklch(0 0 0 / 0.6);
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* `inline` is load-bearing: it makes the generated utilities reference
+   var(--surface) rather than snapshotting the light value. */
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-selected: var(--surface-selected);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverted: var(--text-inverted);
+
+  --color-status-available: var(--status-available);
+  --color-status-under-offer: var(--status-under-offer);
+  --color-status-rented: var(--status-rented);
+  --color-status-sold: var(--status-sold);
+  --color-status-archived: var(--status-archived);
+
+  --shadow-e1: var(--elevation-1);
+  --shadow-e2: var(--elevation-2);
+  --shadow-e3: var(--elevation-3);
+}

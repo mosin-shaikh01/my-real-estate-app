@@ -1,30 +1,34 @@
 {
-  "name": "my-real-estate-app",
+  "name": "real-estate-crm",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+  "engines": {
+    "node": ">=22"
   },
-  "dependencies": {
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n web,api -c cyan,magenta \"npm:dev:web\" \"npm:dev:api\"",
+    "dev:web": "npm run dev -w @app/web",
+    "dev:api": "npm run dev -w @app/api",
+    "build": "npm run build -w @app/web",
+    "lint": "eslint .",
+    "typecheck": "tsc -b apps/web && tsc -p apps/api",
+    "test": "vitest run",
+    "db:migrate": "npm run db:migrate -w @app/api",
+    "db:seed": "npm run db:seed -w @app/api",
+    "db:studio": "npm run db:studio -w @app/api"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^24.13.2",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.3",
+    "concurrently": "^9.2.1",
     "eslint": "^10.6.0",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.7.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.62.0",
-    "vite": "^8.1.1"
+    "vitest": "^4.1.10"
   }
 }

@@ -1,0 +1,701 @@
+// ============================================================================
+// Real Estate CRM — data model
+// ============================================================================
+// Conventions (see docs/DATABASE.md for the reasoning behind each):
+//   * PKs are cuid(2). Never Int — sequential IDs in URLs leak row counts.
+//   * Money is Decimal(14,2). Never Float (binary rounding), never Int-paise
+//     (2^31 ≈ ₹21 lakh — Indian property prices blow straight past that).
+//     Decimal does not JSON-serialize: DTOs carry money as STRING.
+//   * Soft delete is `deletedAt`. There is no global filter middleware —
+//     the scope resolver adds `deletedAt: null`. Magic default-scopes break
+//     findUnique and make admin bypass ugly.
+//   * `status` / `archivedAt` / `deletedAt` are three orthogonal concepts.
+//     Do not overload them.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// Prisma 7: `url` is NOT permitted here. Connection config lives in
+// prisma.config.ts (for Migrate) and comes from a driver adapter at runtime
+// (src/lib/prisma.ts). See docs/DATABASE.md.
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// IDENTITY & RBAC
+// ============================================================================
+// User != Agent. User is the auth identity; AgentProfile is an optional 1:1
+// extension. Super Admin is a User with no profile. Client is not a User at
+// all — it never logs in. This keeps RBAC to a single subject type.
+
+model User {
+  id           String     @id @default(cuid(2))
+  email        String     @db.VarChar(255)
+  passwordHash String     @map("password_hash")
+  fullName     String     @map("full_name") @db.VarChar(160)
+  phone        String?    @db.VarChar(32)
+  status       UserStatus @default(ACTIVE)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  agentProfile AgentProfile?
+  roles        UserRole[]
+  permissions  UserPermission[]
+  sessions     Session[]
+  resetTokens  PasswordResetToken[]
+
+  assignedClients    Client[]            @relation("ClientAssignedAgent")
+  assignedProperties Property[]          @relation("PropertyAssignedAgent")
+  interactions       ClientInteraction[]
+  activityLogs       ActivityLog[]
+  uploadedMedia      PropertyMedia[]
+  assignmentsMade    PropertyAssignment[]
+  deals              Deal[]
+
+  // NOTE: email is NOT @unique here. Soft delete + a plain unique constraint
+  // means a deleted user permanently blocks that address from re-registering.
+  // The real constraint is a PARTIAL unique index (WHERE deleted_at IS NULL),
+  // which Prisma cannot express — it is hand-written in the migration SQL.
+  @@index([email])
+  @@index([status])
+  @@map("users")
+}
+
+model Role {
+  id          String  @id @default(cuid(2))
+  name        String  @unique @db.VarChar(64)
+  slug        String  @unique @db.VarChar(64)
+  description String?
+
+  // Guards against an admin deleting super_admin and locking everyone out.
+  isSystem Boolean @default(false) @map("is_system")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+// The permission CATALOG is code (packages/shared/permissions.ts), upserted
+// here by the seed on boot. Roles and mappings are data. New roles need no
+// deploy; new permissions do, because a permission only does anything when a
+// line of code checks it.
+//
+// Structured columns are the model; `key` is the identity used on the wire and
+// in code. Columns let the admin UI group by resource; the string keeps
+// <Can permission="..."> usable and typo-proof via the shared union.
+model Permission {
+  id          String  @id @default(cuid(2))
+  key         String  @unique @db.VarChar(96) // "client.phone.view"
+  resource    String  @db.VarChar(48) // "client"
+  action      String  @db.VarChar(32) // "view"
+  field       String? @db.VarChar(48) // "phone" — null for resource-level
+  description String
+
+  roles RolePermission[]
+  users UserPermission[]
+
+  @@unique([resource, action, field])
+  @@index([resource])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// Per-user overrides. effective = (rolePermissions ∪ ALLOWs) \ DENYs.
+// Deny wins. Schema + resolver support both now; the v1 admin UI exposes
+// grants only — the complexity of DENY is explaining precedence to a human,
+// not modelling it. Retrofitting this column later is a migration + rewrite.
+model UserPermission {
+  userId       String           @map("user_id")
+  permissionId String           @map("permission_id")
+  effect       PermissionEffect @default(ALLOW)
+
+  grantedAt DateTime @default(now()) @map("granted_at")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, permissionId])
+  @@map("user_permissions")
+}
+
+model UserRole {
+  userId String @map("user_id")
+  roleId String @map("role_id")
+
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model AgentProfile {
+  id     String @id @default(cuid(2))
+  userId String @unique @map("user_id")
+
+  photoStorageKey String? @map("photo_storage_key")
+  address         String?
+  experienceYears Int?    @map("experience_years")
+  specialization  String? @db.VarChar(120)
+
+  // A RATE (percent), not an amount. Snapshotted onto Deal at close — rates
+  // change, and historical reports must not retroactively mutate.
+  commissionRate Decimal? @map("commission_rate") @db.Decimal(5, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("agent_profiles")
+}
+
+// ============================================================================
+// SESSIONS & AUTH
+// ============================================================================
+
+// One row = one refresh token = one device. Gives the "sessions" module
+// (list devices / revoke) for free. Because every request validates this row
+// and loads permissions, deactivating an agent locks them out within ONE
+// request rather than one token TTL — that is why permissions are not in the
+// JWT, and it is also why this JWT is not stateless. That trade is deliberate.
+model Session {
+  id               String  @id @default(cuid(2))
+  userId           String  @map("user_id")
+  refreshTokenHash String  @unique @map("refresh_token_hash") // sha256. NEVER the token.
+  userAgent        String? @map("user_agent")
+  ip               String? @db.VarChar(64)
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  lastUsedAt DateTime  @default(now()) @map("last_used_at")
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+
+  // Rotation chain. Presenting a REVOKED token means the chain is compromised
+  // ⇒ revoke every session for that user and log it.
+  replacedBySessionId String? @map("replaced_by_session_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid(2))
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// ============================================================================
+// PROPERTY
+// ============================================================================
+
+model Property {
+  id String @id @default(cuid(2))
+
+  // Human-readable. Nobody searches by "clx7f9a2b0000" — the spec's
+  // "search by property ID" requires this. The DEFAULT is a Postgres sequence
+  // created in the migration SQL; dbgenerated() is how Prisma is told the
+  // database fills this in, so it stops demanding the field on create.
+  code String @unique @default(dbgenerated("('PROP-' || lpad(nextval('property_code_seq')::text, 5, '0'))")) @db.VarChar(16)
+
+  title       String @db.VarChar(200)
+  description String
+
+  propertyType       PropertyType       @map("property_type")
+  listingType        ListingType        @map("listing_type")
+  status             PropertyStatus     @default(AVAILABLE)
+  constructionStatus ConstructionStatus @default(READY_TO_MOVE) @map("construction_status")
+  visibility         Visibility         @default(INTERNAL)
+  featured           Boolean            @default(false)
+
+  // Two columns, because listingType can be BOTH — one `price` is meaningless
+  // when a listing is both (different numbers, different units).
+  salePrice          Decimal? @map("sale_price") @db.Decimal(14, 2)
+  rentPricePerMonth  Decimal? @map("rent_price_per_month") @db.Decimal(14, 2)
+  securityDeposit    Decimal? @map("security_deposit") @db.Decimal(14, 2)
+  maintenanceCharges Decimal? @map("maintenance_charges") @db.Decimal(14, 2)
+  negotiable         Boolean  @default(false)
+
+  areaSqft   Decimal         @map("area_sqft") @db.Decimal(10, 2)
+  bedrooms   Int?
+  bathrooms  Int?
+  parking    Int             @default(0)
+  furnished  FurnishedStatus @default(UNFURNISHED)
+  facing     Facing?
+  floor      Int?
+  totalFloor Int?            @map("total_floor")
+
+  // NOT propertyAge — that is wrong next year. Derive age in the UI.
+  builtYear Int? @map("built_year")
+
+  address  String
+  locality String? @db.VarChar(120)
+  city     String  @db.VarChar(120)
+  state    String  @db.VarChar(120)
+  country  String  @default("India") @db.VarChar(80)
+  pincode  String  @db.VarChar(16)
+
+  // No googleMap column — two sources of truth that will disagree. Derive the
+  // maps URL from these in the UI. (No PostGIS ⇒ no radius search in v1.)
+  latitude  Decimal? @db.Decimal(9, 6)
+  longitude Decimal? @db.Decimal(9, 6)
+
+  // Video is a URL in v1, not an upload — encoding/streaming/storage is days
+  // of work and demos identically. Images/floor plans/docs upload for real.
+  videoUrl String? @map("video_url")
+
+  // Confidential. Gated by property.internalNotes.view and stripped by the
+  // serializer — never sent to an actor without the permission.
+  internalNotes String? @map("internal_notes")
+
+  assignedAgentId String? @map("assigned_agent_id")
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+  deletedAt  DateTime? @map("deleted_at")
+
+  assignedAgent User?                @relation("PropertyAssignedAgent", fields: [assignedAgentId], references: [id], onDelete: SetNull)
+  media         PropertyMedia[]
+  amenities     PropertyAmenity[]
+  assignments   PropertyAssignment[]
+  deals         Deal[]
+
+  // No single composite serves budget × city × bedrooms × type × status — that
+  // is a permutation explosion. Postgres will bitmap-AND these. Don't
+  // over-index speculatively; measure.
+  @@index([status, listingType, city])
+  @@index([city, locality])
+  @@index([assignedAgentId])
+  @@index([visibility, featured])
+  @@index([salePrice])
+  @@index([rentPricePerMonth])
+  @@index([deletedAt])
+  @@map("properties")
+}
+
+// One table, not three. propertyImages/Videos/Documents would be identical
+// columns with ordering + cover logic triplicated — and floor plans are a
+// fourth thing that is also an image, which is what settles it.
+model PropertyMedia {
+  id         String    @id @default(cuid(2))
+  propertyId String    @map("property_id")
+  type       MediaType
+
+  // RELATIVE path. Never absolute, never a URL — swapping local disk for S3
+  // later becomes a serializer change instead of a data migration.
+  storageKey   String  @map("storage_key")
+  originalName String  @map("original_name")
+  mimeType     String  @map("mime_type") @db.VarChar(128)
+  sizeBytes    Int     @map("size_bytes")
+  width        Int?
+  height       Int?
+  sortOrder    Int     @default(0) @map("sort_order")
+  isCover      Boolean @default(false) @map("is_cover")
+
+  uploadedById String?  @map("uploaded_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  uploadedBy User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([propertyId, type, sortOrder])
+  @@map("property_media")
+}
+
+// A table, not free text. The reason is canonicalization, not query power:
+// free text gives you "Swimming Pool" / "swimming pool" / "Pool" and the
+// requirement-matching filter then returns zero rows forever.
+model Amenity {
+  id       String  @id @default(cuid(2))
+  name     String  @unique @db.VarChar(80)
+  slug     String  @unique @db.VarChar(80)
+  category String? @db.VarChar(48)
+
+  properties   PropertyAmenity[]
+  requirements RequirementAmenity[]
+
+  @@map("amenities")
+}
+
+model PropertyAmenity {
+  propertyId String @map("property_id")
+  amenityId  String @map("amenity_id")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  amenity  Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@id([propertyId, amenityId])
+  @@map("property_amenities")
+}
+
+// ============================================================================
+// CLIENT
+// ============================================================================
+
+model Client {
+  id String @id @default(cuid(2))
+
+  // CLI-00045. Sequence default lives in the migration SQL — see Property.code.
+  code String @unique @default(dbgenerated("('CLI-' || lpad(nextval('client_code_seq')::text, 5, '0'))")) @db.VarChar(16)
+
+  fullName String  @map("full_name") @db.VarChar(160)
+  email    String? @db.VarChar(255)
+  phone    String  @db.VarChar(32)
+  whatsapp String? @db.VarChar(32)
+
+  // Digits only, country code stripped. Without this, "9876543210" will not
+  // match "+91 98765 43210" and global search looks broken on day one.
+  phoneNormalized String @map("phone_normalized") @db.VarChar(24)
+
+  source   String?        @db.VarChar(80)
+  priority ClientPriority @default(MEDIUM)
+  notes    String?
+
+  // No `budget` here — budget is a RANGE and lives on ClientRequirement. A
+  // copy on Client silently drifts the first time a requirement is edited.
+  followUpStatus FollowUpStatus @default(NEW) @map("follow_up_status")
+
+  // DELIBERATE DENORMALIZATION. Derived from the latest ClientInteraction and
+  // written in the SAME transaction. Do not "fix" this into a computed field:
+  // it exists so the client list can sort/filter without an aggregate join.
+  lastContactAt DateTime? @map("last_contact_at")
+  nextFollowUp  DateTime? @map("next_follow_up")
+
+  assignedAgentId String? @map("assigned_agent_id")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  assignedAgent User?                @relation("ClientAssignedAgent", fields: [assignedAgentId], references: [id], onDelete: SetNull)
+  requirements  ClientRequirement[]
+  interactions  ClientInteraction[]
+  assignments   PropertyAssignment[]
+  deals         Deal[]
+
+  @@index([assignedAgentId])
+  @@index([phoneNormalized])
+  @@index([followUpStatus, nextFollowUp])
+  @@index([deletedAt])
+  @@map("clients")
+}
+
+model ClientRequirement {
+  id       String @id @default(cuid(2))
+  clientId String @map("client_id")
+
+  isActive Boolean @default(true) @map("is_active")
+
+  budgetMin Decimal? @map("budget_min") @db.Decimal(14, 2)
+  budgetMax Decimal? @map("budget_max") @db.Decimal(14, 2)
+  areaMin   Decimal? @map("area_min") @db.Decimal(10, 2)
+  areaMax   Decimal? @map("area_max") @db.Decimal(10, 2)
+
+  propertyType       PropertyType?       @map("property_type")
+  listingType        ListingType?        @map("listing_type")
+  bedrooms           Int?
+  bathrooms          Int?
+  parking            Int?
+  furnished          FurnishedStatus?
+  constructionStatus ConstructionStatus? @map("construction_status")
+
+  city     String? @db.VarChar(120)
+  locality String? @db.VarChar(120)
+
+  notes String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  client    Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  amenities RequirementAmenity[]
+
+  @@index([clientId, isActive])
+  @@map("client_requirements")
+}
+
+// Properties HAVE amenities; requirements WANT them. Two join tables — the
+// symmetry is real and collapsing it would conflate supply with demand.
+model RequirementAmenity {
+  requirementId String @map("requirement_id")
+  amenityId     String @map("amenity_id")
+
+  requirement ClientRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  amenity     Amenity           @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@id([requirementId, amenityId])
+  @@map("requirement_amenities")
+}
+
+// Your spec implies this table (add notes, schedule meetings, update follow-up,
+// lastContact) but never names it. "Schedule meetings" = scheduledAt + a list.
+// It is not a calendar UI.
+model ClientInteraction {
+  id       String          @id @default(cuid(2))
+  clientId String          @map("client_id")
+  authorId String?         @map("author_id")
+  type     InteractionType
+
+  body        String?
+  occurredAt  DateTime  @default(now()) @map("occurred_at")
+  scheduledAt DateTime? @map("scheduled_at")
+  outcome     String?   @db.VarChar(160)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  author User?  @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([clientId, occurredAt])
+  @@index([scheduledAt])
+  @@map("client_interactions")
+}
+
+// ============================================================================
+// ASSIGNMENT — the core feature
+// ============================================================================
+
+// Genuinely M:N (unlike client→agent, which your own field list says is
+// singular and is therefore a plain FK). `status` is NOT optional: without it
+// the client-conversion report is uncomputable.
+model PropertyAssignment {
+  id         String @id @default(cuid(2))
+  clientId   String @map("client_id")
+  propertyId String @map("property_id")
+
+  status AssignmentStatus @default(SHORTLISTED)
+  notes  String?
+
+  assignedById String?  @map("assigned_by_id")
+  assignedAt   DateTime @default(now()) @map("assigned_at")
+
+  // Soft-remove. Hard-deleting orphans the activity log rows that reference it.
+  removedAt DateTime? @map("removed_at")
+
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  assignedBy User?    @relation(fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@unique([clientId, propertyId])
+  @@index([propertyId])
+  @@index([status])
+  @@map("property_assignments")
+}
+
+// ============================================================================
+// DEAL — without this, 4 of your 6 reports are uncomputable
+// ============================================================================
+// Property.status = SOLD records none of: when, for how much, to whom, by whom.
+// Agent performance / client conversion / property sales / monthly revenue all
+// need this table.
+
+model Deal {
+  id         String   @id @default(cuid(2))
+  propertyId String   @map("property_id")
+  clientId   String   @map("client_id")
+  agentId    String?  @map("agent_id")
+  dealType   DealType @map("deal_type")
+
+  closedAt    DateTime @map("closed_at")
+  closedPrice Decimal  @map("closed_price") @db.Decimal(14, 2)
+
+  // Snapshotted from AgentProfile.commissionRate at close. Copying rather than
+  // joining is the point: rates change, history must not.
+  commissionRate   Decimal? @map("commission_rate") @db.Decimal(5, 2)
+  commissionAmount Decimal? @map("commission_amount") @db.Decimal(14, 2)
+
+  notes String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id])
+  client   Client   @relation(fields: [clientId], references: [id])
+  agent    User?    @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  @@index([closedAt])
+  @@index([agentId, closedAt])
+  @@index([dealType, closedAt])
+  @@map("deals")
+}
+
+// ============================================================================
+// ACTIVITY LOG
+// ============================================================================
+
+// Polymorphic BY NECESSITY: entityType/entityId are strings with no FK, so
+// logs correctly survive deletion of the thing they describe. Don't try to
+// make this polymorphic-with-FKs.
+//
+// PII TRAP: logging before/after values of a Client puts phone/budget into a
+// second table the redactor does not cover. For sensitive fields, log the
+// field NAMES that changed, not the values.
+model ActivityLog {
+  id          String  @id @default(cuid(2))
+  actorUserId String? @map("actor_user_id")
+
+  action     String  @db.VarChar(64) // "property.assigned"
+  entityType String  @map("entity_type") @db.VarChar(48)
+  entityId   String  @map("entity_id")
+  summary    String
+  metadata   Json?
+
+  ip        String?  @db.VarChar(64)
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+// Enum vs lookup table: PropertyType is stable taxonomy → enum. ClientSource is
+// NOT (admins will want "Facebook Campaign Q3") → it is a free string above.
+// Postgres takes ADD VALUE cleanly; removing/reordering is migration surgery.
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum PermissionEffect {
+  ALLOW
+  DENY
+}
+
+enum PropertyType {
+  APARTMENT
+  VILLA
+  INDEPENDENT_HOUSE
+  PLOT
+  COMMERCIAL_OFFICE
+  COMMERCIAL_SHOP
+  WAREHOUSE
+  FARMHOUSE
+}
+
+enum ListingType {
+  SALE
+  RENT
+  BOTH
+}
+
+enum PropertyStatus {
+  AVAILABLE
+  UNDER_OFFER
+  SOLD
+  RENTED
+}
+
+enum Visibility {
+  PUBLIC
+  INTERNAL
+  PRIVATE
+}
+
+enum FurnishedStatus {
+  UNFURNISHED
+  SEMI_FURNISHED
+  FULLY_FURNISHED
+}
+
+enum Facing {
+  NORTH
+  SOUTH
+  EAST
+  WEST
+  NORTH_EAST
+  NORTH_WEST
+  SOUTH_EAST
+  SOUTH_WEST
+}
+
+enum ConstructionStatus {
+  READY_TO_MOVE
+  UNDER_CONSTRUCTION
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+  FLOOR_PLAN
+}
+
+enum ClientPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum FollowUpStatus {
+  NEW
+  CONTACTED
+  INTERESTED
+  NEGOTIATING
+  CONVERTED
+  LOST
+  ON_HOLD
+}
+
+enum InteractionType {
+  NOTE
+  CALL
+  MEETING
+  WHATSAPP
+  EMAIL
+  SITE_VISIT
+}
+
+enum AssignmentStatus {
+  SHORTLISTED
+  SHARED
+  VISITED
+  INTERESTED
+  REJECTED
+}
+
+enum DealType {
+  SALE
+  RENT
+}

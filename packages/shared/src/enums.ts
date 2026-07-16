@@ -1,0 +1,142 @@
+import { z } from 'zod'
+
+// ============================================================================
+// ENUMS — hand-written, mirrored from prisma/schema.prisma
+// ============================================================================
+// Why hand-written rather than imported from @prisma/client: this package is
+// consumed by the browser bundle, and importing Prisma would drag its runtime
+// into the client. The cost of that isolation is drift risk, which is bought
+// off by a parity test (apps/api/test/enum-parity.test.ts) asserting these are
+// deep-equal to the generated Prisma enums. That test is cheap and it is the
+// only thing standing between you and a silent enum drift.
+//
+// Note: TS `enum` is banned repo-wide (tsconfig sets erasableSyntaxOnly).
+// Zod enums are better here anyway — one declaration gives a runtime validator
+// AND a static union.
+// ============================================================================
+
+export const userStatusSchema = z.enum(['ACTIVE', 'SUSPENDED'])
+export type UserStatus = z.infer<typeof userStatusSchema>
+
+export const permissionEffectSchema = z.enum(['ALLOW', 'DENY'])
+export type PermissionEffect = z.infer<typeof permissionEffectSchema>
+
+export const propertyTypeSchema = z.enum([
+  'APARTMENT',
+  'VILLA',
+  'INDEPENDENT_HOUSE',
+  'PLOT',
+  'COMMERCIAL_OFFICE',
+  'COMMERCIAL_SHOP',
+  'WAREHOUSE',
+  'FARMHOUSE',
+])
+export type PropertyType = z.infer<typeof propertyTypeSchema>
+
+export const listingTypeSchema = z.enum(['SALE', 'RENT', 'BOTH'])
+export type ListingType = z.infer<typeof listingTypeSchema>
+
+export const propertyStatusSchema = z.enum(['AVAILABLE', 'UNDER_OFFER', 'SOLD', 'RENTED'])
+export type PropertyStatus = z.infer<typeof propertyStatusSchema>
+
+export const visibilitySchema = z.enum(['PUBLIC', 'INTERNAL', 'PRIVATE'])
+export type Visibility = z.infer<typeof visibilitySchema>
+
+export const furnishedStatusSchema = z.enum(['UNFURNISHED', 'SEMI_FURNISHED', 'FULLY_FURNISHED'])
+export type FurnishedStatus = z.infer<typeof furnishedStatusSchema>
+
+export const facingSchema = z.enum([
+  'NORTH',
+  'SOUTH',
+  'EAST',
+  'WEST',
+  'NORTH_EAST',
+  'NORTH_WEST',
+  'SOUTH_EAST',
+  'SOUTH_WEST',
+])
+export type Facing = z.infer<typeof facingSchema>
+
+export const constructionStatusSchema = z.enum(['READY_TO_MOVE', 'UNDER_CONSTRUCTION'])
+export type ConstructionStatus = z.infer<typeof constructionStatusSchema>
+
+export const mediaTypeSchema = z.enum(['IMAGE', 'VIDEO', 'DOCUMENT', 'FLOOR_PLAN'])
+export type MediaType = z.infer<typeof mediaTypeSchema>
+
+export const clientPrioritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH'])
+export type ClientPriority = z.infer<typeof clientPrioritySchema>
+
+export const followUpStatusSchema = z.enum([
+  'NEW',
+  'CONTACTED',
+  'INTERESTED',
+  'NEGOTIATING',
+  'CONVERTED',
+  'LOST',
+  'ON_HOLD',
+])
+export type FollowUpStatus = z.infer<typeof followUpStatusSchema>
+
+export const interactionTypeSchema = z.enum([
+  'NOTE',
+  'CALL',
+  'MEETING',
+  'WHATSAPP',
+  'EMAIL',
+  'SITE_VISIT',
+])
+export type InteractionType = z.infer<typeof interactionTypeSchema>
+
+export const assignmentStatusSchema = z.enum([
+  'SHORTLISTED',
+  'SHARED',
+  'VISITED',
+  'INTERESTED',
+  'REJECTED',
+])
+export type AssignmentStatus = z.infer<typeof assignmentStatusSchema>
+
+export const dealTypeSchema = z.enum(['SALE', 'RENT'])
+export type DealType = z.infer<typeof dealTypeSchema>
+
+// ============================================================================
+// DISPLAY LABELS
+// ============================================================================
+// Enum values are SCREAMING_SNAKE; humans are not. Centralised so a label is
+// never re-invented per screen.
+
+export const PROPERTY_STATUS_LABELS: Record<PropertyStatus, string> = {
+  AVAILABLE: 'Available',
+  UNDER_OFFER: 'Under offer',
+  SOLD: 'Sold',
+  RENTED: 'Rented',
+}
+
+export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
+  APARTMENT: 'Apartment',
+  VILLA: 'Villa',
+  INDEPENDENT_HOUSE: 'Independent house',
+  PLOT: 'Plot',
+  COMMERCIAL_OFFICE: 'Office',
+  COMMERCIAL_SHOP: 'Shop',
+  WAREHOUSE: 'Warehouse',
+  FARMHOUSE: 'Farmhouse',
+}
+
+export const FOLLOW_UP_STATUS_LABELS: Record<FollowUpStatus, string> = {
+  NEW: 'New',
+  CONTACTED: 'Contacted',
+  INTERESTED: 'Interested',
+  NEGOTIATING: 'Negotiating',
+  CONVERTED: 'Converted',
+  LOST: 'Lost',
+  ON_HOLD: 'On hold',
+}
+
+export const ASSIGNMENT_STATUS_LABELS: Record<AssignmentStatus, string> = {
+  SHORTLISTED: 'Shortlisted',
+  SHARED: 'Shared',
+  VISITED: 'Visited',
+  INTERESTED: 'Interested',
+  REJECTED: 'Rejected',
+}

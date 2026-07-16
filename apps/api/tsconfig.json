@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["ES2023"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+
+    /* No rootDir/outDir: @app/shared is consumed as SOURCE from outside this
+       directory, which rootDir forbids. The API runs through tsx (full
+       transform, no emit) in dev, so tsc's only job here is typechecking.
+       A production bundle step (esbuild/tsup) is deferred until deploy —
+       see docs/ARCHITECTURE.md. */
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+
+    /* Linting. No `erasableSyntaxOnly` here: tsx does a full transform, and
+       the generated Prisma client is not ours to constrain. Our own source
+       still avoids TS enum for consistency with @app/shared. */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "paths": {
+      "@app/shared": ["../../packages/shared/src/index.ts"]
+    }
+  },
+  "include": ["src", "prisma", "prisma.config.ts"],
+  "exclude": ["dist", "src/generated"]
+}

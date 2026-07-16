@@ -1,75 +1,53 @@
-# React + TypeScript + Vite
+# Real Estate CRM
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Internal CRM and property management for a brokerage. Admins manage inventory,
+agents and clients; agents see only what they're assigned, and only the fields
+they're permitted.
 
-Currently, two official plugins are available:
+Currently a **local prototype for client demonstration**.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Quick start
 
-## React Compiler
+Requires Node 22+ and a local PostgreSQL 17.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+cp apps/api/.env.example apps/api/.env    # set DATABASE_URL + JWT secrets
+npm run db:migrate
+npm run db:seed
+npm run dev                                # web :5173 · api :4000
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Demo logins — `admin@demo.local` (Super Admin), `agent@demo.local` (Agent).
+Password `Passw0rd!` for both.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Layout
 
 ```
+apps/web/          React 19 + Vite 8 SPA
+apps/api/          Express 5 + Prisma 7
+packages/shared/   Zod schemas, permission catalog, enums — imported by both
+docs/              documentation
+CLAUDE.md          primary project context and rules
+```
+
+## Commands
+
+| | |
+|---|---|
+| `npm run dev` | web + api together |
+| `npm run build` | production build |
+| `npm run typecheck` | all workspaces, strict |
+| `npm test` | vitest |
+| `npm run db:migrate` | apply migrations |
+| `npm run db:seed` | idempotent seed |
+| `npm run db:studio` | Prisma Studio |
+
+## Documentation
+
+Start with [docs/PROJECT_OVERVIEW.md](./docs/PROJECT_OVERVIEW.md).
+
+Read [docs/RBAC.md](./docs/RBAC.md) before touching auth, scoping, or
+permissions — it's the heart of the system.
+
+[CLAUDE.md](./CLAUDE.md) holds the rules and is the source of truth.
