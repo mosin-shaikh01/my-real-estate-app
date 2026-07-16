@@ -27,6 +27,7 @@ const AGENT_SELECT = {
   createdAt: true,
   agentProfile: {
     select: {
+      code: true,
       address: true,
       experienceYears: true,
       specialization: true,
@@ -108,20 +109,35 @@ export async function createAgent(actorId: string, input: AgentCreateInput, req:
 export async function updateAgent(actorId: string, id: string, input: AgentUpdateInput, req: Request) {
   await getAgent(id) // 404 if not an agent
 
-  const { fullName, phone, ...profile } = input
+  // email lives on User; the rest on AgentProfile. Destructure explicitly so a
+  // stray field can't spread into the wrong table.
+  const { fullName, email, phone, address, experienceYears, specialization, commissionRate } = input
+
+  // Uniqueness before the transaction: a friendly 409 beats the partial unique
+  // index (email WHERE deleted_at IS NULL) throwing a raw constraint violation.
+  let normalisedEmail: string | undefined
+  if (email !== undefined) {
+    normalisedEmail = email.toLowerCase().trim()
+    const clash = await prisma.user.findFirst({
+      where: { email: normalisedEmail, deletedAt: null, id: { not: id } },
+      select: { id: true },
+    })
+    if (clash) throw conflict('Another account already uses that email')
+  }
 
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.update({
       where: { id },
       data: {
         ...(fullName !== undefined && { fullName }),
+        ...(normalisedEmail !== undefined && { email: normalisedEmail }),
         ...('phone' in input && { phone: orNull(phone) }),
         agentProfile: {
           update: {
-            ...('address' in input && { address: orNull(profile.address) }),
-            ...('experienceYears' in input && { experienceYears: profile.experienceYears ?? null }),
-            ...('specialization' in input && { specialization: orNull(profile.specialization) }),
-            ...('commissionRate' in input && { commissionRate: orNull(profile.commissionRate) }),
+            ...('address' in input && { address: orNull(address) }),
+            ...('experienceYears' in input && { experienceYears: experienceYears ?? null }),
+            ...('specialization' in input && { specialization: orNull(specialization) }),
+            ...('commissionRate' in input && { commissionRate: orNull(commissionRate) }),
           },
         },
       },

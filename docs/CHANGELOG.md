@@ -7,6 +7,28 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — editable agent profiles + agent codes
+
+- Super Admin can now **edit an agent's details** — name, email, mobile number,
+  specialization, experience, commission, address — via an "Edit" dialog on the
+  Agents page (gated by `agent.update`).
+- **Email is now editable** (the `updateAgent` service previously dropped it
+  silently — email lives on `User`, and it was being spread into the profile
+  update). Changing it re-checks uniqueness against active accounts: a clash
+  returns 409, and the agent can immediately sign in with the new address.
+- **Every agent has a human-readable profile code — `AGT-00001`** — matching the
+  `PROP-`/`CLI-` pattern, from a new `agent_code_seq`. Shown on the Agents page.
+  Migration backfilled the two existing agents (AGT-00001, AGT-00002).
+- The Agents page now shows the **ID and mobile** columns (mobile as a `tel:`
+  link).
+
+The `agent_code` migration also cleared a cosmetic drift that had lingered since
+Phase 1: the property/client code defaults were set via raw SQL in `init`, and
+the schema's `dbgenerated` normalises slightly differently, so every
+`migrate diff` re-emitted them. Folded the no-op reconciliation in. Verified:
+`migrate status` is clean, codes generate for new agents (AGT-00003…), and edits
+persist.
+
 ### Added — per-agent access editing
 
 Super Admin can now grant or restrict individual permissions for a specific

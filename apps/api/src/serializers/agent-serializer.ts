@@ -15,6 +15,7 @@ export interface AgentRow {
   status: string
   createdAt: Date
   agentProfile: {
+    code: string
     address: string | null
     experienceYears: number | null
     specialization: string | null
@@ -26,6 +27,8 @@ export interface AgentRow {
 
 export interface AgentDTO {
   id: string
+  /** Human-readable profile id, AGT-00001. */
+  code: string | null
   fullName: string
   email: string
   phone: string | null
@@ -47,6 +50,7 @@ export function toAgentDTO(row: AgentRow, actor: Actor): AgentDTO {
 
   const dto: AgentDTO = {
     id: row.id,
+    code: p?.code ?? null,
     fullName: row.fullName,
     email: row.email,
     phone: row.phone,

@@ -262,6 +262,7 @@ const AGENT_ROW: AgentRow = {
   status: 'ACTIVE',
   createdAt: new Date('2026-07-01'),
   agentProfile: {
+    code: 'AGT-00001',
     address: 'Mumbai',
     experienceYears: 6,
     specialization: 'Residential',
@@ -291,6 +292,10 @@ describe('agent serializer', () => {
     const dto = toAgentDTO(AGENT_ROW, ADMIN)
     expect(dto.assignedClientCount).toBe(4)
     expect(dto.assignedPropertyCount).toBe(3)
+  })
+
+  it('exposes the human-readable profile code', () => {
+    expect(toAgentDTO(AGENT_ROW, ADMIN).code).toBe('AGT-00001')
   })
 })
 

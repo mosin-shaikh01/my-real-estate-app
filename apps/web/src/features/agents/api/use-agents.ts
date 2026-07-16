@@ -3,12 +3,14 @@ import type {
   AgentCreateInput,
   AgentPermissionsInput,
   AgentPermissionsResponse,
+  AgentUpdateInput,
   UserStatus,
 } from '@app/shared'
 import { api } from '@/lib/api'
 
 export interface AgentDTO {
   id: string
+  code: string | null
   fullName: string
   email: string
   phone: string | null
@@ -35,6 +37,14 @@ export function useCreateAgent() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: AgentCreateInput) => api.post<{ data: { id: string } }>('/agents', input),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['agents'] }),
+  })
+}
+
+export function useUpdateAgent(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: AgentUpdateInput) => api.patch<{ data: { id: string } }>(`/agents/${id}`, input),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['agents'] }),
   })
 }

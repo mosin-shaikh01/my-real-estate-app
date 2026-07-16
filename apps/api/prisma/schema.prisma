@@ -155,6 +155,11 @@ model AgentProfile {
   id     String @id @default(cuid(2))
   userId String @unique @map("user_id")
 
+  // Human-readable profile id: AGT-00001. Same pattern as Property.code and
+  // Client.code — nobody quotes a cuid. The DEFAULT is a Postgres sequence
+  // created in the migration SQL; dbgenerated() tells Prisma the DB fills it.
+  code String @unique @default(dbgenerated("('AGT-' || lpad(nextval('agent_code_seq')::text, 5, '0'))")) @db.VarChar(16)
+
   photoStorageKey String? @map("photo_storage_key")
   address         String?
   experienceYears Int?    @map("experience_years")
