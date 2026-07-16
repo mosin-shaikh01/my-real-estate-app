@@ -1,22 +1,41 @@
-import { createContext, use, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  use,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useMe, useUpdateThemePreference } from '@/features/auth/api/use-auth'
-import { applyTheme, resolveInitialTheme, setStoredTheme, type Theme } from '@/lib/theme'
+import {
+  applyTheme,
+  clearActiveUser,
+  getSystemTheme,
+  resolveBootTheme,
+  setUserTheme,
+  type Theme,
+} from '@/lib/theme'
 
 // ============================================================================
-// Theme: per-user, database-backed.
+// Theme: per-user, database-backed, and always the CURRENT user's.
 // ============================================================================
-// The DATABASE is the source of truth — a user's choice follows them across
-// sessions and devices. It arrives on the ['me'] query, so this provider derives
-// the applied theme from there and never keeps a second server copy (the
-// state-ownership rule: server data stays in Query).
+// The DATABASE is the source of truth — it arrives on the ['me'] query, so this
+// provider derives the applied theme from there and keeps no second server copy.
 //
-// localStorage is a CACHE, nothing more: the boot script in index.html reads it
-// to paint the right palette before /me resolves, avoiding a flash. Once /me
-// lands, the server value wins and the cache is realigned to it.
+// The invariant that fixes the cross-user bug: for a logged-in user the applied
+// theme is their saved preference and NOTHING else is ever a fallback. When there
+// is no authenticated user (login screen, the beat after logout) the fallback is
+// the neutral SYSTEM theme — never the previous user's cached value.
 //
-// First login with no saved preference: the OS `prefers-color-scheme` (resolved
-// into the cache pre-paint) is applied, then persisted to the DB as the user's
-// default — so from the next login on, the DB decides.
+//   • The theme is applied in a LAYOUT effect, before the browser paints, so the
+//     protected app's first frame is already correct (RequireAuth blocks it until
+//     /me — and thus preferences — has resolved).
+//   • On logout we reset the fallback to system DURING render (before paint) and
+//     forget the previous user, so the next login starts clean.
+//   • The localStorage cache is keyed by user id, so it can never leak one user's
+//     theme onto another.
 // ============================================================================
 
 interface ThemeContextValue {
@@ -34,59 +53,75 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const isAuthed = userId !== null
   const serverTheme = me.data?.preferences?.theme ?? null
 
-  // Instant theme for first paint and the unauthenticated login screen. Seeded
-  // from the same cache/OS logic the boot script used, so they already agree.
-  const [cachedTheme, setCachedTheme] = useState<Theme>(() => resolveInitialTheme())
+  // What to show when there is no server answer: the boot cache before /me
+  // resolves, reset to the neutral system theme the moment a session ends.
+  const [fallbackTheme, setFallbackTheme] = useState<Theme>(() => resolveBootTheme())
 
-  // The DB wins whenever we have it; otherwise the cache carries us.
-  const theme: Theme = serverTheme ?? cachedTheme
+  // "Adjust state during render" (React's sanctioned pattern, same as AppShell's
+  // lastPath): when the session ends, drop the fallback to system so a logged-out
+  // browser never shows the previous user's theme. Runs before paint, costs no
+  // extra commit, and — because it compares STATE, not a ref — trips no lint.
+  const [prevAuthed, setPrevAuthed] = useState(isAuthed)
+  if (prevAuthed !== isAuthed) {
+    setPrevAuthed(isAuthed)
+    if (!isAuthed) setFallbackTheme(getSystemTheme())
+  }
 
-  useEffect(() => {
+  // The current user's DB preference wins; otherwise the neutral fallback.
+  const theme: Theme = serverTheme ?? fallbackTheme
+
+  // Apply BEFORE paint — the protected app renders only after /me (RequireAuth),
+  // so its first frame lands on the correct theme with no flash.
+  useLayoutEffect(() => {
     applyTheme(theme)
   }, [theme])
 
-  // Reconcile the local cache with the server, and seed a default the first time
-  // we meet an authenticated user who has never chosen one. Keyed on userId so
-  // it runs once per login, and resets when they sign out.
+  // Side-effects only — cache to localStorage, seed a first-time default, and
+  // forget the user on logout. Deliberately no setState here (that belongs in the
+  // during-render block above and in event handlers).
   const seededForUser = useRef<string | null>(null)
+  const wasAuthed = useRef(false)
   useEffect(() => {
-    if (!isAuthed) {
+    if (isAuthed) {
+      wasAuthed.current = true
+      if (serverTheme) {
+        // Cache under this user's id for an instant, correct boot next time.
+        setUserTheme(userId, serverTheme)
+      } else if (seededForUser.current !== userId) {
+        // First login with no saved preference: adopt the OS default and persist
+        // it, so the DB is the source of truth from the next login on.
+        seededForUser.current = userId
+        const seed = getSystemTheme()
+        setUserTheme(userId, seed)
+        persistTheme(seed)
+      }
+    } else if (wasAuthed.current) {
+      // Just logged out: forget who was here so neither the boot script nor this
+      // provider can resurface their theme for whoever logs in next.
+      wasAuthed.current = false
       seededForUser.current = null
-      return
+      clearActiveUser()
     }
-    if (serverTheme) {
-      // Keep the cache aligned so the next cold boot paints correctly — e.g. the
-      // user flipped the theme on another device.
-      setStoredTheme(serverTheme)
-      return
-    }
-    // Authenticated, but no saved preference: persist the resolved default (their
-    // OS setting) once, making the DB the source of truth from here on.
-    if (seededForUser.current !== userId) {
-      seededForUser.current = userId
-      persistTheme(cachedTheme)
-    }
-  }, [isAuthed, userId, serverTheme, cachedTheme, persistTheme])
+  }, [isAuthed, userId, serverTheme, persistTheme])
 
   const setTheme = useCallback(
     (next: Theme) => {
-      setStoredTheme(next)
-
-      // A brief, opt-out-able cross-fade between palettes. The class enables
-      // color transitions for one beat, then is removed so it never drags on
-      // ordinary hover/press.
+      // A brief, opt-out-able cross-fade between palettes.
       const root = document.documentElement
       if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         root.classList.add('theme-transition')
         window.setTimeout(() => root.classList.remove('theme-transition'), 260)
       }
 
-      setCachedTheme(next)
-      // Authenticated → persist to the DB (optimistic, so the applied theme —
-      // which prefers the server value — flips immediately).
-      if (isAuthed) persistTheme(next)
+      setFallbackTheme(next)
+      if (userId) {
+        setUserTheme(userId, next)
+        // Optimistic: patches the ['me'] cache so serverTheme — and the applied
+        // theme — flips immediately, then persists to the DB.
+        persistTheme(next)
+      }
     },
-    [isAuthed, persistTheme],
+    [userId, persistTheme],
   )
 
   const toggleTheme = useCallback(() => {

@@ -7,6 +7,30 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Fixed — theme no longer leaks the previous user's preference across logins
+
+On the same browser, logging in as a second user (or back as the first) could
+briefly show the previous user's theme until a refresh. Three root causes, all
+fixed:
+
+- **Global localStorage key.** The cache was a single `estate-theme` value shared
+  by everyone on the device. It's now **keyed per user** (`{ [userId]: theme }`)
+  plus an `estate-last-user` pointer that is **cleared on logout**, so the boot
+  script resolves a logged-out browser to the system theme, never the last user's.
+- **Stale fallback during the login transition.** The provider fell back to that
+  global cache while `/me` was refetching. It now derives the applied theme from
+  the current user's DB preference (the `['me']` query) and, when there's no
+  authenticated user, falls back to the neutral **system** theme — reset the
+  instant a session ends (during render, before paint).
+- **Post-paint application.** The theme was applied in a `useEffect` (after the
+  first frame). It's now a `useLayoutEffect`, and `RequireAuth` already blocks the
+  protected app until `/me` resolves — so the dashboard's first frame is already
+  the correct user's theme.
+
+Verified with a test that repeats Admin(light) → Agent(dark) → logout → Admin
+several times and asserts the theme is always the current user's, with the
+active-user pointer cleared on each logout. 122 tests, lint and build green.
+
 ### Changed — theme preference is now per-user and database-backed
 
 The theme was device-local (localStorage). It now follows the **user** across

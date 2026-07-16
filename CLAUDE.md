@@ -206,9 +206,15 @@ currently zero camelCase columns; keep it that way.
   `<html>`; the token layer remaps every semantic var. The source of truth is
   `UserPreference.theme`, carried on `/me` and written via self-service
   `PATCH /api/me/preferences` (a user only ever touches their own). `localStorage`
-  (`estate-theme`) is a CACHE only — a boot script in `index.html` paints from it
-  before `/me` resolves (no FOUC), then the DB value wins and realigns the cache.
-  First login with no saved theme seeds the DB default from `prefers-color-scheme`.
+  is a CACHE only, and **keyed per user** (`estate-theme` = `{ [userId]: theme }`,
+  plus `estate-last-user` cleared on logout) — never a single global value, which
+  is what leaks the previous user's theme onto the next. The boot script in
+  `index.html` paints the active user's cached theme before `/me` resolves (no
+  FOUC), and a logged-out browser resolves to the system theme. The applied theme
+  is the CURRENT user's DB pref (via `['me']`); the fallback resets to system on
+  logout, applied in a `useLayoutEffect` so the protected app's first frame is
+  correct. First login with no saved theme seeds the DB default from
+  `prefers-color-scheme`.
   `UserPreference` is built to grow (language, timezone, …) — one nullable column
   each. The header `ThemeToggle` is visible to every signed-in user. Raw `-700`
   brand/status text and `-100` tints don't adapt on dark surfaces — use the

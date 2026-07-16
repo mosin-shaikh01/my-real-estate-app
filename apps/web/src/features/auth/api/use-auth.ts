@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { LoginInput, MeResponse, PermissionKey, Theme, UserPreferencesDTO } from '@app/shared'
 import { api, ApiClientError } from '@/lib/api'
+import { clearActiveUser } from '@/lib/theme'
 
 // ============================================================================
 // Auth is SERVER STATE. It lives in TanStack Query, not a store.
@@ -69,6 +70,9 @@ export function useLogout() {
       // clear(), not invalidate(): another user may sign in on this machine and
       // must never see a flash of the previous user's cached clients.
       qc.clear()
+      // Forget who was here so neither the boot script nor the ThemeProvider can
+      // resurface this user's theme for whoever logs in next.
+      clearActiveUser()
     },
   })
 }
