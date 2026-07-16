@@ -1,9 +1,11 @@
+import { lazy, Suspense, type ReactNode } from 'react'
 import { Lock } from 'lucide-react'
-import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router'
 import type { PermissionKey } from '@app/shared'
 import { useMe, usePermissions } from '@/features/auth/api/use-auth'
 import { cn } from '@/lib/cn'
+
+const Forbidden = lazy(() => import('@/features/misc/pages/ForbiddenPage'))
 
 // ============================================================================
 // <Can> IS UX. IT IS NOT SECURITY.
@@ -48,7 +50,15 @@ export function Locked({ className, label = 'Hidden' }: { className?: string; la
   )
 }
 
-/** Route guard for genuinely admin-only SURFACES — not a second route tree. */
+/**
+ * Route guard for genuinely admin-only SURFACES — not a second route tree.
+ *
+ * On a missing permission it renders the Access Denied (403) page IN PLACE:
+ * the URL stays put and the user is told plainly they're restricted, rather
+ * than a silent 404. This is a page an agent should be told about (unlike a
+ * scoped-out property, where existence must stay hidden — that path still
+ * 404s). The server enforces the same on every admin API regardless.
+ */
 export function RequirePermission({
   permission,
   children,
@@ -58,9 +68,13 @@ export function RequirePermission({
 }) {
   const { has, isLoading } = usePermissions()
   if (isLoading) return null
-  // 404, not 403: consistent with the API's rule that you don't get told what
-  // exists but isn't yours.
-  if (!has(permission)) return <Navigate to="/404" replace />
+  if (!has(permission)) {
+    return (
+      <Suspense fallback={null}>
+        <Forbidden />
+      </Suspense>
+    )
+  }
   return <>{children}</>
 }
 

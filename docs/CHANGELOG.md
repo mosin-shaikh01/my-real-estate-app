@@ -7,6 +7,30 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Changed — role-based sidebar + Access Denied on admin routes
+
+The sidebar config already tagged each item with the permission it needs, but
+the render ignored it — every item showed for everyone. Now it **filters the
+declarative config against the user's effective permissions**, and drops any
+group left empty. No `if (role === 'admin')` anywhere: a role is a set of
+permissions, so adding a role or a page is a config change, not a code change.
+
+- An **agent** (holds `property.list` + `client.list`) sees exactly
+  **Dashboard, Properties, Clients**. Requirements, Agents, Activity log and
+  Roles & access disappear (their whole "Admin" group collapses).
+- An **admin** sees every item.
+- **Admin routes render an Access Denied (403) page** instead of the old silent
+  `/404` redirect — `RequirePermission` now shows `ForbiddenPage` in place, so
+  an agent typing `/settings/roles` (or any admin URL) is told plainly they're
+  restricted, with a link back to the dashboard.
+- Guarded the create routes too (`/properties/new` → `property.create`,
+  `/clients/new` → `client.create`), so an agent can't reach a form whose
+  submit would 403 anyway.
+
+The UI is convenience; enforcement is the guard + the API. Verified: an agent
+hitting `/api/agents`, `/api/activity-logs`, `/api/rbac/*`, bulk-assign, or
+create-property/client directly gets **403** every time, sidebar or not.
+
 ### Changed — STRICT property RBAC: agents see only what's assigned to them
 
 Reverses the shared-pool change from the previous entry. Requirement: an agent

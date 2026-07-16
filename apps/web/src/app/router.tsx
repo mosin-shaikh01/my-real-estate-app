@@ -47,11 +47,27 @@ export const router = createBrowserRouter([
       // Self-service — any authenticated user, no permission guard.
       { path: 'profile', element: lazyRoute(<Profile />) },
       { path: 'clients', element: lazyRoute(<Clients />) },
-      // 'new' before ':id', or the detail route swallows it as an id.
-      { path: 'clients/new', element: lazyRoute(<ClientCreate />) },
+      // 'new' before ':id', or the detail route swallows it as an id. Creating
+      // is admin-only, so guard it — an agent hitting /clients/new by URL is
+      // denied, not shown a form whose submit would 403 anyway.
+      {
+        path: 'clients/new',
+        element: lazyRoute(
+          <RequirePermission permission="client.create">
+            <ClientCreate />
+          </RequirePermission>,
+        ),
+      },
       { path: 'clients/:id', element: lazyRoute(<ClientDetail />) },
       { path: 'properties', element: lazyRoute(<Properties />) },
-      { path: 'properties/new', element: lazyRoute(<PropertyCreate />) },
+      {
+        path: 'properties/new',
+        element: lazyRoute(
+          <RequirePermission permission="property.create">
+            <PropertyCreate />
+          </RequirePermission>,
+        ),
+      },
       { path: 'properties/:id', element: lazyRoute(<PropertyDetail />) },
       // Admin-only SURFACE — a guard, not a parallel tree. An agent hitting
       // /agents gets the same 404 the API would give them.

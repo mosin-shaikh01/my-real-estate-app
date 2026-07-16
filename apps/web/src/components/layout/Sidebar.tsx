@@ -7,26 +7,34 @@ import {
   Users,
   UserSquare2,
 } from 'lucide-react'
+import { useMemo } from 'react'
 import { NavLink } from 'react-router'
 import type { PermissionKey } from '@app/shared'
+import { usePermissions } from '@/features/auth/api/use-auth'
 import { cn } from '@/lib/cn'
 
 // ============================================================================
-// ONE nav for both admin and agent.
+// ONE config-driven nav for every role.
 // ============================================================================
-// Not two sidebars, not a role switch. The agent's "Clients" and the admin's
-// "Clients" are the SAME route -- the server's scope resolver already returns
-// the right rows. Two trees would mean two implementations that drift, and
-// every bug fixed twice.
+// Not two sidebars, not hardcoded role checks. Each item declares the
+// permission it needs; the render filters by the logged-in user's effective
+// permissions. Adding a role changes what appears for free (a role is just a
+// set of permissions), and adding a page is one line in NAV with its
+// permission key — no `if (role === 'admin')` anywhere.
 //
-// `permission` here is UX only: it hides a link the user can't use. The route
-// guard and the API are what actually enforce it.
+// The agent role holds property.list + client.list (and no admin permissions),
+// so an agent sees exactly Dashboard, Properties, Clients. An admin holds
+// everything and sees the whole tree.
+//
+// This is UX: the route guard (<RequirePermission>) and the API enforce access.
+// A hidden link is a convenience, never the security boundary.
 // ============================================================================
 
 interface NavItem {
   to: string
   label: string
   icon: typeof LayoutDashboard
+  /** Omit for items everyone signed-in may use (e.g. Dashboard). */
   permission?: PermissionKey
 }
 
@@ -61,6 +69,22 @@ const NAV: ReadonlyArray<{ heading?: string; items: readonly NavItem[] }> = [
 ]
 
 export function Sidebar({ className }: { className?: string }) {
+  // RequireAuth blocks AppShell (and thus this) until /me resolves, so
+  // permissions are already loaded by the time the sidebar renders — no flicker.
+  const { has } = usePermissions()
+
+  // Filter the declarative config against the user's permissions: keep items
+  // with no permission or a held one, then drop any group left with no items
+  // (so an empty "Admin" heading never renders for an agent).
+  const visibleGroups = useMemo(
+    () =>
+      NAV.map((group) => ({
+        ...group,
+        items: group.items.filter((item) => !item.permission || has(item.permission)),
+      })).filter((group) => group.items.length > 0),
+    [has],
+  )
+
   return (
     <nav
       aria-label="Main"
@@ -77,7 +101,7 @@ export function Sidebar({ className }: { className?: string }) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-3">
-        {NAV.map((group, i) => (
+        {visibleGroups.map((group, i) => (
           <div key={group.heading ?? i} className={cn(i > 0 && 'mt-5')}>
             {group.heading ? (
               <p className="mb-1.5 px-2 text-2xs font-semibold tracking-wide text-text-muted uppercase">
