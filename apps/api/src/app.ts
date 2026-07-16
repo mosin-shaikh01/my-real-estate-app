@@ -14,6 +14,7 @@ import { mediaRouter } from './routes/media-routes.js'
 import { meRouter } from './routes/me-routes.js'
 import { profileRouter } from './routes/profile-routes.js'
 import { propertyRouter } from './routes/property-routes.js'
+import { settingsRouter } from './routes/settings-routes.js'
 
 /**
  * Declared mount table.
@@ -34,6 +35,9 @@ export const ROUTE_MOUNTS: ReadonlyArray<{
   requiresAuth: boolean
 }> = [
   { path: '/api/auth', router: authRouter, requiresAuth: false },
+  // Mixed public/protected (branding is read pre-auth), so authenticate is NOT
+  // applied at the mount — the write routes declare it themselves.
+  { path: '/api/settings', router: settingsRouter, requiresAuth: false },
   { path: '/api/me', router: meRouter, requiresAuth: true },
   { path: '/api/profile', router: profileRouter, requiresAuth: true },
   { path: '/api/clients', router: clientRouter, requiresAuth: true },

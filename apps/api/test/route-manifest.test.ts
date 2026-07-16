@@ -12,6 +12,7 @@ import { mediaRouter } from '../src/routes/media-routes.js'
 import { meRouter } from '../src/routes/me-routes.js'
 import { profileRouter } from '../src/routes/profile-routes.js'
 import { propertyRouter } from '../src/routes/property-routes.js'
+import { settingsRouter } from '../src/routes/settings-routes.js'
 
 // ============================================================================
 // The route-manifest test
@@ -71,6 +72,7 @@ const ALL_ROUTES: RouteInfo[] = [
   // /api/health is declared inline on the app rather than in a router.
   { method: 'GET', path: '/api/health', permission: null, publicReason: 'Liveness probe' },
   ...routesOf(authRouter, '/api/auth'),
+  ...routesOf(settingsRouter, '/api/settings'),
   ...routesOf(meRouter, '/api/me'),
   ...routesOf(profileRouter, '/api/profile'),
   ...routesOf(clientRouter, '/api/clients'),
@@ -107,6 +109,7 @@ describe('route manifest', () => {
       '/api/properties',
       '/api/rbac',
       '/api/search',
+      '/api/settings',
     ])
   })
 
@@ -153,6 +156,10 @@ describe('route manifest', () => {
       // their own identity.
       'GET /api/me/preferences',
       'GET /api/profile',
+      // Branding must be readable before anyone signs in.
+      'GET /api/settings',
+      'GET /api/settings/favicon',
+      'GET /api/settings/logo',
       'PATCH /api/me/preferences',
       'PATCH /api/profile',
       'POST /api/auth/login',

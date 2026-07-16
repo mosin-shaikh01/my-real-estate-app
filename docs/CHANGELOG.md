@@ -7,6 +7,37 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — Settings module (CRM branding & company configuration)
+
+An admin Settings page to manage the app's branding and company information,
+stored in the database and reused across the app.
+
+- **Schema**: a new `AppSetting` **singleton** table (a unique `singleton`
+  boolean pinned to true → exactly one row, every write an upsert, no duplicates).
+  Holds branding, company info, office address, social links and business copy.
+  Logo/favicon are stored on disk like other media and streamed, never a static
+  path.
+- **API**: reading is PUBLIC (`GET /api/settings`, `/logo`, `/favicon`) so the
+  login screen and favicon can brand themselves before auth; writing is gated by
+  the new `settings.update` permission (`PATCH /api/settings`, and
+  `POST`/`DELETE` for each asset). Uploads are MIME- and size-validated (PNG/JPEG/
+  WebP/ICO, ≤ 2 MB; SVG refused — it carries script). New `settings.view` /
+  `settings.update` permissions; super admin holds both, agents neither.
+- **Page**: `/settings` (guarded by `settings.view`), a tabbed form — Branding,
+  Company, Office address, Social media, Business — built from the shared Zod
+  schema with reusable form components, logo/favicon upload widgets, Framer Motion
+  tab/section transitions, a save toast, and validation that jumps to the tab of
+  the first error. A **Settings** item appears in the admin sidebar; agents don't
+  see it and are shown Access Denied if they navigate there directly.
+- **Global branding**: `BrandingEffects` applies the configured name (page
+  title), favicon and primary colour app-wide; the sidebar and login screen show
+  the uploaded logo + name + tagline. The same `useSettings` query is the single
+  seam for future reuse (email/PDF/print templates).
+
+Verified end-to-end: public read, admin PATCH + logo upload/stream/delete,
+non-image rejected (400), agent write blocked (403). Typecheck, build, lint and
+125 tests all green.
+
 ### Fixed — the REAL cause of the cross-user theme leak: logout orphaned the theme observer
 
 The earlier fix (per-user cache, logout reset) wasn't enough — the theme still

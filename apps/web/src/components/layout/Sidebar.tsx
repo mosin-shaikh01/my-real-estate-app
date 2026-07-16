@@ -1,6 +1,7 @@
 import {
   Building2,
   ClipboardList,
+  Cog,
   LayoutDashboard,
   ScrollText,
   Settings2,
@@ -11,6 +12,7 @@ import { useMemo } from 'react'
 import { NavLink } from 'react-router'
 import type { PermissionKey } from '@app/shared'
 import { usePermissions } from '@/features/auth/api/use-auth'
+import { useSettings } from '@/features/settings/api/use-settings'
 import { cn } from '@/lib/cn'
 
 // ============================================================================
@@ -36,6 +38,8 @@ interface NavItem {
   icon: typeof LayoutDashboard
   /** Omit for items everyone signed-in may use (e.g. Dashboard). */
   permission?: PermissionKey
+  /** Exact-match only — so /settings isn't "active" while on /settings/roles. */
+  end?: boolean
 }
 
 const NAV: ReadonlyArray<{ heading?: string; items: readonly NavItem[] }> = [
@@ -64,6 +68,7 @@ const NAV: ReadonlyArray<{ heading?: string; items: readonly NavItem[] }> = [
     items: [
       { to: '/activity', label: 'Activity log', icon: ScrollText, permission: 'activity.list' },
       { to: '/settings/roles', label: 'Roles & access', icon: Settings2, permission: 'rbac.role.list' },
+      { to: '/settings', label: 'Settings', icon: Cog, permission: 'settings.view', end: true },
     ],
   },
 ]
@@ -72,6 +77,8 @@ export function Sidebar({ className }: { className?: string }) {
   // RequireAuth blocks AppShell (and thus this) until /me resolves, so
   // permissions are already loaded by the time the sidebar renders — no flicker.
   const { has } = usePermissions()
+  const { data: settings } = useSettings()
+  const crmName = settings?.crmName ?? 'Estate'
 
   // Filter the declarative config against the user's permissions: keep items
   // with no permission or a held one, then drop any group left with no items
@@ -94,10 +101,17 @@ export function Sidebar({ className }: { className?: string }) {
       )}
     >
       <div className="flex h-14 items-center gap-2 border-b border-border-subtle px-4">
-        <div className="grid size-6 place-items-center rounded bg-brand-600 text-white">
-          <Building2 className="size-3.5" aria-hidden="true" />
-        </div>
-        <span className="text-base font-semibold text-text-primary">Estate</span>
+        {settings?.logoUrl ? (
+          <img src={settings.logoUrl} alt="" className="size-6 shrink-0 rounded object-contain" />
+        ) : (
+          <div
+            className="grid size-6 shrink-0 place-items-center rounded text-white"
+            style={{ backgroundColor: 'var(--brand-mark, var(--color-brand-600))' }}
+          >
+            <Building2 className="size-3.5" aria-hidden="true" />
+          </div>
+        )}
+        <span className="truncate text-base font-semibold text-text-primary">{crmName}</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3">
@@ -113,7 +127,7 @@ export function Sidebar({ className }: { className?: string }) {
                 <li key={item.to}>
                   <NavLink
                     to={item.to}
-                    end={item.to === '/'}
+                    end={item.to === '/' || item.end}
                     className={({ isActive }) =>
                       cn(
                         'flex items-center gap-2.5 rounded-md px-2 py-1.5 text-base',

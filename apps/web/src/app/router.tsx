@@ -16,6 +16,7 @@ const Agents = lazy(() => import('@/features/agents/pages/AgentsPage'))
 const RequirementMatch = lazy(() => import('@/features/requirements/pages/RequirementMatchPage'))
 const Activity = lazy(() => import('@/features/activity/pages/ActivityPage'))
 const Roles = lazy(() => import('@/features/rbac/pages/RolesPage'))
+const Settings = lazy(() => import('@/features/settings/pages/SettingsPage'))
 const Profile = lazy(() => import('@/features/profile/pages/ProfilePage'))
 const DesignSystem = lazy(() => import('@/features/design-system/pages/DesignSystemPage'))
 const Login = lazy(() => import('@/features/auth/pages/LoginPage'))
@@ -106,6 +107,14 @@ export const router = createBrowserRouter([
         element: lazyRoute(
           <RequirePermission permission="activity.list">
             <Activity />
+          </RequirePermission>,
+        ),
+      },
+      {
+        path: 'settings',
+        element: lazyRoute(
+          <RequirePermission permission="settings.view">
+            <Settings />
           </RequirePermission>,
         ),
       },

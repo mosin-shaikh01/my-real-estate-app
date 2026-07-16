@@ -58,6 +58,7 @@ model User {
   uploadedMedia      PropertyMedia[]
   assignmentsMade    PropertyAssignment[]
   deals              Deal[]
+  settingsUpdated    AppSetting[]
 
   // NOTE: email is NOT @unique here. Soft delete + a plain unique constraint
   // means a deleted user permanently blocks that address from re-registering.
@@ -89,6 +90,73 @@ model UserPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_preferences")
+}
+
+// Application-wide settings: CRM branding, company info, address, social links
+// and business copy. A SINGLETON — the whole app reads one row. `singleton` is a
+// unique boolean pinned to true, so the table can hold exactly one row and every
+// write is an upsert on it (no duplicate records, ever). Read publicly (branding
+// shows on the login screen and as the favicon); written only by settings.update.
+//
+// Logo and favicon are stored on disk like other media (a storageKey under the
+// upload root) and streamed through /api/settings/logo|favicon, never a static
+// path. Everything else is plain columns; long copy is @db.Text.
+model AppSetting {
+  id        String  @id @default(cuid(2))
+  singleton Boolean @unique @default(true)
+
+  // Branding
+  crmName        String  @default("Estate") @map("crm_name") @db.VarChar(120)
+  tagline        String? @db.VarChar(200)
+  primaryColor   String? @map("primary_color") @db.VarChar(32)
+  secondaryColor String? @map("secondary_color") @db.VarChar(32)
+
+  logoStorageKey    String? @map("logo_storage_key")
+  logoMimeType      String? @map("logo_mime_type") @db.VarChar(128)
+  faviconStorageKey String? @map("favicon_storage_key")
+  faviconMimeType   String? @map("favicon_mime_type") @db.VarChar(128)
+
+  // Company information
+  companyName        String? @map("company_name") @db.VarChar(200)
+  ownerName          String? @map("owner_name") @db.VarChar(200)
+  email              String? @db.VarChar(255)
+  phone              String? @db.VarChar(40)
+  mobile             String? @db.VarChar(40)
+  website            String? @db.VarChar(255)
+  gstNumber          String? @map("gst_number") @db.VarChar(64)
+  registrationNumber String? @map("registration_number") @db.VarChar(64)
+
+  // Office address
+  addressLine1 String? @map("address_line1") @db.VarChar(255)
+  addressLine2 String? @map("address_line2") @db.VarChar(255)
+  city         String? @db.VarChar(120)
+  state        String? @db.VarChar(120)
+  country      String? @db.VarChar(120)
+  pincode      String? @db.VarChar(20)
+  googleMapUrl String? @map("google_map_url")
+
+  // Social media
+  facebookUrl    String? @map("facebook_url")
+  instagramUrl   String? @map("instagram_url")
+  linkedinUrl    String? @map("linkedin_url")
+  youtubeUrl     String? @map("youtube_url")
+  twitterUrl     String? @map("twitter_url")
+  whatsappNumber String? @map("whatsapp_number") @db.VarChar(40)
+
+  // Business information
+  businessHours String? @map("business_hours") @db.VarChar(255)
+  description   String? @db.Text
+  about         String? @db.Text
+  mission       String? @db.Text
+  vision        String? @db.Text
+
+  updatedById String?  @map("updated_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  updatedBy User? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("app_settings")
 }
 
 model Role {

@@ -186,6 +186,15 @@ export const PERMISSIONS = [
     description: 'View the permission catalog',
   },
 
+  // --- Settings ------------------------------------------------------------
+  { key: 'settings.view', resource: 'settings', action: 'view', description: 'View CRM settings' },
+  {
+    key: 'settings.update',
+    resource: 'settings',
+    action: 'update',
+    description: 'Manage CRM branding, company info and configuration',
+  },
+
   // --- Activity / Reports / Deals ------------------------------------------
   { key: 'activity.list', resource: 'activity', action: 'list', description: 'View the activity log' },
   { key: 'report.view', resource: 'report', action: 'view', description: 'View reports' },

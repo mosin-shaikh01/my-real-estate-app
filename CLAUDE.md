@@ -372,6 +372,7 @@ npm run db:studio    # prisma studio
 | 6 · Activity log + dashboard | ✅ done — dashboard live since Phase 3; activity log page surfaced |
 | 7 · Global search | ✅ done — scoped, phone-normalized, properties + clients |
 | 8 · Reports | ⬜ (roles matrix done; transactional reports need a Deal-close flow) |
+| 9 · Settings (branding + company config) | ✅ done — `AppSetting` singleton, `settings.view/update` perms, public branding (name/logo/favicon/colour read pre-auth), admin tabbed form. `GET /api/settings\|logo\|favicon` are deliberately PUBLIC; all writes need `settings.update`. |
 
 **Phase 2 precedes properties deliberately.** Build properties first and you
 retrofit scoping into every query — the exact smear the design prevents. Prove
