@@ -15,12 +15,19 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    /* No baseUrl -- deprecated in TS 6. Paths resolve relative to this file. */
+    "paths": {
+      "@/*": ["./src/*"],
+      "@app/shared": ["../../packages/shared/src/index.ts"]
+    },
 
     /* Linting */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src", "../../packages/shared/src"]
 }

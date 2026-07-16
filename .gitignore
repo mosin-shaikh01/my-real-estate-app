@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Environment — secrets. Never commit.
+.env
+.env.*
+!.env.example
+
+# Local uploads (media is served through an authorized route, not from git)
+uploads/
+
+# Prisma client is generated output — rebuild with `npm run db:generate`.
+# Committing it creates merge conflicts and drifts from the schema.
+**/src/generated/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
