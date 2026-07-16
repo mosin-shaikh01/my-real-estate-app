@@ -7,6 +7,31 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Changed — theme preference is now per-user and database-backed
+
+The theme was device-local (localStorage). It now follows the **user** across
+sessions and devices, with the database as the source of truth.
+
+- **Schema**: a new `UserPreference` table (1:1 with `User`, created lazily) with
+  a nullable `theme`. Separate from `User` because a display choice is the user's
+  own concern, not part of their auth identity — and it's built to grow
+  (language, timezone, dateFormat, currency, sidebar state, … each become one
+  more nullable column, no new table). NULL `theme` means "never chosen".
+- **API**: `/me` now returns `preferences`; a self-service
+  `PATCH /api/me/preferences` (authenticated, no permission gate) upserts. Every
+  handler keys off the caller's own `userId`, so a user can only read/write their
+  own preference and an admin can't reach another user's — theme is unrelated to
+  permissions. Invalid values are rejected (field-keyed 400).
+- **Client**: `ThemeProvider` now derives the applied theme from the `['me']`
+  query (server state stays in Query, not a store). Toggling optimistically
+  patches the cache and persists via the mutation; `localStorage` is kept purely
+  as a pre-paint cache so the boot script still avoids FOUC, then the DB value
+  reconciles it. First login with no saved theme seeds the DB default from the
+  OS `prefers-color-scheme`.
+- Verified end-to-end: Admin → dark and Agent → light persist independently and
+  restore after logout/login; typecheck, build, lint, 122 tests (incl. new
+  DB-backed theme tests + route-manifest coverage of `/api/me`).
+
 ### Added — global dark / light theme switcher
 
 The token layer was built dark-aware from day one; this ships it.

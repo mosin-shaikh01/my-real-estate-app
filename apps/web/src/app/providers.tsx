@@ -24,10 +24,13 @@ export const queryClient = new QueryClient({
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
+    // Query wraps Theme: the theme preference is now server state (the ['me']
+    // query is its source of truth), so ThemeProvider must sit inside the
+    // QueryClientProvider to read and persist it.
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
         <Tooltip.Provider delayDuration={300}>{children}</Tooltip.Provider>
-      </QueryClientProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   )
 }

@@ -115,6 +115,7 @@ plus this.
 | Decision | Instead of | Why |
 |---|---|---|
 | `User` ≠ `AgentProfile` (1:1) | one `Agent` table | RBAC gets **one** subject type. `Client` is not a User at all — it never logs in. |
+| `UserPreference` (1:1, lazy) | columns on `User` | A UI display choice is the user's own concern, not part of their auth identity, and it's the user (never an admin) who owns it. `theme` is nullable — NULL = "never chosen", the signal the client uses to seed the default from the OS setting. Built to grow: language, timezone, dateFormat, currency, sidebar state each become one more nullable column here, no new table. |
 | `Deal` table | `Property.status = SOLD` | SOLD records neither when, for how much, to whom, nor by whom. **4 of 6 reports were uncomputable without this.** |
 | `ClientInteraction` | nothing | The spec implies it (notes, meetings, `lastContact`) but never names it. |
 | `salePrice` + `rentPricePerMonth` | one `price` | `listingType` can be `BOTH`, and one price is meaningless when a listing is both — different numbers, different units. |

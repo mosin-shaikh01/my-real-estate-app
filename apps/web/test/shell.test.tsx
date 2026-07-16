@@ -20,6 +20,7 @@ const ME: MeResponse = {
   user: { id: 'u1', email: 'admin@demo.local', fullName: 'Priya Deshmukh', phone: null },
   roles: [{ slug: 'super_admin', name: 'Super Admin' }],
   permissions: ['client.list', 'property.list'],
+  preferences: { theme: 'light' },
 }
 
 beforeEach(() => {
@@ -68,9 +69,9 @@ function withProviders(ui: ReactNode) {
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   })
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={qc}>{ui}</QueryClientProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={qc}>
+      <ThemeProvider>{ui}</ThemeProvider>
+    </QueryClientProvider>
   )
 }
 
@@ -122,6 +123,7 @@ describe('app shell', () => {
       user: { id: 'a1', email: 'admin@demo.local', fullName: 'Priya', phone: null },
       roles: [{ slug: 'super_admin', name: 'Super Admin' }],
       permissions: [...PERMISSION_KEYS],
+      preferences: { theme: 'light' },
     }
     qc.setQueryData(['me'], adminMe)
     const router = createMemoryRouter([{ path: '/', element: <Sidebar /> }], {

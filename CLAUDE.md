@@ -201,13 +201,18 @@ currently zero camelCase columns; keep it that way.
 - **Tokens**: `@theme` for primitives (it *snapshots* values); `:root` +
   **`@theme inline`** for anything that remaps at runtime. Miss this and dark
   mode silently no-ops.
-- **Dark mode**: SHIPPED. A `ThemeProvider` (`app/theme-provider.tsx`) toggles
-  `.dark` on `<html>`; the token layer remaps every semantic var. Preference is
-  saved to `localStorage` (`estate-theme`), falls back to `prefers-color-scheme`,
-  and a boot script in `index.html` applies it before first paint (no FOUC).
-  The header `ThemeToggle` is visible to every signed-in user. Raw `-700` brand/
-  status text and `-100` tints don't adapt on dark surfaces — use the semantic
-  `text-brand/danger/success/warning` and `surface-*-soft` tokens instead.
+- **Dark mode**: SHIPPED, and the theme is a **per-user, database-backed**
+  preference. A `ThemeProvider` (`app/theme-provider.tsx`) toggles `.dark` on
+  `<html>`; the token layer remaps every semantic var. The source of truth is
+  `UserPreference.theme`, carried on `/me` and written via self-service
+  `PATCH /api/me/preferences` (a user only ever touches their own). `localStorage`
+  (`estate-theme`) is a CACHE only — a boot script in `index.html` paints from it
+  before `/me` resolves (no FOUC), then the DB value wins and realigns the cache.
+  First login with no saved theme seeds the DB default from `prefers-color-scheme`.
+  `UserPreference` is built to grow (language, timezone, …) — one nullable column
+  each. The header `ThemeToggle` is visible to every signed-in user. Raw `-700`
+  brand/status text and `-100` tints don't adapt on dark surfaces — use the
+  semantic `text-brand/danger/success/warning` and `surface-*-soft` tokens.
 
 ### Accessibility (WCAG 2.1 AA — treat as a requirement, not a nicety)
 

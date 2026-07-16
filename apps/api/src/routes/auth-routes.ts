@@ -12,6 +12,7 @@ import {
   findUserWithRoles,
   logAuthEvent,
 } from '../services/auth-service.js'
+import { getUserPreferences } from '../services/preference-service.js'
 import {
   createSession,
   listSessions,
@@ -113,12 +114,16 @@ authRouter.get(
   publicRoute('Any authenticated user may read their own identity'),
   async (req, res) => {
     const actor = req.actor!
-    const user = await findUserWithRoles(actor.userId)
+    const [user, preferences] = await Promise.all([
+      findUserWithRoles(actor.userId),
+      getUserPreferences(actor.userId),
+    ])
 
     const body: MeResponse = {
       user: { id: user.id, email: user.email, fullName: user.fullName, phone: user.phone },
       roles: user.roles.map((r) => r.role),
       permissions: [...actor.permissions].sort(),
+      preferences,
     }
     res.json(body)
   },

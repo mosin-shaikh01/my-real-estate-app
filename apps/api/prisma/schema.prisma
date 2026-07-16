@@ -45,6 +45,7 @@ model User {
   deletedAt DateTime? @map("deleted_at")
 
   agentProfile AgentProfile?
+  preferences  UserPreference?
   roles        UserRole[]
   permissions  UserPermission[]
   sessions     Session[]
@@ -65,6 +66,29 @@ model User {
   @@index([email])
   @@index([status])
   @@map("users")
+}
+
+// Per-user UI preferences. A SEPARATE table, not columns on User: User is the
+// auth identity, and a personal display choice is a different concern with a
+// different owner (the user, never an admin). Designed to grow — language,
+// timezone, dateFormat, currency, sidebarCollapsed, dashboardLayout and
+// notification settings each become one more nullable column here, no new table.
+//
+// `theme` is nullable on purpose: NULL means "never chosen", which is the signal
+// the client uses to seed the default from the OS prefers-color-scheme and save
+// it. Stored as the same 'light' | 'dark' string the client and CSS use, so
+// there is no case-mapping layer; validated by the shared Zod enum at the edge.
+model UserPreference {
+  id     String  @id @default(cuid(2))
+  userId String  @unique @map("user_id")
+  theme  String? @db.VarChar(16)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
 }
 
 model Role {

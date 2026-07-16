@@ -12,7 +12,8 @@ export function getSystemTheme(): Theme {
   return typeof window !== 'undefined' && window.matchMedia(DARK_QUERY).matches ? 'dark' : 'light'
 }
 
-/** The user's saved choice, or null if they've never picked (→ follow system). */
+/** The cached theme for this device, or null if none. This is a CACHE for
+ *  instant first paint — the database (via /me) is the source of truth. */
 export function getStoredTheme(): Theme | null {
   try {
     const v = localStorage.getItem(THEME_STORAGE_KEY)
@@ -20,6 +21,16 @@ export function getStoredTheme(): Theme | null {
   } catch {
     // Private mode / storage disabled — fall back to system.
     return null
+  }
+}
+
+/** Update the device cache so the next cold boot paints without a flash. */
+export function setStoredTheme(theme: Theme): void {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme)
+  } catch {
+    // Non-fatal: the theme still applies for this session, and the DB still
+    // holds the source of truth for the next login.
   }
 }
 

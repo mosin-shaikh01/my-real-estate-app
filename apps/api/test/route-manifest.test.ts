@@ -9,6 +9,7 @@ import { authRouter } from '../src/routes/auth-routes.js'
 import { clientRouter } from '../src/routes/client-routes.js'
 import { dashboardRouter } from '../src/routes/dashboard-routes.js'
 import { mediaRouter } from '../src/routes/media-routes.js'
+import { meRouter } from '../src/routes/me-routes.js'
 import { profileRouter } from '../src/routes/profile-routes.js'
 import { propertyRouter } from '../src/routes/property-routes.js'
 
@@ -70,6 +71,7 @@ const ALL_ROUTES: RouteInfo[] = [
   // /api/health is declared inline on the app rather than in a router.
   { method: 'GET', path: '/api/health', permission: null, publicReason: 'Liveness probe' },
   ...routesOf(authRouter, '/api/auth'),
+  ...routesOf(meRouter, '/api/me'),
   ...routesOf(profileRouter, '/api/profile'),
   ...routesOf(clientRouter, '/api/clients'),
   ...routesOf(propertyRouter, '/api/properties'),
@@ -99,6 +101,7 @@ describe('route manifest', () => {
       '/api/auth',
       '/api/clients',
       '/api/dashboard',
+      '/api/me',
       '/api/media',
       '/api/profile',
       '/api/properties',
@@ -148,7 +151,9 @@ describe('route manifest', () => {
       'GET /api/health',
       // Self-service: authenticated, but no permission gate — a user acting on
       // their own identity.
+      'GET /api/me/preferences',
       'GET /api/profile',
+      'PATCH /api/me/preferences',
       'PATCH /api/profile',
       'POST /api/auth/login',
       'POST /api/auth/logout',
