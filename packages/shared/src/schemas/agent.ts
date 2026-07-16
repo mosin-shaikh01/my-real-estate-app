@@ -45,3 +45,32 @@ export type AgentUpdateInput = z.infer<typeof agentUpdateSchema>
 export const agentStatusSchema = z.object({
   status: userStatusSchema,
 })
+
+// ---------------------------------------------------------------------------
+// Per-agent access overrides
+// ---------------------------------------------------------------------------
+// effective = (rolePermissions ∪ ALLOWs) \ DENYs. The client sends only the
+// OVERRIDES — permissions where the desired state differs from what the role
+// grants. An ALLOW opens a permission the role withholds; a DENY closes one the
+// role grants. No override means "follow the role", so the set stays minimal
+// and a later change to the role still flows through.
+export const agentPermissionsSchema = z.object({
+  overrides: z
+    .array(
+      z.object({
+        key: z.string().min(1),
+        effect: z.enum(['ALLOW', 'DENY']),
+      }),
+    )
+    .max(200),
+})
+export type AgentPermissionsInput = z.infer<typeof agentPermissionsSchema>
+
+export interface AgentPermissionsResponse {
+  /** What the agent's roles grant, before overrides. */
+  rolePermissionKeys: string[]
+  /** The stored overrides. */
+  overrides: Array<{ key: string; effect: 'ALLOW' | 'DENY' }>
+  /** The net result the server actually enforces. */
+  effectivePermissionKeys: string[]
+}

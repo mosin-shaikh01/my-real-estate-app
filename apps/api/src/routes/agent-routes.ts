@@ -1,12 +1,19 @@
 import { Router } from 'express'
-import { agentCreateSchema, agentStatusSchema, agentUpdateSchema } from '@app/shared'
+import {
+  agentCreateSchema,
+  agentPermissionsSchema,
+  agentStatusSchema,
+  agentUpdateSchema,
+} from '@app/shared'
 import { requirePermission } from '../middleware/authenticate.js'
 import { idParamSchema } from '../lib/params.js'
 import {
   createAgent,
   getAgent,
+  getAgentPermissions,
   listAgents,
   listAssignableAgents,
+  setAgentPermissions,
   setAgentStatus,
   updateAgent,
 } from '../services/agent-service.js'
@@ -49,4 +56,15 @@ agentRouter.post('/:id/status', requirePermission('agent.status.update'), async 
   const { id } = idParamSchema.parse(req.params)
   const { status } = agentStatusSchema.parse(req.body)
   res.json({ data: toAgentDTO(await setAgentStatus(req.actor!.userId, id, status, req), req.actor!) })
+})
+
+agentRouter.get('/:id/permissions', requirePermission('agent.permissions.update'), async (req, res) => {
+  const { id } = idParamSchema.parse(req.params)
+  res.json({ data: await getAgentPermissions(id) })
+})
+
+agentRouter.put('/:id/permissions', requirePermission('agent.permissions.update'), async (req, res) => {
+  const { id } = idParamSchema.parse(req.params)
+  const input = agentPermissionsSchema.parse(req.body)
+  res.json({ data: await setAgentPermissions(req.actor!.userId, id, input, req) })
 })

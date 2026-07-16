@@ -93,6 +93,42 @@ describe('permission resolver: (roles ∪ ALLOWs) \\ DENYs', () => {
   })
 })
 
+// Per-agent access editing: the overrides resolve against the REAL agent role,
+// not a synthetic one — the property the /agents/:id/permissions editor relies on.
+describe('per-agent access overrides against the agent role', () => {
+  it('an ALLOW opens a permission the agent role withholds', () => {
+    expect(AGENT_PERMISSIONS).not.toContain('client.budget.view')
+    const p = resolvePermissions({
+      userId: 'a',
+      sessionId: 's',
+      rolePermissions: AGENT_PERMISSIONS,
+      userPermissions: [{ key: 'client.budget.view', effect: 'ALLOW' }],
+    })
+    expect(p.has('client.budget.view' as PermissionKey)).toBe(true)
+  })
+
+  it('a DENY closes a permission the agent role grants', () => {
+    expect(AGENT_PERMISSIONS).toContain('client.email.view')
+    const p = resolvePermissions({
+      userId: 'a',
+      sessionId: 's',
+      rolePermissions: AGENT_PERMISSIONS,
+      userPermissions: [{ key: 'client.email.view', effect: 'DENY' }],
+    })
+    expect(p.has('client.email.view' as PermissionKey)).toBe(false)
+  })
+
+  it('an empty override set is exactly the role', () => {
+    const p = resolvePermissions({
+      userId: 'a',
+      sessionId: 's',
+      rolePermissions: AGENT_PERMISSIONS,
+      userPermissions: [],
+    })
+    expect([...p].sort()).toEqual([...AGENT_PERMISSIONS].sort())
+  })
+})
+
 // ---------------------------------------------------------------------------
 // 2. Scope resolver
 // ---------------------------------------------------------------------------

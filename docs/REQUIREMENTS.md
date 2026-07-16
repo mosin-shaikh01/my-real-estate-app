@@ -103,7 +103,7 @@ Each of these was cut deliberately, with a reason. They are not oversights.
 | **Calendar UI** | "Schedule meetings" doesn't require one | `scheduledAt` + a list |
 | **Outbound messaging** | The app sends nothing in v1 | `tel:` / `wa.me` links |
 | **Editable permission matrix** | Roles × ~43 permissions is a genuinely fiddly screen | Role assignment + read-only matrix |
-| **Per-agent DENY overrides** | UI complexity is explaining precedence to a human | Schema + resolver support it; UI exposes grants |
+| **Per-agent access overrides** | ~~UI later~~ **DELIVERED** — Super Admin edits any agent's access (ALLOW/DENY per permission) from the Agents page | Effective on the agent's next request |
 | **Dark mode** | Re-reviewing 40 screens twice, for an office CRM used in daylight | Token layer ready; ships later |
 | **Global search across 5 entity types** | ILIKE uses no btree; this is a day of work people budget an hour for | Properties + clients |
 | **Public listing site** | Needs SSR/SEO, anonymous auth, marketing design | Structured as additive: `apps/public-web` later, same API |

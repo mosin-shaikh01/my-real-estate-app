@@ -1,10 +1,11 @@
-import { Plus, UserX } from 'lucide-react'
+import { KeyRound, Plus, UserX } from 'lucide-react'
 import { useState } from 'react'
-import { Locked } from '@/components/auth/Can'
+import { Can, Locked } from '@/components/auth/Can'
 import { PageHeader } from '@/components/layout/AppShell'
 import { Button } from '@/components/ui/Button'
 import { Table, TableEmpty, TableWrapper, TD, TH, THead, TR } from '@/components/ui/Table'
 import { useAgents, useSetAgentStatus, type AgentDTO } from '@/features/agents/api/use-agents'
+import { AgentAccessDialog } from '@/features/agents/components/AgentAccessDialog'
 import { AgentCreateDialog } from '@/features/agents/components/AgentCreateDialog'
 import { cn } from '@/lib/cn'
 
@@ -67,6 +68,7 @@ export default function AgentsPage() {
 
 function AgentRow({ agent }: { agent: AgentDTO }) {
   const setStatus = useSetAgentStatus(agent.id)
+  const [editingAccess, setEditingAccess] = useState(false)
   const suspended = agent.status === 'SUSPENDED'
 
   return (
@@ -99,20 +101,35 @@ function AgentRow({ agent }: { agent: AgentDTO }) {
         </span>
       </TD>
       <TD>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={setStatus.isPending}
-          onClick={() => setStatus.mutate(suspended ? 'ACTIVE' : 'SUSPENDED')}
-        >
-          {suspended ? 'Activate' : (
-            <>
-              <UserX aria-hidden="true" />
-              Deactivate
-            </>
-          )}
-        </Button>
+        <div className="flex items-center justify-end gap-1">
+          <Can permission="agent.permissions.update">
+            <Button variant="ghost" size="sm" onClick={() => setEditingAccess(true)}>
+              <KeyRound aria-hidden="true" />
+              Access
+            </Button>
+          </Can>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={setStatus.isPending}
+            onClick={() => setStatus.mutate(suspended ? 'ACTIVE' : 'SUSPENDED')}
+          >
+            {suspended ? 'Activate' : (
+              <>
+                <UserX aria-hidden="true" />
+                Deactivate
+              </>
+            )}
+          </Button>
+        </div>
       </TD>
+      {editingAccess ? (
+        <AgentAccessDialog
+          agentId={agent.id}
+          agentName={agent.fullName}
+          onClose={() => setEditingAccess(false)}
+        />
+      ) : null}
     </TR>
   )
 }

@@ -7,6 +7,29 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — per-agent access editing
+
+Super Admin can now grant or restrict individual permissions for a specific
+agent. This is the "per-agent overrides: UI later" item the plan deferred — the
+schema (`UserPermission` ALLOW/DENY) and resolver already supported it.
+
+- `GET/PUT /api/agents/:id/permissions` (guarded by `agent.permissions.update`).
+- "Access" action on each agent row opens a matrix dialog: every permission is a
+  checkbox showing the agent's *effective* state, with a Granted/Denied badge
+  where it overrides the role default.
+- The client sends only the **diffs** — permissions where the desired state
+  differs from what the Agent role grants. Toggling back to the role default
+  removes the override, so the stored set stays minimal and future role changes
+  still flow through un-overridden permissions.
+- **Takes effect on the agent's next request**, no re-login — the same
+  permissions-loaded-per-request property that makes deactivation instant.
+
+Verified against the running stack: granting `client.budget.view` made budgets
+appear in the agent's very next response; a DENY on a role-granted permission
+(`client.email.view`) redacted it (deny beats the role grant); an unknown key is
+rejected (`VALIDATION_FAILED`) rather than silently stored; an agent without
+`agent.permissions.update` is 403 on both GET and PUT.
+
 ### Added — Phases 6–8: activity log, global search, roles matrix
 
 - **Activity log page** (`/activity`, admin-only). The data has accumulated
