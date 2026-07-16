@@ -347,22 +347,33 @@ async function main() {
 
   for (const p of propertySpecs) {
     const { amenities, agentIdx, lat, lng, ...rest } = p
+
+    // The scalar fields, used for BOTH create and update. `update` deliberately
+    // repeats them rather than being `{}`: a demo database drifts (a test marks
+    // a property SOLD, an edit changes a price), and reseed should REPAIR that
+    // to a known-good state, not leave the drift in place. `code`, `createdAt`
+    // and generated columns are omitted — those must not be reset.
+    const scalarData = {
+      ...rest,
+      description:
+        'Well-maintained property in a sought-after location, close to schools, transport and retail. Contact the assigned agent for a viewing.',
+      address: `${p.locality}, ${p.city}`,
+      state: 'Maharashtra',
+      country: 'India',
+      latitude: lat ?? null,
+      longitude: lng ?? null,
+      assignedAgentId: agents[agentIdx]?.id ?? null,
+      // Clear drift that tests may have introduced.
+      archivedAt: null,
+      deletedAt: null,
+    }
+
     await prisma.property.upsert({
       where: { id: p.id },
-      create: {
-        ...rest,
-        description:
-          'Well-maintained property in a sought-after location, close to schools, transport and retail. Contact the assigned agent for a viewing.',
-        address: `${p.locality}, ${p.city}`,
-        state: 'Maharashtra',
-        country: 'India',
-        latitude: lat ?? null,
-        longitude: lng ?? null,
-        assignedAgentId: agents[agentIdx]?.id ?? null,
-        // `code` is intentionally omitted -- the Postgres sequence default
-        // (PROP-00001) fills it. Proves the hand-written migration SQL works.
-      },
-      update: {},
+      // `code` omitted — the Postgres sequence default (PROP-00001) fills it,
+      // proving the hand-written migration SQL works.
+      create: scalarData,
+      update: scalarData,
     })
 
     for (const slug of amenities) {

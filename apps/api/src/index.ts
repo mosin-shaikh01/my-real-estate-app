@@ -3,6 +3,11 @@
 import { env } from './lib/env.js'
 import { createApp } from './app.js'
 import { prisma } from './lib/prisma.js'
+import { ensureUploadRoot } from './services/media-service.js'
+
+// Create the upload directory before serving, so the first upload doesn't race
+// an mkdir. Fail fast if the path isn't writable.
+await ensureUploadRoot()
 
 const app = createApp()
 

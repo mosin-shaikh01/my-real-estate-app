@@ -8,7 +8,9 @@ import {
   type Paginated,
 } from '@app/shared'
 import { requirePermission } from '../middleware/authenticate.js'
+import { uploadMedia } from '../middleware/upload.js'
 import { idParamSchema } from '../lib/params.js'
+import { saveMedia, type UploadedFile } from '../services/media-service.js'
 import {
   getProperty,
   listProperties,
@@ -96,3 +98,25 @@ propertyRouter.delete('/:id', requirePermission('property.delete'), async (req, 
   await deleteProperty(req.actor!, id, req)
   res.status(204).end()
 })
+
+// Upload sits under the property because a file is created in its context.
+// uploadMedia (multer) runs AFTER requirePermission — no point buffering a
+// 10 MB file for a request we are about to 403.
+propertyRouter.post(
+  '/:id/media',
+  requirePermission('property.media.upload'),
+  uploadMedia,
+  async (req, res) => {
+    const { id } = idParamSchema.parse(req.params)
+    const files = (req.files as UploadedFile[] | undefined) ?? []
+    if (files.length === 0) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_FAILED', message: 'No files were uploaded', requestId: req.requestId },
+      })
+      return
+    }
+    const markAsFloorPlan = req.body?.type === 'FLOOR_PLAN'
+    const created = await saveMedia(req.actor!, id, files, markAsFloorPlan, req)
+    res.status(201).json({ data: created })
+  },
+)

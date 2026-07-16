@@ -7,6 +7,29 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — Phase 3 (media): authorized upload & streaming
+
+- `POST /api/properties/:id/media` (multer, memory storage), `GET /api/media/:id`
+  (authorized stream), `DELETE /api/media/:id`, `POST /api/media/:id/cover`.
+- Property detail gallery: upload, cover selection, delete — all gated by
+  `<Can permission="property.media.upload">`; images `<img src="/api/media/:id">`.
+- Seed now **repairs drift on reseed** — property upserts write real `update`
+  payloads instead of `{}`, so a corrupted demo DB is one `npm run db:seed` from
+  clean. (Retires the hand-repair I'd been doing after each write test.)
+
+Security controls, each verified against the running stack:
+
+| Control | Result |
+|---|---|
+| Not `express.static` | files stream through `GET /api/media/:id` only |
+| Scope join | agent with `property.media.download` gets **404** on a file whose property is out of scope — no leak |
+| Unauthenticated | 401 |
+| Permission gate | agent (no `property.media.upload`) → 403 on upload |
+| MIME allowlist | `text/plain` rejected; SVG deliberately excluded (script vector) |
+| Path traversal | `resolveStorageKey` refuses anything escaping the upload root → 403 |
+| Filename | stored as a cuid we generate, never the client's `originalname` |
+| Delete | removes DB row *and* file (0 orphans) |
+
 ### Added — Phase 3 (write path): properties, activity log, live dashboard
 
 - Property writes: `POST /`, `PATCH /:id`, `POST /:id/status`, `POST /:id/archive`,

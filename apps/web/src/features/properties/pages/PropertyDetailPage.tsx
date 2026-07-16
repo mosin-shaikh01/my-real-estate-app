@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Select } from '@/components/ui/Select'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { PropertyGallery } from '@/features/properties/components/PropertyGallery'
+import { usePermissions } from '@/features/auth/api/use-auth'
 import { useProperty } from '@/features/properties/api/use-properties'
 import {
   useArchiveProperty,
@@ -67,6 +69,7 @@ function PropertyActions({ id, status, archived }: { id: string; status: Propert
 export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { data: p, isLoading, isError, error } = useProperty(id)
+  const { has } = usePermissions()
 
   if (isLoading) {
     return (
@@ -119,6 +122,12 @@ export default function PropertyDetailPage() {
 
       <div className="grid gap-6 p-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
+          <PropertyGallery
+            propertyId={p.id}
+            media={p.media}
+            canDownload={has('property.media.download')}
+          />
+
           <Card>
             <Card.Header>
               <Card.Title>Overview</Card.Title>

@@ -46,3 +46,43 @@ export function useArchiveProperty(id: string) {
     onSuccess: invalidate,
   })
 }
+
+export function useUploadMedia(propertyId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    // FormData, not JSON — the api client sends JSON, so this uses fetch
+    // directly. credentials: 'include' carries the auth cookie; no
+    // Content-Type header, so the browser sets the multipart boundary.
+    mutationFn: async (files: FileList) => {
+      const body = new FormData()
+      for (const file of Array.from(files)) body.append('files', file)
+      const res = await fetch(`/api/properties/${propertyId}/media`, {
+        method: 'POST',
+        credentials: 'include',
+        body,
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => null)
+        throw new Error(j?.error?.message ?? 'Upload failed')
+      }
+      return res.json()
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['properties', propertyId] }),
+  })
+}
+
+export function useDeleteMedia(propertyId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (mediaId: string) => api.delete(`/media/${mediaId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['properties', propertyId] }),
+  })
+}
+
+export function useSetCover(propertyId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (mediaId: string) => api.post(`/media/${mediaId}/cover`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['properties', propertyId] }),
+  })
+}

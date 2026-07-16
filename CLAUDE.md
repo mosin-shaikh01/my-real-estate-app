@@ -348,7 +348,7 @@ npm run db:studio    # prisma studio
 | 0 · De-risk (install spike, strict, gitignore, Postgres) | ✅ done |
 | 1 · Foundation (workspaces, tokens, schema, seed, docs, shell) | ✅ done |
 | 2 · Auth + RBAC end-to-end | ✅ done — verified: agent sees 2/4 clients, `budget` absent from the payload, suspension locks out on the next request |
-| 3 · Properties (CRUD, dashboard, search) | 🔄 read + write + live dashboard done; **media upload** left |
+| 3 · Properties (CRUD, media, dashboard) | ✅ done — read, write, live dashboard, authorized media upload/stream |
 | 4 · Clients + Agents | ⬜ |
 | 5 · Requirement + match + bulk assign (core feature) | ⬜ |
 | 6 · Activity log + dashboard | ⬜ |

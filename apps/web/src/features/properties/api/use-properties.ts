@@ -45,6 +45,8 @@ export interface PropertyDTO {
   assignedAgent: { id: string; fullName: string } | null
   amenities: Array<{ id: string; name: string; slug: string; category: string | null }>
   coverMediaId: string | null
+  // Bytes come from /api/media/:id (authorized), never a path the client builds.
+  media: Array<{ id: string; type: string; isCover: boolean }>
   assignedClientCount: number
 
   salePrice?: string | null

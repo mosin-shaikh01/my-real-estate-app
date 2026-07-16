@@ -88,6 +88,10 @@ export interface PropertyDTO {
   assignedAgent: { id: string; fullName: string } | null
   amenities: Array<{ id: string; name: string; slug: string; category: string | null }>
   coverMediaId: string | null
+  // storageKey is deliberately NOT exposed — the client references media by id
+  // and fetches bytes through the authorized /api/media/:id route, never by a
+  // path it could construct itself.
+  media: Array<{ id: string; type: string; isCover: boolean }>
   assignedClientCount: number
 
   // Absent = redacted. Null = empty. The UI must tell them apart.
@@ -140,6 +144,7 @@ export function toPropertyDTO(row: PropertyRow, actor: Actor): PropertyDTO {
     assignedAgent: row.assignedAgent ?? null,
     amenities: row.amenities?.map((a) => a.amenity) ?? [],
     coverMediaId: row.media?.find((m) => m.isCover)?.id ?? row.media?.[0]?.id ?? null,
+    media: row.media?.map((m) => ({ id: m.id, type: m.type, isCover: m.isCover })) ?? [],
     assignedClientCount: row._count?.assignments ?? 0,
     _redacted: redacted,
   }
