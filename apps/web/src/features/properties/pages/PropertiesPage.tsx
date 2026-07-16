@@ -1,4 +1,4 @@
-import { Plus, Search, X } from 'lucide-react'
+import { Pencil, Plus, Search, X } from 'lucide-react'
 import { Link } from 'react-router'
 import {
   PROPERTY_STATUS_LABELS,
@@ -199,18 +199,19 @@ export default function PropertiesPage() {
                   <TH numeric className="w-28">Area</TH>
                   <TH numeric className="w-32">Price</TH>
                   <TH className="w-32">Agent</TH>
+                  <TH className="w-14"><span className="sr-only">Actions</span></TH>
                 </tr>
               </THead>
               <tbody>
                 {isLoading ? (
-                  <TableEmpty colSpan={7} title="Loading…" />
+                  <TableEmpty colSpan={8} title="Loading…" />
                 ) : data?.data.length ? (
                   data.data.map((p) => (
                     <PropertyRow key={p.id} property={p} canSeePrice={canSeePrice} />
                   ))
                 ) : (
                   <TableEmpty
-                    colSpan={7}
+                    colSpan={8}
                     title={activeCount ? 'No properties match those filters' : 'No properties yet'}
                     hint={
                       activeCount
@@ -288,6 +289,18 @@ function PropertyRow({ property, canSeePrice }: { property: PropertyDTO; canSeeP
         {canSeePrice ? priceLabel(property) : <Locked />}
       </TD>
       <TD className="truncate text-text-secondary">{property.assignedAgent?.fullName ?? '—'}</TD>
+      <TD>
+        <Can permission="property.update">
+          <Link
+            to={`/properties/${property.id}/edit`}
+            aria-label={`Edit ${property.title}`}
+            title="Edit"
+            className="inline-flex rounded p-1 text-text-muted hover:bg-surface-hover hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-500"
+          >
+            <Pencil className="size-4" aria-hidden="true" />
+          </Link>
+        </Can>
+      </TD>
     </TR>
   )
 }

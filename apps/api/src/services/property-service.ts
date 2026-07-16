@@ -40,6 +40,7 @@ const DETAIL_SELECT = {
   pincode: true,
   latitude: true,
   longitude: true,
+  googleMapUrl: true,
   videoUrl: true,
   internalNotes: true,
   assignedAgentId: true,

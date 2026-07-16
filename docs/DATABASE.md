@@ -122,7 +122,7 @@ plus this.
 | `Amenity` table + joins | free text | **Canonicalization**, not query power. Free text gives "Swimming Pool"/"swimming pool"/"Pool" and the match filter returns zero rows forever. Two joins: properties *have*, requirements *want*. |
 | one `PropertyMedia` + type enum | 3 tables | Identical columns with ordering/cover logic triplicated — and floor plans are a 4th thing that's also an image. |
 | `assignedAgentId` FK | join table | The field list says *singular*. A join table for 1:N puts an extra join in the hottest scoped query. Co-assignment, if it ever arrives, is a real migration with real requirements. |
-| `latitude`/`longitude` only | + `googleMap` | Two sources of truth that will disagree. Derive the maps URL in the UI. |
+| `latitude`/`longitude` (structured) **and** `googleMapUrl` (a pasted share link) | a single derived `googleMap` | Reversed later, on request. The two now coexist by design and answer different needs: lat/lng is the structured, queryable coordinate; `googleMapUrl` is a user-pasted convenience link the admin already has and wants preserved verbatim for map previews. They are **not** two sources of the same truth — lat/lng rounds to the column's 2 decimals (~1 km), which is exactly why a precise pasted link earns its own field. The empty string normalises to `NULL`. |
 | `builtYear` | `propertyAge` | Age is wrong next year. |
 | `commissionRate` snapshot on `Deal` | join to `AgentProfile` | Rates change; historical reports must not retroactively mutate. |
 | `lastContactAt` denormalized | computed | Deliberate — so the client list can sort/filter without an aggregate join. Written in the **same transaction** as the interaction. Labelled in the schema so nobody "fixes" it. |

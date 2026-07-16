@@ -18,16 +18,35 @@ import { logActivityTx } from './activity-service.js'
 // anyone with a URL and invalidate the entire RBAC design.
 // ============================================================================
 
-// MIME allowlist. The uploaded file's declared type is not trusted for
-// anything but this lookup — an entry missing here is rejected outright.
-const ALLOWED_MIME: Record<string, { ext: string; category: 'IMAGE' | 'DOCUMENT' }> = {
+type MediaCategory = 'IMAGE' | 'DOCUMENT' | 'VIDEO'
+
+// MIME allowlist. The uploaded file's declared type is not trusted for anything
+// but this lookup — an entry missing here is rejected outright. SVG is
+// deliberately absent (it carries script). Videos are allowed as a curated set
+// of container formats browsers can play natively via <video>.
+const ALLOWED_MIME: Record<string, { ext: string; category: MediaCategory }> = {
   'image/jpeg': { ext: '.jpg', category: 'IMAGE' },
   'image/png': { ext: '.png', category: 'IMAGE' },
   'image/webp': { ext: '.webp', category: 'IMAGE' },
   'application/pdf': { ext: '.pdf', category: 'DOCUMENT' },
+  'video/mp4': { ext: '.mp4', category: 'VIDEO' },
+  'video/webm': { ext: '.webm', category: 'VIDEO' },
+  'video/quicktime': { ext: '.mov', category: 'VIDEO' },
 }
 
-export const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10 MB
+// Per-CATEGORY size caps. Video is inherently larger, so it gets its own limit
+// rather than forcing images up to a video-sized ceiling. multer's global limit
+// (upload middleware) must be the LARGEST of these; the service re-checks each
+// file against its category cap. Production video needs transcoding + a CDN;
+// this is direct upload with range-served playback, sufficient for the demo.
+const MAX_BYTES_BY_CATEGORY: Record<MediaCategory, number> = {
+  IMAGE: 10 * 1024 * 1024, // 10 MB
+  DOCUMENT: 10 * 1024 * 1024, // 10 MB
+  VIDEO: 100 * 1024 * 1024, // 100 MB
+}
+
+/** The largest cap — what multer's global fileSize limit must allow. */
+export const MAX_FILE_BYTES = Math.max(...Object.values(MAX_BYTES_BY_CATEGORY))
 export const MAX_FILES_PER_REQUEST = 12
 
 export function isAllowedMime(mime: string): boolean {
@@ -86,11 +105,17 @@ export async function saveMedia(
   if (!property) throw notFound('Property not found')
 
   for (const f of files) {
-    if (!isAllowedMime(f.mimetype)) {
-      throw validationFailed({ files: [`${f.originalname}: only JPEG, PNG, WebP and PDF are allowed`] })
+    const spec = ALLOWED_MIME[f.mimetype]
+    if (!spec) {
+      throw validationFailed({
+        files: [`${f.originalname}: only JPEG, PNG, WebP, PDF and MP4/WebM/MOV video are allowed`],
+      })
     }
-    if (f.size > MAX_FILE_BYTES) {
-      throw validationFailed({ files: [`${f.originalname}: exceeds the 10 MB limit`] })
+    const cap = MAX_BYTES_BY_CATEGORY[spec.category]
+    if (f.size > cap) {
+      throw validationFailed({
+        files: [`${f.originalname}: exceeds the ${Math.round(cap / 1024 / 1024)} MB limit for ${spec.category.toLowerCase()}s`],
+      })
     }
   }
 

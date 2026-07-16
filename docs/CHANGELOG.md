@@ -7,6 +7,41 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — full property editing + extended Add form
+
+A property can now be **edited in full**, and the Add form gained everything the
+Edit form has — the two are literally the **same component** (`PropertyForm`,
+`mode="create" | "edit"`), so they can never drift. Edit auto-populates from the
+property's DTO; the admin changes only what they need.
+
+- **Every field is editable** across Overview, Pricing, Amenities, Internal
+  notes, Location and Media. Reused the existing `FormField`/`Input`/`Select`
+  primitives and the shared Zod schema, so client and server validate identically
+  and server field-errors map back onto the form.
+- **Amenities** — a grouped chip picker (`AmenityPicker`) backed by a new
+  `GET /api/amenities` catalog endpoint (guarded by `property.create` OR
+  `property.update`). Add/remove on both forms; the update replaces the set
+  wholesale in one transaction.
+- **Internal notes** — a dedicated textarea, shown only to holders of
+  `property.internalNotes.view`. Hidden from agents, and the write path strips
+  the field for anyone who can't read it (a hidden field is not a writable one).
+- **Google Maps link** — a **separate** `googleMapUrl` column and input, distinct
+  from lat/lng, stored verbatim for future map previews. The detail page prefers
+  it over the coordinate-derived link. Empty string normalises to `NULL`.
+- **Media** — images **and** video, multiple, with previews for both, remove, and
+  client-side type/size validation mirroring the server (images/PDF 10 MB, video
+  100 MB). Live gallery on Edit (immediate upload/delete, range-served playback);
+  a staged local picker on Add that uploads once the property exists — a failed
+  upload no longer strands the created property behind a form error.
+- **Edit actions** — a pencil action on every property row (gated by
+  `property.update`) and an Edit button on the detail page; a new
+  `/properties/:id/edit` route guarded by `property.update`, with the same
+  403/404 strict-RBAC distinction the detail page draws.
+
+Verified end-to-end: create-with-all-fields, edit round-trip (title, maps link,
+internal notes, coordinates, amenity replacement all persisted), typecheck,
+build, 105 tests and lint all green.
+
 ### Changed — role-based sidebar + Access Denied on admin routes
 
 The sidebar config already tagged each item with the permission it needs, but

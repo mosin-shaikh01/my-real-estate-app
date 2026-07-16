@@ -4,6 +4,7 @@ import { isPermissionKey } from '@app/shared'
 import { ROUTE_MOUNTS } from '../src/app.js'
 import { activityRouter, rbacRouter, searchRouter } from '../src/routes/admin-routes.js'
 import { agentRouter } from '../src/routes/agent-routes.js'
+import { amenityRouter } from '../src/routes/amenity-routes.js'
 import { authRouter } from '../src/routes/auth-routes.js'
 import { clientRouter } from '../src/routes/client-routes.js'
 import { dashboardRouter } from '../src/routes/dashboard-routes.js'
@@ -73,6 +74,7 @@ const ALL_ROUTES: RouteInfo[] = [
   ...routesOf(clientRouter, '/api/clients'),
   ...routesOf(propertyRouter, '/api/properties'),
   ...routesOf(agentRouter, '/api/agents'),
+  ...routesOf(amenityRouter, '/api/amenities'),
   ...routesOf(dashboardRouter, '/api/dashboard'),
   ...routesOf(mediaRouter, '/api/media'),
   ...routesOf(activityRouter, '/api/activity-logs'),
@@ -93,6 +95,7 @@ describe('route manifest', () => {
     expect(ROUTE_MOUNTS.map((m) => m.path).sort()).toEqual([
       '/api/activity-logs',
       '/api/agents',
+      '/api/amenities',
       '/api/auth',
       '/api/clients',
       '/api/dashboard',

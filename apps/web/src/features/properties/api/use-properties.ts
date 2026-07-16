@@ -39,6 +39,7 @@ export interface PropertyDTO {
   pincode: string
   latitude: string | null
   longitude: string | null
+  googleMapUrl: string | null
   videoUrl: string | null
   createdAt: string
   archivedAt: string | null

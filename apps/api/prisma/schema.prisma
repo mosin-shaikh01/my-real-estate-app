@@ -273,13 +273,20 @@ model Property {
   country  String  @default("India") @db.VarChar(80)
   pincode  String  @db.VarChar(16)
 
-  // No googleMap column — two sources of truth that will disagree. Derive the
-  // maps URL from these in the UI. (No PostGIS ⇒ no radius search in v1.)
+  // latitude/longitude are the STRUCTURED coordinates — the precise, queryable
+  // source used to derive a maps URL when we have coords. (No PostGIS ⇒ no
+  // radius search in v1.)
   latitude  Decimal? @db.Decimal(9, 6)
   longitude Decimal? @db.Decimal(9, 6)
 
-  // Video is a URL in v1, not an upload — encoding/streaming/storage is days
-  // of work and demos identically. Images/floor plans/docs upload for real.
+  // A pasted Google Maps share link. Deliberately SEPARATE from lat/lng: it is a
+  // human convenience for "open exactly what I saw", stored for future map
+  // previews and integrations. lat/lng stay the machine-readable source; this is
+  // the as-shared URL. They can coexist without one being derived from the other.
+  googleMapUrl String? @map("google_map_url")
+
+  // External video link (YouTube/Vimeo). Uploaded videos live in PropertyMedia
+  // (type VIDEO) alongside images; this field is for an embed you don't host.
   videoUrl String? @map("video_url")
 
   // Confidential. Gated by property.internalNotes.view and stripped by the

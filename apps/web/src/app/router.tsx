@@ -11,6 +11,7 @@ const ClientCreate = lazy(() => import('@/features/clients/pages/ClientCreatePag
 const Properties = lazy(() => import('@/features/properties/pages/PropertiesPage'))
 const PropertyDetail = lazy(() => import('@/features/properties/pages/PropertyDetailPage'))
 const PropertyCreate = lazy(() => import('@/features/properties/pages/PropertyCreatePage'))
+const PropertyEdit = lazy(() => import('@/features/properties/pages/PropertyEditPage'))
 const Agents = lazy(() => import('@/features/agents/pages/AgentsPage'))
 const RequirementMatch = lazy(() => import('@/features/requirements/pages/RequirementMatchPage'))
 const Activity = lazy(() => import('@/features/activity/pages/ActivityPage'))
@@ -65,6 +66,17 @@ export const router = createBrowserRouter([
         element: lazyRoute(
           <RequirePermission permission="property.create">
             <PropertyCreate />
+          </RequirePermission>,
+        ),
+      },
+      // 'edit' before ':id' so the detail route doesn't swallow it. Editing is
+      // gated — an agent reaching /properties/:id/edit by URL is denied rather
+      // than shown a form whose submit would 403.
+      {
+        path: 'properties/:id/edit',
+        element: lazyRoute(
+          <RequirePermission permission="property.update">
+            <PropertyEdit />
           </RequirePermission>,
         ),
       },

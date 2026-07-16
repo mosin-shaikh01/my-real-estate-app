@@ -130,7 +130,12 @@ const propertyBaseSchema = z.object({
     latitude: z.string().regex(/^-?\d{1,3}(\.\d{1,6})?$/).nullish(),
     longitude: z.string().regex(/^-?\d{1,3}(\.\d{1,6})?$/).nullish(),
 
-    videoUrl: z.string().url('Enter a valid URL').nullish(),
+    // A pasted Google Maps link. Accept the empty string (a cleared field) as
+    // well as a valid URL, so blanking it in the edit form isn't a validation
+    // error. The server normalises "" to null.
+    googleMapUrl: z.string().url('Enter a valid Google Maps link').nullish().or(z.literal('')),
+
+    videoUrl: z.string().url('Enter a valid URL').nullish().or(z.literal('')),
     internalNotes: z.string().nullish(),
     assignedAgentId: z.string().nullish(),
     // Optional, not defaulted: create treats undefined as [], update treats it

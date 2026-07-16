@@ -35,7 +35,9 @@ export function PropertyGallery({
   const setCover = useSetCover(propertyId)
 
   const images = media.filter((m) => m.type === 'IMAGE' || m.type === 'FLOOR_PLAN')
+  const videos = media.filter((m) => m.type === 'VIDEO')
   const docs = media.filter((m) => m.type === 'DOCUMENT')
+  const isEmpty = images.length === 0 && videos.length === 0 && docs.length === 0
 
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return
@@ -58,7 +60,7 @@ export function PropertyGallery({
               <input
                 ref={fileInput}
                 type="file"
-                accept="image/jpeg,image/png,image/webp,application/pdf"
+                accept="image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/webm,video/quicktime"
                 multiple
                 className="sr-only"
                 onChange={(e) => void onFiles(e.target.files)}
@@ -86,7 +88,9 @@ export function PropertyGallery({
         }
       >
         <Card.Title>Media</Card.Title>
-        <Card.Description>JPEG, PNG, WebP or PDF · up to 10 MB each.</Card.Description>
+        <Card.Description>
+          Images (JPEG/PNG/WebP) & PDF up to 10 MB · video (MP4/WebM/MOV) up to 100 MB.
+        </Card.Description>
       </Card.Header>
       <Card.Body className="flex flex-col gap-4">
         {error ? (
@@ -101,7 +105,7 @@ export function PropertyGallery({
           <p className="text-sm text-text-muted">
             You do not have permission to view files on this property.
           </p>
-        ) : images.length === 0 && docs.length === 0 ? (
+        ) : isEmpty ? (
           <div className="flex flex-col items-center gap-2 py-8 text-center">
             <ImageOff className="size-6 text-text-muted" aria-hidden="true" />
             <p className="text-sm text-text-secondary">No media yet</p>
@@ -146,6 +150,35 @@ export function PropertyGallery({
                           <Trash2 className="size-3.5" aria-hidden="true" />
                         </button>
                       </div>
+                    </Can>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+
+            {videos.length > 0 ? (
+              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {videos.map((m) => (
+                  <li key={m.id} className="relative overflow-hidden rounded-md border border-border-subtle">
+                    {/* Served through the authorized range-capable route, so the
+                        <video> element can seek. preload=metadata keeps the list
+                        light until played. */}
+                    <video
+                      src={`/api/media/${m.id}`}
+                      controls
+                      preload="metadata"
+                      className="aspect-video w-full bg-neutral-950"
+                    />
+                    <Can permission="property.media.upload">
+                      <button
+                        type="button"
+                        aria-label="Delete video"
+                        title="Delete video"
+                        onClick={() => remove.mutate(m.id)}
+                        className="absolute top-1.5 right-1.5 rounded bg-white/90 p-1 text-danger-700 hover:bg-white"
+                      >
+                        <Trash2 className="size-3.5" aria-hidden="true" />
+                      </button>
                     </Can>
                   </li>
                 ))}

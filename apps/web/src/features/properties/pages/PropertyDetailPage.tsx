@@ -1,4 +1,4 @@
-import { ArrowLeft, Archive, ArchiveRestore, ExternalLink, Lock, MapPin } from 'lucide-react'
+import { ArrowLeft, Archive, ArchiveRestore, ExternalLink, Lock, MapPin, Pencil } from 'lucide-react'
 import { Link, useParams } from 'react-router'
 import {
   PROPERTY_STATUS_LABELS,
@@ -123,6 +123,14 @@ export default function PropertyDetailPage() {
         action={
           <div className="flex items-center gap-2">
             <StatusBadge status={p.status as PropertyStatus} />
+            <Can permission="property.update">
+              <Button variant="secondary" size="sm" asChild>
+                <Link to={`/properties/${p.id}/edit`}>
+                  <Pencil aria-hidden="true" />
+                  Edit
+                </Link>
+              </Button>
+            </Can>
             <PropertyActions
               id={p.id}
               status={p.status as PropertyStatus}
@@ -255,11 +263,11 @@ export default function PropertyDetailPage() {
                 <br />
                 {[p.locality, p.city, p.state].filter(Boolean).join(', ')} {p.pincode}
               </p>
-              {/* Derived from lat/lng. We store no googleMap column — two
-                  sources of truth would disagree. */}
-              {maps ? (
+              {/* Prefer the admin's pasted share link; fall back to one derived
+                  from lat/lng. The stored link is the future map-preview seam. */}
+              {p.googleMapUrl ?? maps ? (
                 <a
-                  href={maps}
+                  href={p.googleMapUrl ?? maps ?? undefined}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 text-xs text-brand-700 hover:underline"
