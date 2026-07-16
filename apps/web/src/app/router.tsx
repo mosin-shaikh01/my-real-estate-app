@@ -6,6 +6,8 @@ import { AppShell } from '@/components/layout/AppShell'
 // Route-level code splitting: the initial bundle carries the shell, nothing else.
 const Dashboard = lazy(() => import('@/features/dashboard/pages/DashboardPage'))
 const Clients = lazy(() => import('@/features/clients/pages/ClientsPage'))
+const Properties = lazy(() => import('@/features/properties/pages/PropertiesPage'))
+const PropertyDetail = lazy(() => import('@/features/properties/pages/PropertyDetailPage'))
 const DesignSystem = lazy(() => import('@/features/design-system/pages/DesignSystemPage'))
 const Login = lazy(() => import('@/features/auth/pages/LoginPage'))
 const NotFound = lazy(() => import('@/features/misc/pages/NotFoundPage'))
@@ -36,8 +38,9 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: lazyRoute(<Dashboard />) },
       { path: 'clients', element: lazyRoute(<Clients />) },
+      { path: 'properties', element: lazyRoute(<Properties />) },
+      { path: 'properties/:id', element: lazyRoute(<PropertyDetail />) },
       { path: 'design-system', element: lazyRoute(<DesignSystem />) },
-      { path: 'properties', element: lazyRoute(<Placeholder />) },
       { path: 'requirements', element: lazyRoute(<Placeholder />) },
       { path: 'agents', element: lazyRoute(<Placeholder />) },
       { path: 'activity', element: lazyRoute(<Placeholder />) },

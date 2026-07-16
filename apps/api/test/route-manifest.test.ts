@@ -4,6 +4,7 @@ import { isPermissionKey } from '@app/shared'
 import { ROUTE_MOUNTS } from '../src/app.js'
 import { authRouter } from '../src/routes/auth-routes.js'
 import { clientRouter } from '../src/routes/client-routes.js'
+import { propertyRouter } from '../src/routes/property-routes.js'
 
 // ============================================================================
 // The route-manifest test
@@ -64,6 +65,7 @@ const ALL_ROUTES: RouteInfo[] = [
   { method: 'GET', path: '/api/health', permission: null, publicReason: 'Liveness probe' },
   ...routesOf(authRouter, '/api/auth'),
   ...routesOf(clientRouter, '/api/clients'),
+  ...routesOf(propertyRouter, '/api/properties'),
 ]
 
 describe('route manifest', () => {
@@ -76,7 +78,11 @@ describe('route manifest', () => {
   it('the mount table covers every router the app registers', () => {
     // If someone adds a router to createApp() but not to ROUTE_MOUNTS, its
     // routes would never be audited here. Catch that.
-    expect(ROUTE_MOUNTS.map((m) => m.path).sort()).toEqual(['/api/auth', '/api/clients'])
+    expect(ROUTE_MOUNTS.map((m) => m.path).sort()).toEqual([
+      '/api/auth',
+      '/api/clients',
+      '/api/properties',
+    ])
   })
 
   it('every route is either permission-guarded or explicitly public', () => {
@@ -125,16 +131,16 @@ describe('route manifest', () => {
     ])
   })
 
-  it('every client route is guarded, none is public', () => {
-    const clientRoutes = ALL_ROUTES.filter((r) => r.path.startsWith('/api/clients'))
-    expect(clientRoutes.length).toBeGreaterThan(0)
-    for (const r of clientRoutes) {
+  it.each(['/api/clients', '/api/properties'])('every %s route is guarded, none is public', (prefix) => {
+    const routes = ALL_ROUTES.filter((r) => r.path.startsWith(prefix))
+    expect(routes.length).toBeGreaterThan(0)
+    for (const r of routes) {
       expect(r.publicReason, `${r.method} ${r.path} must not be public`).toBeNull()
       expect(r.permission, `${r.method} ${r.path} must declare a permission`).toBeTruthy()
     }
   })
 
-  it('/api/clients sits behind authenticate', () => {
-    expect(ROUTE_MOUNTS.find((m) => m.path === '/api/clients')?.requiresAuth).toBe(true)
+  it.each(['/api/clients', '/api/properties'])('%s sits behind authenticate', (prefix) => {
+    expect(ROUTE_MOUNTS.find((m) => m.path === prefix)?.requiresAuth).toBe(true)
   })
 })

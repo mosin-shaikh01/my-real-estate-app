@@ -1,0 +1,150 @@
+import { z } from 'zod'
+import {
+  constructionStatusSchema,
+  facingSchema,
+  furnishedStatusSchema,
+  listingTypeSchema,
+  propertyStatusSchema,
+  propertyTypeSchema,
+  visibilitySchema,
+} from '../enums.js'
+
+// ---------------------------------------------------------------------------
+// Money on the wire
+// ---------------------------------------------------------------------------
+// A STRING, always. Prisma Decimal does not JSON-serialize, and a JS number
+// cannot hold ₹99,99,99,999.99. Validating the shape here means a bad value is
+// a 400 rather than a silent precision bug three tables deep.
+const moneyString = z
+  .string()
+  .regex(/^\d{1,12}(\.\d{1,2})?$/, 'Enter an amount like 7500000 or 7500000.00')
+
+/**
+ * Comma-separated multi-select, e.g. ?bedrooms=2,3
+ *
+ * Written out per-field rather than behind a generic helper: Zod 4's `.pipe()`
+ * needs the transform's output type to line up with the target's input, and a
+ * `<T extends ZodType>` wrapper loses exactly the information TS needs to check
+ * that. Three explicit lines beat a clever one that doesn't compile.
+ */
+const splitCsv = (s: string) => s.split(',').map((v) => v.trim()).filter(Boolean)
+
+export const propertyListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(25),
+
+  q: z.string().trim().min(1).optional(),
+  status: z.string().transform(splitCsv).pipe(z.array(propertyStatusSchema)).optional(),
+  propertyType: z.string().transform(splitCsv).pipe(z.array(propertyTypeSchema)).optional(),
+  listingType: listingTypeSchema.optional(),
+  bedrooms: z
+    .string()
+    .transform((s) => splitCsv(s).map(Number))
+    .pipe(z.array(z.number().int().min(0)))
+    .optional(),
+  city: z.string().trim().optional(),
+  locality: z.string().trim().optional(),
+  furnished: furnishedStatusSchema.optional(),
+  constructionStatus: constructionStatusSchema.optional(),
+  featured: z.enum(['true', 'false']).optional(),
+  /** Excludes archived unless explicitly asked for. */
+  includeArchived: z.enum(['true', 'false']).optional(),
+
+  minPrice: moneyString.optional(),
+  maxPrice: moneyString.optional(),
+  minArea: z.coerce.number().optional(),
+  maxArea: z.coerce.number().optional(),
+
+  /** `-field` = descending. Validated against a PERMISSION-FILTERED allowlist. */
+  sort: z.string().optional(),
+})
+
+export type PropertyListQuery = z.infer<typeof propertyListQuerySchema>
+
+// ---------------------------------------------------------------------------
+// Write
+// ---------------------------------------------------------------------------
+// Shape/format/coercion only. The server adds a refinement layer for what needs
+// the database — "assignedAgentId must reference an ACTIVE agent" cannot be
+// expressed here, and pretending otherwise is how you get client-only checks.
+
+/**
+ * The base shape, WITHOUT cross-field refinements.
+ *
+ * Split out because PATCH needs a partial with no refinements: re-running
+ * "sale price is required when listing is for sale" against an update that only
+ * touches `title` would reject a perfectly valid edit. Zod 4 attaches checks to
+ * the object itself (no ZodEffects wrapper to unwrap), so the base has to exist
+ * separately rather than be recovered later.
+ */
+const propertyBaseSchema = z.object({
+    title: z.string().trim().min(5, 'Give the listing a descriptive title').max(200),
+    description: z.string().trim().min(10, 'Add a description'),
+
+    propertyType: propertyTypeSchema,
+    listingType: listingTypeSchema,
+    status: propertyStatusSchema.default('AVAILABLE'),
+    constructionStatus: constructionStatusSchema.default('READY_TO_MOVE'),
+    visibility: visibilitySchema.default('INTERNAL'),
+    featured: z.boolean().default(false),
+
+    salePrice: moneyString.nullish(),
+    rentPricePerMonth: moneyString.nullish(),
+    securityDeposit: moneyString.nullish(),
+    maintenanceCharges: moneyString.nullish(),
+    negotiable: z.boolean().default(false),
+
+    areaSqft: moneyString,
+    bedrooms: z.number().int().min(0).nullish(),
+    bathrooms: z.number().int().min(0).nullish(),
+    parking: z.number().int().min(0).default(0),
+    furnished: furnishedStatusSchema.default('UNFURNISHED'),
+    facing: facingSchema.nullish(),
+    floor: z.number().int().nullish(),
+    totalFloor: z.number().int().min(0).nullish(),
+    builtYear: z
+      .number()
+      .int()
+      .min(1800)
+      .max(new Date().getFullYear() + 10)
+      .nullish(),
+
+    address: z.string().trim().min(5, 'Add an address'),
+    locality: z.string().trim().max(120).nullish(),
+    city: z.string().trim().min(1, 'City is required').max(120),
+    state: z.string().trim().min(1, 'State is required').max(120),
+    country: z.string().trim().default('India'),
+    pincode: z.string().trim().regex(/^\d{6}$/, 'Enter a 6-digit pincode'),
+
+    latitude: z.string().regex(/^-?\d{1,3}(\.\d{1,6})?$/).nullish(),
+    longitude: z.string().regex(/^-?\d{1,3}(\.\d{1,6})?$/).nullish(),
+
+    videoUrl: z.string().url('Enter a valid URL').nullish(),
+    internalNotes: z.string().nullish(),
+    assignedAgentId: z.string().nullish(),
+    amenityIds: z.array(z.string()).default([]),
+  })
+
+// A listing's price must match what it is listed FOR. This is cross-FIELD, not
+// cross-table, so it belongs here where the form shows it inline rather than
+// after a round trip. Anything needing the database (does this agent exist and
+// is she active?) stays in the server's refinement layer.
+export const propertyCreateSchema = propertyBaseSchema
+  .refine((v) => (v.listingType === 'RENT' ? true : v.salePrice != null), {
+    message: 'Sale price is required when the listing is for sale',
+    path: ['salePrice'],
+  })
+  .refine((v) => (v.listingType === 'SALE' ? true : v.rentPricePerMonth != null), {
+    message: 'Rent is required when the listing is for rent',
+    path: ['rentPricePerMonth'],
+  })
+
+export type PropertyCreateInput = z.infer<typeof propertyCreateSchema>
+
+/** PATCH: partial, and deliberately un-refined. See propertyBaseSchema. */
+export const propertyUpdateSchema = propertyBaseSchema.partial()
+export type PropertyUpdateInput = z.infer<typeof propertyUpdateSchema>
+
+export const propertyStatusUpdateSchema = z.object({
+  status: propertyStatusSchema,
+})

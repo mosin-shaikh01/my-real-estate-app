@@ -7,6 +7,37 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — Phase 3 (read path): properties
+
+- `GET /api/properties` — scoped, filtered, sorted, paginated; `GET /:id`;
+  `GET /cities` for the filter dropdown.
+- Property serializer redacting `salePrice`/`rentPricePerMonth`/deposits behind
+  `property.price.view` and `internalNotes` behind `property.internalNotes.view`.
+- `PropertiesPage` with URL-driven filters (status, type, sale/rent, beds, city,
+  sort) and `PropertyDetailPage`.
+- `useUrlFilters` extracted on its third usage — filters live in the URL so a
+  filtered view is a shareable link.
+- `Select` primitive: a native `<select>`. Radix stays for rich/async cases; a
+  dropdown of ten strings gets correct keyboard, screen-reader and mobile
+  behaviour free from the platform.
+
+Verified against the running stack:
+
+| Property | Result |
+|---|---|
+| Agent property scope | sees **4 of 6** — 3 his own, **1 via his client** |
+| `internalNotes` | absent for the agent (it holds the negotiating position) |
+| Price | visible to the agent, who legitimately holds `property.price.view` |
+| Scope miss | 404, identical to a nonexistent id |
+| `BOTH` listings | PROP-00002 appears under **both** `?listingType=SALE` and `RENT` |
+
+**Seed fix.** Every seeded client happened to be shown only their own agent's
+inventory, so the second clause of `scopeForProperty` — *"or assigned to one of
+my clients"*, the spec's own `Open Client → View Assigned Properties` workflow —
+was dead code in the demo. It existed and was invisible. The seed now assigns
+one of Aisha's properties to one of Rohan's clients, which is what makes the
+agent's count 4 rather than 3.
+
 ### Added — Phase 2: auth + the RBAC spine
 
 - **Express 5 API** with the error envelope, request logging, and boot-time env

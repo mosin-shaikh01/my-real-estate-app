@@ -8,6 +8,12 @@ import {
   toClientDTO,
   type ClientRow,
 } from '../src/serializers/client-serializer.js'
+import {
+  canFilterByPrice,
+  sortablePropertyFields,
+  toPropertyDTO,
+  type PropertyRow,
+} from '../src/serializers/property-serializer.js'
 
 // ============================================================================
 // The four tests that matter.
@@ -222,5 +228,104 @@ describe('sort/filter allowlists are permission-filtered', () => {
     for (const f of ['fullName', 'code', 'createdAt']) {
       expect(sortableClientFields(AGENT)).toContain(f)
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Property serializer — same three layers, second resource
+// ---------------------------------------------------------------------------
+const PROPERTY: PropertyRow = {
+  id: 'p1',
+  code: 'PROP-00001',
+  title: '3 BHK Sea-Facing Apartment',
+  description: 'A flat.',
+  propertyType: 'APARTMENT',
+  listingType: 'BOTH',
+  status: 'AVAILABLE',
+  constructionStatus: 'READY_TO_MOVE',
+  visibility: 'PUBLIC',
+  featured: true,
+  salePrice: dec('72500000.00'),
+  rentPricePerMonth: dec('185000.00'),
+  securityDeposit: dec('1110000.00'),
+  maintenanceCharges: dec('12000.00'),
+  negotiable: true,
+  areaSqft: dec('1850.00'),
+  bedrooms: 3,
+  bathrooms: 3,
+  parking: 2,
+  furnished: 'SEMI_FURNISHED',
+  facing: 'WEST',
+  floor: 14,
+  totalFloor: 22,
+  builtYear: 2019,
+  address: 'Bandra West',
+  locality: 'Bandra West',
+  city: 'Mumbai',
+  state: 'Maharashtra',
+  country: 'India',
+  pincode: '400050',
+  latitude: dec('19.055000'),
+  longitude: dec('72.826500'),
+  videoUrl: null,
+  internalNotes: 'Owner will take 6.9cr for a quick close.',
+  assignedAgentId: 'agent-1',
+  createdAt: new Date('2026-07-01'),
+  updatedAt: new Date('2026-07-01'),
+  archivedAt: null,
+  assignedAgent: { id: 'agent-1', fullName: 'Rohan' },
+  amenities: [{ amenity: { id: 'a1', name: 'Swimming Pool', slug: 'swimming-pool', category: 'Recreation' } }],
+  media: [{ id: 'm2', type: 'IMAGE', storageKey: 'x/2.jpg', isCover: true, sortOrder: 1 }],
+  _count: { assignments: 2 },
+}
+
+describe('property serializer', () => {
+  it('omits internal notes from an agent — the negotiating position stays private', () => {
+    const dto = toPropertyDTO(PROPERTY, AGENT)
+    expect('internalNotes' in dto).toBe(false)
+    expect(dto._redacted).toContain('internalNotes')
+  })
+
+  it('keeps pricing for an agent — they legitimately hold property.price.view', () => {
+    const dto = toPropertyDTO(PROPERTY, AGENT)
+    expect(dto.salePrice).toBe('72500000.00')
+    expect(dto.rentPricePerMonth).toBe('185000.00')
+  })
+
+  it('omits every price field when property.price.view is revoked', () => {
+    // Per-agent DENY overrides make this reachable today, and the seeded
+    // `public` role will hit these same endpoints later.
+    const noPrice = actorWith(AGENT_PERMISSIONS.filter((p) => p !== 'property.price.view'))
+    const dto = toPropertyDTO(PROPERTY, noPrice)
+    expect('salePrice' in dto).toBe(false)
+    expect('rentPricePerMonth' in dto).toBe(false)
+    expect('securityDeposit' in dto).toBe(false)
+    expect('maintenanceCharges' in dto).toBe(false)
+  })
+
+  it('gives admin everything, redacting nothing', () => {
+    const dto = toPropertyDTO(PROPERTY, ADMIN)
+    expect(dto._redacted).toEqual([])
+    expect(dto.internalNotes).toContain('6.9cr')
+  })
+
+  it('serialises all money and coordinates as strings', () => {
+    const dto = toPropertyDTO(PROPERTY, ADMIN)
+    expect(typeof dto.salePrice).toBe('string')
+    expect(typeof dto.areaSqft).toBe('string')
+    // Coordinates are Decimal(9,6) — a float would drift the pin.
+    expect(typeof dto.latitude).toBe('string')
+  })
+
+  it('picks the cover image', () => {
+    expect(toPropertyDTO(PROPERTY, ADMIN).coverMediaId).toBe('m2')
+  })
+
+  it('does not let an agent sort by price when they cannot see it', () => {
+    const noPrice = actorWith(AGENT_PERMISSIONS.filter((p) => p !== 'property.price.view'))
+    expect(sortablePropertyFields(noPrice)).not.toContain('salePrice')
+    expect(canFilterByPrice(noPrice)).toBe(false)
+    expect(sortablePropertyFields(ADMIN)).toContain('salePrice')
+    expect(canFilterByPrice(ADMIN)).toBe(true)
   })
 })

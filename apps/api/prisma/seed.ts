@@ -499,6 +499,16 @@ async function main() {
     { clientId: 'seed-client-1', propertyId: 'seed-prop-1', status: 'VISITED' as const },
     { clientId: 'seed-client-2', propertyId: 'seed-prop-2', status: 'SHARED' as const },
     { clientId: 'seed-client-3', propertyId: 'seed-prop-3', status: 'INTERESTED' as const },
+
+    // CROSS-AGENT, deliberately. seed-prop-6 belongs to Aisha; seed-client-1
+    // belongs to Rohan. This is what makes Rohan see a property that is not
+    // his — the second clause of scopeForProperty, and the spec's own workflow
+    // ("Open Client -> View Assigned Properties").
+    //
+    // Without a row like this the clause is dead code in the demo: every seeded
+    // client happened to be shown only their own agent's inventory, so the
+    // feature existed and was invisible.
+    { clientId: 'seed-client-1', propertyId: 'seed-prop-6', status: 'SHORTLISTED' as const },
   ]
   for (const a of assignments) {
     await prisma.propertyAssignment.upsert({
