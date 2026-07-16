@@ -7,6 +7,27 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Changed — agents browse the shared inventory (not only assigned)
+
+Previously an agent could see only properties assigned to them or to one of
+their clients — a per-agent-exclusive model. For a brokerage that's the wrong
+default: an agent needs to browse available stock to match it to clients.
+
+`scopeForProperty` for an agent is now the **shared-pool model** — three OR
+clauses:
+1. everything that is not off-market (`visibility != PRIVATE`) — the browsable pool
+2. anything assigned to them (including off-market they handle)
+3. anything assigned to one of their clients (the Open Client → View Properties flow)
+
+Assignment now means *who is responsible*, not *who may look*. **Off-market
+(PRIVATE) listings stay restricted** to the agent/clients handling them.
+
+Nothing about field redaction changes: verified that an agent browsing another
+agent's INTERNAL listing sees the **price** (needed to match clients) but the
+owner's **internal notes stay redacted**. Verified end to end: Rohan's list went
+from 4 → 6 (now includes Aisha's INTERNAL listings); an unrelated PRIVATE listing
+is invisible to him (absent from the list, 404 on detail); the redaction holds.
+
 ### Fixed — Super Admin can now assign an agent to a property
 
 The property↔agent relationship (`assignedAgentId`) and the `property.assignAgent`
