@@ -148,25 +148,23 @@ describe('scope resolver', () => {
     expect(scopeForClient(ADMIN).deletedAt).toBeNull()
   })
 
-  it('lets an agent browse the shared pool but keeps off-market restricted', () => {
-    // Shared-pool model: three OR clauses — non-private inventory, own
-    // assignments, and clients' assignments. The workflow "Open Client -> View
-    // Assigned Properties" plus "browse available stock" both live here.
-    const scope = scopeForProperty(AGENT)
-    expect(scope.OR).toHaveLength(3)
-    // Clause 1: everything not off-market — the browsable inventory.
-    expect(scope.OR?.[0]).toEqual({ visibility: { not: 'PRIVATE' } })
-    // Clauses 2 & 3: own + clients' assignments, so an agent still sees an
-    // off-market property they personally handle.
-    expect(scope.OR?.[1]).toEqual({ assignedAgentId: 'agent-1' })
-    expect(JSON.stringify(scope.OR?.[2])).toContain('assignedAgentId')
+  it('STRICT: an agent sees only properties assigned to them — nothing else', () => {
+    // The single, exclusive gate. No OR, no browse pool, no client-shortlist
+    // widening: assignedAgentId = self is the whole rule. This is what every
+    // read (list, search, filter, detail, dashboard) composes against.
+    expect(scopeForProperty(AGENT)).toEqual({ deletedAt: null, assignedAgentId: 'agent-1' })
   })
 
-  it('an agent still cannot see PRIVATE stock unless it is theirs', () => {
-    // The guardrail: clause 1 excludes PRIVATE, so an unrelated off-market
-    // listing only reaches an agent through clause 2 or 3.
+  it('an UNASSIGNED property is outside every agent scope (admin-only)', () => {
+    // assignedAgentId is null on an unassigned property, which never equals an
+    // agent id — so it can only surface for property.list.all (admin).
     const scope = scopeForProperty(AGENT)
-    expect(scope.OR?.[0]).toEqual({ visibility: { not: 'PRIVATE' } })
+    expect(scope.assignedAgentId).toBe('agent-1')
+    expect(scope.OR).toBeUndefined()
+  })
+
+  it('admin (property.list.all) is unrestricted — sees assigned and unassigned', () => {
+    expect(scopeForProperty(ADMIN)).toEqual({ deletedAt: null })
   })
 })
 

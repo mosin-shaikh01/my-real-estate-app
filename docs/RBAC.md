@@ -135,20 +135,49 @@ are exactly two shapes. Forty lines.
 gymnastics, and a mental model — to express `{} | { assignedAgentId }`. Wrong
 trade at this size.
 
-### Agent property scope — shared-pool model
+### Agent property scope — STRICT assignment-only
 
-An agent sees, via three OR'd clauses:
+An agent sees **only** properties explicitly assigned to them by an admin:
 
-1. **all non-off-market inventory** (`visibility != PRIVATE`) — a brokerage
-   agent must be able to browse available stock to match it to clients;
-2. anything **assigned to them** (including off-market they handle);
-3. anything **assigned to one of their clients** (*Open Client → View Assigned
-   Properties*, including off-market shortlisted stock).
+```ts
+scopeForProperty(agent) === { deletedAt: null, assignedAgentId: agent.userId }
+```
 
-Assignment marks *who is responsible*, not *who may look*. **PRIVATE
-(off-market) listings stay restricted** to the people handling them. Field
-redaction is orthogonal and unchanged: a browsed listing shows its price but
-hides another agent's internal notes.
+One exclusive gate. No browse pool, no client-shortlist widening, no visibility
+shortcut. This is the single predicate every property read composes against —
+list, search, filters, detail, dashboard counts, and media — and the write
+services scope-check with it too, so an agent cannot touch another agent's
+property even by forging an id.
+
+- **Unassigned** (`assignedAgentId` null): outside every agent scope, so it is
+  **admin-only until assigned**.
+- **Reassignment** (an admin changing `assignedAgentId`, via
+  `POST /properties/:id/assign-agent`) moves the property between agents'
+  scopes on the **next request** — permissions and scope are re-resolved per
+  request, so there is no stale window.
+- **`property.list.all`** (admin) bypasses the gate entirely.
+
+Model + scalability: assignment is `Property.assignedAgentId`, a single indexed
+FK — the whole permission model rides on one column, which is why it is fast and
+simple to reason about. If co-assignment (several agents on one property) is ever
+required, the migration path is a `PropertyAgent` join table; the scope resolver
+is the only read-side code that would change. Single-FK is deliberate for the
+current 1:N reality (see docs/DATABASE.md).
+
+#### Access Denied vs Not Found
+
+For a property an agent reaches by **direct id** (URL or forged request), the
+detail endpoint distinguishes:
+
+- exists but not assigned to them → **403 `Access denied: this property is not
+  assigned to you`**
+- genuinely absent / soft-deleted → **404**
+
+This is a deliberate exception to the codebase's usual "scope miss → 404"
+(existence-hiding) rule, made because the RBAC spec asks an agent to be *told*
+they're denied. It reveals that the id names a real property — an accepted trade
+here. List/search/filter simply omit non-assigned rows; there is nothing to deny
+because no single resource was named.
 
 ### The guard against forgetting
 

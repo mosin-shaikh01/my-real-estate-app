@@ -7,6 +7,42 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Changed — STRICT property RBAC: agents see only what's assigned to them
+
+Reverses the shared-pool change from the previous entry. Requirement: an agent
+must see **only** properties explicitly assigned to them by an admin, and never
+another agent's — enforced at the backend across every surface.
+
+`scopeForProperty(agent)` is now exactly `{ deletedAt: null, assignedAgentId:
+self }` — one exclusive gate, no OR, no browse pool, no client-shortlist
+widening. It flows through list, search, filters, detail, dashboard counts and
+media; write services scope-check with the same predicate.
+
+- **Unassigned properties are admin-only** until assigned (`assignedAgentId`
+  null never matches an agent).
+- **Reassignment** moves a property between agents' scopes on the next request.
+- **Access Denied**: opening another agent's property by direct id returns
+  **403 "Access denied: this property is not assigned to you"**; a nonexistent
+  id returns 404. The property detail page renders the two distinctly.
+- The client shortlist is filtered too — an agent viewing their client sees only
+  the shortlisted properties that are also assigned to them.
+
+Verified against the running backend, all seven requirements:
+
+| # | Requirement | Result |
+|---|---|---|
+| 1 | Agent sees only assigned | Rohan: PROP-1/2/5; Aisha: PROP-3/4/6 |
+| 2 | Never sees others' | cross-access absent from list, search, filters |
+| 3 | Enforced in search + filters | search "BKC" → nothing for Rohan; city filter scoped |
+| 4 | Admin unrestricted | sees all 6, opens any |
+| 5 | Reassignment moves scope | assign PROP-1 to Aisha → hers next request, gone from Rohan |
+| 6 | Unassigned is admin-only | cleared PROP-1 → invisible to Rohan, visible to admin |
+| 7 | Access Denied by URL | 403 "Access denied…" on another agent's id; 404 on nonexistent |
+
+Model & scalability: assignment is the single indexed FK `Property.assignedAgentId`.
+Co-assignment (multiple agents per property), if ever needed, is a `PropertyAgent`
+join-table migration touching only the scope resolver — see docs/RBAC.md.
+
 ### Changed — agents browse the shared inventory (not only assigned)
 
 Previously an agent could see only properties assigned to them or to one of

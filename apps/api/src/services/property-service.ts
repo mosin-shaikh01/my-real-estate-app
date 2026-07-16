@@ -3,7 +3,7 @@ import { parseSort } from '@app/shared'
 import type { Prisma } from '../generated/prisma/client.js'
 import type { Actor } from '../auth/permissions.js'
 import { scopeForProperty } from '../auth/scope.js'
-import { notFound } from '../lib/errors.js'
+import { forbidden, notFound } from '../lib/errors.js'
 import { prisma } from '../lib/prisma.js'
 import { canFilterByPrice, sortablePropertyFields } from '../serializers/property-serializer.js'
 
@@ -125,14 +125,27 @@ export async function listProperties(actor: Actor, query: PropertyListQuery) {
 }
 
 export async function getProperty(actor: Actor, id: string) {
-  // Scope is in the WHERE, not a post-fetch check: a scoped-out row is
-  // indistinguishable from a missing one, which is the point.
   const row = await prisma.property.findFirst({
     where: { ...scopeForProperty(actor), id },
     select: DETAIL_SELECT,
   })
-  if (!row) throw notFound('Property not found')
-  return row
+  if (row) return row
+
+  // Not in the actor's scope. The RBAC spec calls for an explicit "Access
+  // Denied" when an agent reaches for a property that exists but isn't theirs —
+  // by URL or a forged request — rather than a silent 404. So we distinguish:
+  //   exists but not assigned to this actor -> 403 Access denied
+  //   genuinely absent (or soft-deleted)    -> 404 Not found
+  //
+  // This intentionally reveals that the id names a real property. That is a
+  // deliberate trade the spec asks for; for endpoints where existence must stay
+  // hidden, keep the plain scoped 404 (see docs/RBAC.md).
+  const exists = await prisma.property.findFirst({
+    where: { id, deletedAt: null },
+    select: { id: true },
+  })
+  if (exists) throw forbidden('Access denied: this property is not assigned to you')
+  throw notFound('Property not found')
 }
 
 /** Distinct cities present in the actor's scope — powers the filter dropdown. */
