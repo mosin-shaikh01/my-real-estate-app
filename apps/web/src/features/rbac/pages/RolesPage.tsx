@@ -73,13 +73,20 @@ export default function RolesPage() {
             <tbody>
               {catalog.map((group) => (
                 <Fragment key={group.resource}>
-                  <tr className="bg-surface-sunken/50">
-                    <td
+                  {/* Category separator. A recessed band (surface-sunken, one
+                      step darker than the raised rows), bracketed top and bottom
+                      by a border stronger than the row hairlines, with a bold
+                      uppercase label. All semantic tokens, so it remaps for dark
+                      mode and keeps AA contrast. The permission rows below are
+                      untouched. */}
+                  <tr>
+                    <th
+                      scope="colgroup"
                       colSpan={roles.length + 1}
-                      className="border-b border-border-subtle px-3 py-1.5 text-2xs font-semibold tracking-wide text-text-secondary uppercase"
+                      className="border-y border-border-default bg-surface-sunken px-3 py-2.5 text-left text-2xs font-bold tracking-wider text-text-secondary uppercase"
                     >
                       {group.resource}
-                    </td>
+                    </th>
                   </tr>
                   {group.permissions.map((p) => (
                     <tr key={p.key} className="border-b border-border-subtle last:border-0 hover:bg-surface-hover">
