@@ -7,6 +7,36 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — self-service profile page
+
+Every authenticated user — Super Admin and Agent alike — now has a **Your
+profile** page (`/profile`, linked from the top-bar user menu) to manage their
+own details and password.
+
+- **Edit own** name, email (uniqueness-checked → 409 on a clash), and mobile.
+  Agents can also edit their own specialization, experience, and address;
+  commission is shown **read-only** (it's an admin-set financial field, not
+  self-editable).
+- **Change own password** — verifies the current password, then **signs the user
+  out of every *other* device while keeping the current one**. Changing a
+  password shouldn't eject the person who changed it, but a leaked session
+  elsewhere must die. (`revokeOtherSessions` — a new variant that keeps the
+  acting session.)
+
+This also **fills a Phase 2 gap**: the `changePasswordSchema` existed but no
+change-password endpoint was ever built — only login/refresh/logout/me were
+wired. That endpoint now exists (self-service).
+
+Security shape: the routes are `publicRoute` (authenticated, no permission gate)
+and operate **only on the actor's own id** — never a target from the request
+body. That's the same "you may act on yourself" footing as `/auth/me`.
+
+Verified: agent and admin both load the right profile (admin has no agent
+block); self-edits persist and `/me` reflects a changed name so the top bar
+updates; a password change kept the current session (200) and revoked the other
+(401); a wrong current password is rejected; a `commissionRate` sent by an agent
+is ignored.
+
 ### Added — editable agent profiles + agent codes
 
 - Super Admin can now **edit an agent's details** — name, email, mobile number,

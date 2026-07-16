@@ -1,5 +1,5 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { ChevronDown, LogOut, UserCircle2 } from 'lucide-react'
+import { ChevronDown, LogOut, UserCircle2, UserCog } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { useLogout, useMe } from '@/features/auth/api/use-auth'
@@ -61,6 +61,14 @@ export function Topbar({
               'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
             )}
           >
+            <DropdownMenu.Item
+              onSelect={() => void navigate('/profile')}
+              className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-base text-text-secondary outline-none data-[highlighted]:bg-surface-hover data-[highlighted]:text-text-primary"
+            >
+              <UserCog className="size-4" aria-hidden="true" />
+              Your profile
+            </DropdownMenu.Item>
+            <DropdownMenu.Separator className="my-1 h-px bg-border-subtle" />
             <DropdownMenu.Item
               onSelect={() => void onSignOut()}
               className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-base text-text-secondary outline-none data-[highlighted]:bg-surface-hover data-[highlighted]:text-text-primary"

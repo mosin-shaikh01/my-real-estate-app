@@ -8,6 +8,7 @@ import { authRouter } from '../src/routes/auth-routes.js'
 import { clientRouter } from '../src/routes/client-routes.js'
 import { dashboardRouter } from '../src/routes/dashboard-routes.js'
 import { mediaRouter } from '../src/routes/media-routes.js'
+import { profileRouter } from '../src/routes/profile-routes.js'
 import { propertyRouter } from '../src/routes/property-routes.js'
 
 // ============================================================================
@@ -68,6 +69,7 @@ const ALL_ROUTES: RouteInfo[] = [
   // /api/health is declared inline on the app rather than in a router.
   { method: 'GET', path: '/api/health', permission: null, publicReason: 'Liveness probe' },
   ...routesOf(authRouter, '/api/auth'),
+  ...routesOf(profileRouter, '/api/profile'),
   ...routesOf(clientRouter, '/api/clients'),
   ...routesOf(propertyRouter, '/api/properties'),
   ...routesOf(agentRouter, '/api/agents'),
@@ -95,6 +97,7 @@ describe('route manifest', () => {
       '/api/clients',
       '/api/dashboard',
       '/api/media',
+      '/api/profile',
       '/api/properties',
       '/api/rbac',
       '/api/search',
@@ -140,10 +143,15 @@ describe('route manifest', () => {
       'GET /api/auth/me',
       'GET /api/auth/sessions',
       'GET /api/health',
+      // Self-service: authenticated, but no permission gate — a user acting on
+      // their own identity.
+      'GET /api/profile',
+      'PATCH /api/profile',
       'POST /api/auth/login',
       'POST /api/auth/logout',
       'POST /api/auth/logout-all',
       'POST /api/auth/refresh',
+      'POST /api/profile/change-password',
     ])
   })
 
@@ -163,11 +171,16 @@ describe('route manifest', () => {
     },
   )
 
-  it('every write route declares a WRITE permission, not a read one', () => {
+  it('every permission-guarded write declares a WRITE permission, not a read one', () => {
     // A POST guarded by property.list would be a real hole and would pass every
     // other assertion in this file.
+    //
+    // Explicitly-public writes are exempt: auth (login/logout/refresh) and
+    // self-service profile edits act on the caller's own session/identity, have
+    // no resource permission by design, and are pinned by the public-surface
+    // snapshot above. The rule here is about writes to OTHER people's data.
     const writes = ALL_ROUTES.filter(
-      (r) => ['POST', 'PATCH', 'DELETE'].includes(r.method) && !r.path.startsWith('/api/auth'),
+      (r) => ['POST', 'PATCH', 'DELETE'].includes(r.method) && r.publicReason === null,
     )
     expect(writes.length).toBeGreaterThan(0)
     for (const r of writes) {

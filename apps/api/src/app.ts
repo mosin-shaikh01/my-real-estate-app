@@ -10,6 +10,7 @@ import { authRouter } from './routes/auth-routes.js'
 import { clientRouter } from './routes/client-routes.js'
 import { dashboardRouter } from './routes/dashboard-routes.js'
 import { mediaRouter } from './routes/media-routes.js'
+import { profileRouter } from './routes/profile-routes.js'
 import { propertyRouter } from './routes/property-routes.js'
 
 /**
@@ -31,6 +32,7 @@ export const ROUTE_MOUNTS: ReadonlyArray<{
   requiresAuth: boolean
 }> = [
   { path: '/api/auth', router: authRouter, requiresAuth: false },
+  { path: '/api/profile', router: profileRouter, requiresAuth: true },
   { path: '/api/clients', router: clientRouter, requiresAuth: true },
   { path: '/api/properties', router: propertyRouter, requiresAuth: true },
   { path: '/api/agents', router: agentRouter, requiresAuth: true },

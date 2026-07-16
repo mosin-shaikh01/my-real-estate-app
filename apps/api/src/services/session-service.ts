@@ -96,10 +96,25 @@ export async function revokeSession(sessionId: string) {
   })
 }
 
-/** Used on logout-all, password change/reset, and agent deactivation. */
+/** Used on logout-all, password reset, and agent deactivation. */
 export async function revokeAllSessions(userId: string) {
   await prisma.session.updateMany({
     where: { userId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  })
+}
+
+/**
+ * Revoke every session EXCEPT the one making the request.
+ *
+ * For a password change by a logged-in user: sign them out everywhere else
+ * (a leaked session elsewhere is now dead) without logging them out of the
+ * device they just used — which would be a hostile "you changed your password,
+ * now log in again" experience.
+ */
+export async function revokeOtherSessions(userId: string, keepSessionId: string) {
+  await prisma.session.updateMany({
+    where: { userId, revokedAt: null, id: { not: keepSessionId } },
     data: { revokedAt: new Date() },
   })
 }
