@@ -1,121 +1,91 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { APP_NAME } from '@app/shared'
+
+const STATUSES = [
+  { label: 'Available', cls: 'bg-status-available' },
+  { label: 'Under offer', cls: 'bg-status-under-offer' },
+  { label: 'Rented', cls: 'bg-status-rented' },
+  { label: 'Sold', cls: 'bg-status-sold' },
+  { label: 'Archived', cls: 'bg-status-archived' },
+] as const
+
+const NEUTRALS = [
+  '0',
+  '50',
+  '100',
+  '200',
+  '300',
+  '400',
+  '500',
+  '600',
+  '700',
+  '800',
+  '900',
+  '950',
+] as const
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
+    <main className="mx-auto max-w-3xl px-6 py-12">
+      <p className="text-2xs font-medium tracking-widest text-text-muted uppercase">
+        Foundation check
+      </p>
+      <h1 className="text-xl font-semibold text-text-primary">{APP_NAME}</h1>
+      <p className="mt-1 text-text-secondary">
+        Design tokens are live. Tailwind 4 CSS-first is compiling under Vite 8.
+      </p>
+
+      <section className="mt-10 rounded-lg border border-border-subtle bg-surface-raised p-5 shadow-e1">
+        <h2 className="text-md font-semibold text-text-primary">Status colors</h2>
+        <p className="mt-1 text-xs text-text-muted">
+          Never colour-only &mdash; every status is a dot plus a text label. Sold is
+          neutral, not red: red is reserved for destructive actions.
+        </p>
+        <ul className="mt-4 flex flex-wrap gap-x-6 gap-y-3">
+          {STATUSES.map((s) => (
+            <li key={s.label} className="flex items-center gap-2">
+              <span className={`size-2 rounded-full ${s.cls}`} aria-hidden="true" />
+              <span className="text-sm text-text-secondary">{s.label}</span>
+            </li>
+          ))}
+        </ul>
       </section>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
+      <section className="mt-6 rounded-lg border border-border-subtle bg-surface-raised p-5 shadow-e1">
+        <h2 className="text-md font-semibold text-text-primary">Neutral ramp</h2>
+        <p className="mt-1 text-xs text-text-muted">
+          A CRM is 90% grey. This ramp is most of what &ldquo;premium&rdquo; means here.
+        </p>
+        <div className="mt-4 flex overflow-hidden rounded-md border border-border-subtle">
+          {NEUTRALS.map((n) => (
+            <div
+              key={n}
+              className="h-10 flex-1"
+              style={{ backgroundColor: `var(--color-neutral-${n})` }}
+              title={`neutral-${n}`}
+            />
+          ))}
         </div>
       </section>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      <section className="mt-6 rounded-lg border border-border-subtle bg-surface-raised p-5 shadow-e1">
+        <h2 className="text-md font-semibold text-text-primary">Tabular numerals</h2>
+        <p className="mt-1 text-xs text-text-muted">
+          Money is a string in DTOs, formatted with Intl. Digits must align.
+        </p>
+        <table className="mt-4 w-full text-sm">
+          <tbody>
+            {['1,25,00,000', '84,50,000', '2,10,00,000'].map((amt) => (
+              <tr key={amt} className="border-b border-border-subtle last:border-0">
+                <td className="py-2 text-text-secondary">Sale price</td>
+                <td className="py-2 text-right text-text-primary tabular">
+                  &#8377;{amt}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+    </main>
   )
 }
 
