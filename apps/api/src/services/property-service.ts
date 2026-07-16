@@ -41,7 +41,7 @@ const DETAIL_SELECT = {
   latitude: true,
   longitude: true,
   googleMapUrl: true,
-  videoUrl: true,
+  videoUrls: true,
   internalNotes: true,
   assignedAgentId: true,
   createdAt: true,

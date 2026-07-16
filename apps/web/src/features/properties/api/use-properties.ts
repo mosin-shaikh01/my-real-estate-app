@@ -40,7 +40,7 @@ export interface PropertyDTO {
   latitude: string | null
   longitude: string | null
   googleMapUrl: string | null
-  videoUrl: string | null
+  videoUrls: string[]
   createdAt: string
   archivedAt: string | null
   assignedAgent: { id: string; fullName: string } | null

@@ -7,6 +7,36 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — split media galleries (image lightbox + video gallery) & multiple video links
+
+The detail page never rendered the external video link — a pasted YouTube URL was
+stored and silently invisible. Fixed, and the media area is now split into two
+purpose-built galleries.
+
+- **Schema**: `Property.videoUrl` (single) → `videoUrls String[]` (multiple).
+  Migration backfills any existing single link into the array before dropping the
+  old column, so no data is lost. Replaced wholesale on write, like amenities.
+- **Image Gallery**: a responsive, lazy-loaded grid that opens a **full-screen
+  lightbox** — previous/next, keyboard (arrows + Esc), zoom, an `n / total`
+  counter, and a close button. Built on Radix Dialog (focus trap, scroll lock,
+  Esc) with Framer Motion transitions.
+- **Video Gallery** (`VideoGallery`): shows uploaded video **files** and external
+  **links** together, and renders nothing when there are none (no empty
+  placeholder). YouTube uses a thumbnail + play **facade** — the iframe mounts
+  only on click, so several embeds don't slow the page. Vimeo and direct-file
+  URLs are supported too (`parseVideoUrl` helper, unit-tested).
+- **Forms**: a `VideoLinkEditor` (add / edit-in-place / remove, with a live
+  preview) replaces the single video input on both the Add and Edit forms;
+  uploaded image/video files continue through the media picker/gallery. Invalid
+  URLs are caught inline and re-validated server-side (field-keyed 400).
+- `PropertyGallery` now composes the two galleries and gained section headings
+  (Images / Property videos / Documents); it's shared by the detail page and the
+  edit form, so both stay identical.
+
+Verified: create/update/clear `videoUrls` round-trip, invalid URL rejected,
+uploaded videos still stream (range requests), typecheck, build, 116 tests
+(incl. 11 new parser tests) and lint all green.
+
 ### Added — full property editing + extended Add form
 
 A property can now be **edited in full**, and the Add form gained everything the

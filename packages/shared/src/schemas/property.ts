@@ -135,7 +135,10 @@ const propertyBaseSchema = z.object({
     // error. The server normalises "" to null.
     googleMapUrl: z.string().url('Enter a valid Google Maps link').nullish().or(z.literal('')),
 
-    videoUrl: z.string().url('Enter a valid URL').nullish().or(z.literal('')),
+    // External video links (YouTube/Vimeo/direct). Each must be a valid URL;
+    // the array is replaced wholesale on write, like amenityIds. Undefined on
+    // update means "not sent" (leave as-is); [] means "remove them all".
+    videoUrls: z.array(z.string().url('Enter a valid video URL')).max(20).optional(),
     internalNotes: z.string().nullish(),
     assignedAgentId: z.string().nullish(),
     // Optional, not defaulted: create treats undefined as [], update treats it

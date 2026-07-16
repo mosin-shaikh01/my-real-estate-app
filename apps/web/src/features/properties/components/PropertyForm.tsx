@@ -27,6 +27,7 @@ import {
 import { AmenityPicker } from '@/features/properties/components/AmenityPicker'
 import { MediaStagePicker } from '@/features/properties/components/MediaStagePicker'
 import { PropertyGallery } from '@/features/properties/components/PropertyGallery'
+import { VideoLinkEditor } from '@/features/properties/components/VideoLinkEditor'
 import { ApiClientError } from '@/lib/api'
 
 // ============================================================================
@@ -106,7 +107,8 @@ function toFormValues(p: PropertyDTO): PropertyCreateInput {
     latitude: p.latitude ?? '',
     longitude: p.longitude ?? '',
     googleMapUrl: p.googleMapUrl ?? '',
-    videoUrl: p.videoUrl ?? '',
+    // videoUrls is managed in local state (see the VideoLinkEditor), not RHF —
+    // same pattern as amenityIds. Deliberately omitted from RHF defaults.
     internalNotes: p.internalNotes ?? '',
     assignedAgentId: p.assignedAgent?.id ?? undefined,
     amenityIds: p.amenities.map((a) => a.id),
@@ -132,6 +134,9 @@ export function PropertyForm({ mode, property }: Props) {
   const [stagedMedia, setStagedMedia] = useState<File[]>([])
   const [amenityIds, setAmenityIds] = useState<string[]>(
     mode === 'edit' && property ? property.amenities.map((a) => a.id) : [],
+  )
+  const [videoUrls, setVideoUrls] = useState<string[]>(
+    mode === 'edit' && property ? property.videoUrls : [],
   )
 
   const form = useForm<PropertyCreateInput>({
@@ -159,7 +164,12 @@ export function PropertyForm({ mode, property }: Props) {
   const showRent = listingType === 'RENT' || listingType === 'BOTH'
 
   const onSubmit = form.handleSubmit(async (values) => {
-    const payload: PropertyCreateInput = { ...values, amenityIds }
+    const payload: PropertyCreateInput = {
+      ...values,
+      amenityIds,
+      // Trim blank rows the editor may have left; the schema validates each URL.
+      videoUrls: videoUrls.map((u) => u.trim()).filter(Boolean),
+    }
 
     // Phase 1: create/update the property record. A failure here IS a form
     // error — map field-keyed server details onto RHF, otherwise show a banner.
@@ -404,15 +414,6 @@ export function PropertyForm({ mode, property }: Props) {
               {(p) => <Input {...p} {...reg('googleMapUrl')} inputMode="url" placeholder="https://maps.google.com/..." />}
             </FormField>
           </div>
-          <div className="sm:col-span-2">
-            <FormField
-              label="Video link (YouTube/Vimeo)"
-              error={errors.videoUrl?.message}
-              hint="An external embed. Uploaded videos go in the Media section."
-            >
-              {(p) => <Input {...p} {...reg('videoUrl')} inputMode="url" placeholder="https://youtube.com/watch?v=..." />}
-            </FormField>
-          </div>
           {canAssignAgent ? (
             <div className="sm:col-span-2">
               <FormField label="Assigned agent" error={errors.assignedAgentId?.message}>
@@ -432,7 +433,8 @@ export function PropertyForm({ mode, property }: Props) {
       </Card>
 
       {/* ---- Media: staged on create; the live gallery (its own card, with
-             immediate upload/delete) on edit ---- */}
+             immediate upload/delete) on edit. videoLinks={[]} in edit — external
+             links are managed by the Video links card below, not the gallery. ---- */}
       {mode === 'edit' && property ? (
         <PropertyGallery
           propertyId={property.id}
@@ -443,13 +445,26 @@ export function PropertyForm({ mode, property }: Props) {
         <Card>
           <Card.Header>
             <Card.Title>Media</Card.Title>
-            <Card.Description>Images and video for this property.</Card.Description>
+            <Card.Description>Upload images and video files for this property.</Card.Description>
           </Card.Header>
           <Card.Body>
             <MediaStagePicker files={stagedMedia} onChange={setStagedMedia} />
           </Card.Body>
         </Card>
       )}
+
+      {/* ---- External video links (YouTube/Vimeo/direct) ---- */}
+      <Card>
+        <Card.Header>
+          <Card.Title>Video links</Card.Title>
+          <Card.Description>
+            Add YouTube, Vimeo or direct video URLs. Uploaded video files go in the Media section.
+          </Card.Description>
+        </Card.Header>
+        <Card.Body>
+          <VideoLinkEditor value={videoUrls} onChange={setVideoUrls} />
+        </Card.Body>
+      </Card>
 
       {errors.root ? (
         <p role="alert" className="rounded-md border border-danger-100 bg-danger-100/40 px-3 py-2 text-xs text-danger-700">

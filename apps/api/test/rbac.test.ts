@@ -406,7 +406,7 @@ const PROPERTY: PropertyRow = {
   pincode: '400050',
   latitude: dec('19.055000'),
   longitude: dec('72.826500'),
-  videoUrl: null,
+  videoUrls: [],
   internalNotes: 'Owner will take 6.9cr for a quick close.',
   assignedAgentId: 'agent-1',
   createdAt: new Date('2026-07-01'),

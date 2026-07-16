@@ -42,7 +42,7 @@ export interface PropertyRow {
   latitude: Decimalish
   longitude: Decimalish
   googleMapUrl: string | null
-  videoUrl: string | null
+  videoUrls: string[]
   internalNotes: string | null
   assignedAgentId: string | null
   createdAt: Date
@@ -84,7 +84,7 @@ export interface PropertyDTO {
   latitude: string | null
   longitude: string | null
   googleMapUrl: string | null
-  videoUrl: string | null
+  videoUrls: string[]
   createdAt: string
   archivedAt: string | null
   assignedAgent: { id: string; fullName: string } | null
@@ -141,7 +141,7 @@ export function toPropertyDTO(row: PropertyRow, actor: Actor): PropertyDTO {
     latitude: money(row.latitude),
     longitude: money(row.longitude),
     googleMapUrl: row.googleMapUrl,
-    videoUrl: row.videoUrl,
+    videoUrls: row.videoUrls ?? [],
     createdAt: row.createdAt.toISOString(),
     archivedAt: row.archivedAt?.toISOString() ?? null,
     assignedAgent: row.assignedAgent ?? null,

@@ -1,8 +1,11 @@
-import { FileText, ImageOff, Loader2, Star, Trash2, Upload } from 'lucide-react'
+import { FileText, ImageOff, Loader2, Trash2, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Can } from '@/components/auth/Can'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { usePermissions } from '@/features/auth/api/use-auth'
+import { ImageGallery } from '@/features/properties/components/ImageGallery'
+import { VideoGallery } from '@/features/properties/components/VideoGallery'
 import {
   useDeleteMedia,
   useSetCover,
@@ -16,20 +19,33 @@ interface MediaItem {
   isCover: boolean
 }
 
-// Every image src points at /api/media/:id — the authorized route. There is no
-// path here to tamper with, and an agent without property.media.download gets a
-// broken image rather than a leaked file (the server 404s).
+// The property media hub, used by BOTH the detail page and the edit form. It
+// owns upload/delete/set-cover (through the authorized mutations) and now
+// composes two distinct galleries:
+//   • Images  — a responsive grid that opens a full-screen lightbox.
+//   • Videos  — uploaded files + external links (YouTube/Vimeo), hidden entirely
+//               when there are none.
+// Every image/video src points at /api/media/:id — the authorized route. There
+// is no path to tamper with, and an actor without property.media.download gets
+// the honest "no permission" message rather than a wall of broken thumbnails.
 export function PropertyGallery({
   propertyId,
   media,
   canDownload,
+  videoLinks = [],
 }: {
   propertyId: string
   media: MediaItem[]
   canDownload: boolean
+  /** External video URLs stored on the property. Shown in the Video section on
+   *  the detail page; the edit form manages them separately, so it passes []. */
+  videoLinks?: string[]
 }) {
   const fileInput = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
+  const { has } = usePermissions()
+  const canManage = has('property.media.upload')
+
   const upload = useUploadMedia(propertyId)
   const remove = useDeleteMedia(propertyId)
   const setCover = useSetCover(propertyId)
@@ -37,7 +53,8 @@ export function PropertyGallery({
   const images = media.filter((m) => m.type === 'IMAGE' || m.type === 'FLOOR_PLAN')
   const videos = media.filter((m) => m.type === 'VIDEO')
   const docs = media.filter((m) => m.type === 'DOCUMENT')
-  const isEmpty = images.length === 0 && videos.length === 0 && docs.length === 0
+  const hasVideoSection = videos.length > 0 || videoLinks.length > 0
+  const isEmpty = images.length === 0 && !hasVideoSection && docs.length === 0
 
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return
@@ -92,7 +109,7 @@ export function PropertyGallery({
           Images (JPEG/PNG/WebP) & PDF up to 10 MB · video (MP4/WebM/MOV) up to 100 MB.
         </Card.Description>
       </Card.Header>
-      <Card.Body className="flex flex-col gap-4">
+      <Card.Body className="flex flex-col gap-6">
         {error ? (
           <p role="alert" className="text-xs text-danger-700">
             {error}
@@ -100,11 +117,18 @@ export function PropertyGallery({
         ) : null}
 
         {!canDownload ? (
-          // The permission that gates viewing the bytes. Honest about why the
-          // grid is empty rather than showing broken images.
-          <p className="text-sm text-text-muted">
-            You do not have permission to view files on this property.
-          </p>
+          // Gated: this actor cannot fetch uploaded bytes. External links live on
+          // the property record they can already read, so still show those.
+          <>
+            {videoLinks.length > 0 ? (
+              <Section title="Property videos">
+                <VideoGallery uploaded={[]} links={videoLinks} />
+              </Section>
+            ) : null}
+            <p className="text-sm text-text-muted">
+              You do not have permission to view files on this property.
+            </p>
+          </>
         ) : isEmpty ? (
           <div className="flex flex-col items-center gap-2 py-8 text-center">
             <ImageOff className="size-6 text-text-muted" aria-hidden="true" />
@@ -113,106 +137,80 @@ export function PropertyGallery({
         ) : (
           <>
             {images.length > 0 ? (
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {images.map((m) => (
-                  <li key={m.id} className="group relative overflow-hidden rounded-md border border-border-subtle">
-                    <img
-                      src={`/api/media/${m.id}`}
-                      alt=""
-                      loading="lazy"
-                      className="aspect-[4/3] w-full object-cover"
-                    />
-                    {m.isCover ? (
-                      <span className="absolute top-1.5 left-1.5 rounded bg-neutral-950/70 px-1.5 py-0.5 text-2xs font-medium text-white">
-                        Cover
-                      </span>
-                    ) : null}
-                    <Can permission="property.media.upload">
-                      <div className="absolute inset-x-0 bottom-0 flex justify-end gap-1 bg-gradient-to-t from-neutral-950/60 to-transparent p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-                        {!m.isCover && m.type === 'IMAGE' ? (
-                          <button
-                            type="button"
-                            aria-label="Set as cover"
-                            title="Set as cover"
-                            onClick={() => setCover.mutate(m.id)}
-                            className="rounded bg-white/90 p-1 text-neutral-800 hover:bg-white"
-                          >
-                            <Star className="size-3.5" aria-hidden="true" />
-                          </button>
-                        ) : null}
-                        <button
-                          type="button"
-                          aria-label="Delete"
-                          title="Delete"
-                          onClick={() => remove.mutate(m.id)}
-                          className="rounded bg-white/90 p-1 text-danger-700 hover:bg-white"
-                        >
-                          <Trash2 className="size-3.5" aria-hidden="true" />
-                        </button>
-                      </div>
-                    </Can>
-                  </li>
-                ))}
-              </ul>
+              <Section title="Images" count={images.length}>
+                <ImageGallery
+                  images={images}
+                  onDelete={canManage ? (id) => remove.mutate(id) : undefined}
+                  onSetCover={canManage ? (id) => setCover.mutate(id) : undefined}
+                />
+              </Section>
             ) : null}
 
-            {videos.length > 0 ? (
-              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {videos.map((m) => (
-                  <li key={m.id} className="relative overflow-hidden rounded-md border border-border-subtle">
-                    {/* Served through the authorized range-capable route, so the
-                        <video> element can seek. preload=metadata keeps the list
-                        light until played. */}
-                    <video
-                      src={`/api/media/${m.id}`}
-                      controls
-                      preload="metadata"
-                      className="aspect-video w-full bg-neutral-950"
-                    />
-                    <Can permission="property.media.upload">
-                      <button
-                        type="button"
-                        aria-label="Delete video"
-                        title="Delete video"
-                        onClick={() => remove.mutate(m.id)}
-                        className="absolute top-1.5 right-1.5 rounded bg-white/90 p-1 text-danger-700 hover:bg-white"
-                      >
-                        <Trash2 className="size-3.5" aria-hidden="true" />
-                      </button>
-                    </Can>
-                  </li>
-                ))}
-              </ul>
+            {hasVideoSection ? (
+              <Section title="Property videos" count={videos.length + videoLinks.length}>
+                <VideoGallery
+                  uploaded={videos}
+                  links={videoLinks}
+                  onDeleteUploaded={canManage ? (id) => remove.mutate(id) : undefined}
+                />
+              </Section>
             ) : null}
 
             {docs.length > 0 ? (
-              <ul className="flex flex-col gap-1.5">
-                {docs.map((m) => (
-                  <li key={m.id} className="flex items-center gap-2">
-                    <a
-                      href={`/api/media/${m.id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={cn(
-                        'flex flex-1 items-center gap-2 rounded-md border border-border-subtle px-3 py-2',
-                        'text-sm text-text-secondary hover:bg-surface-hover hover:text-text-primary',
-                      )}
-                    >
-                      <FileText className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
-                      Document
-                    </a>
-                    <Can permission="property.media.upload">
-                      <Button variant="ghost" size="sm" aria-label="Delete document" onClick={() => remove.mutate(m.id)}>
-                        <Trash2 aria-hidden="true" />
-                      </Button>
-                    </Can>
-                  </li>
-                ))}
-              </ul>
+              <Section title="Documents">
+                <ul className="flex flex-col gap-1.5">
+                  {docs.map((m) => (
+                    <li key={m.id} className="flex items-center gap-2">
+                      <a
+                        href={`/api/media/${m.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={cn(
+                          'flex flex-1 items-center gap-2 rounded-md border border-border-subtle px-3 py-2',
+                          'text-sm text-text-secondary hover:bg-surface-hover hover:text-text-primary',
+                        )}
+                      >
+                        <FileText className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
+                        Document
+                      </a>
+                      <Can permission="property.media.upload">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Delete document"
+                          onClick={() => remove.mutate(m.id)}
+                        >
+                          <Trash2 aria-hidden="true" />
+                        </Button>
+                      </Can>
+                    </li>
+                  ))}
+                </ul>
+              </Section>
             ) : null}
           </>
         )}
       </Card.Body>
     </Card>
+  )
+}
+
+function Section({
+  title,
+  count,
+  children,
+}: {
+  title: string
+  count?: number
+  children: React.ReactNode
+}) {
+  return (
+    <section className="flex flex-col gap-2.5">
+      <h3 className="text-2xs font-semibold tracking-wide text-text-muted uppercase">
+        {title}
+        {count != null ? <span className="ml-1.5 text-text-muted/70">({count})</span> : null}
+      </h3>
+      {children}
+    </section>
   )
 }

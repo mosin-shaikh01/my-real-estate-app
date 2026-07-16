@@ -146,6 +146,7 @@ export default function PropertyDetailPage() {
             propertyId={p.id}
             media={p.media}
             canDownload={has('property.media.download')}
+            videoLinks={p.videoUrls}
           />
 
           <Card>

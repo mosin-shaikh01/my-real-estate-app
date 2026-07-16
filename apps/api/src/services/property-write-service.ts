@@ -44,7 +44,6 @@ async function assertAmenitiesExist(ids: string[]) {
 // validated upstream, so they never arrive empty.
 const NULLABLE_STRINGS = [
   'googleMapUrl',
-  'videoUrl',
   'locality',
   'internalNotes',
   'latitude',
@@ -88,6 +87,10 @@ export async function createProperty(actor: Actor, input: PropertyCreateInput, r
     const property = await tx.property.create({
       data: {
         ...rest,
+        // Never let the array column go in as NULL — the schema field is a
+        // required String[], and a NULL would fail Prisma's read on the next
+        // fetch. An omitted or absent value means "no external videos" = [].
+        videoUrls: rest.videoUrls ?? [],
         // `code` omitted deliberately — the Postgres sequence default fills it
         // (PROP-00007). Status/visibility/etc. omitted when absent → the DB's
         // @default fills them. That is why the Zod defaults were removed.

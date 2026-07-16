@@ -285,9 +285,12 @@ model Property {
   // the as-shared URL. They can coexist without one being derived from the other.
   googleMapUrl String? @map("google_map_url")
 
-  // External video link (YouTube/Vimeo). Uploaded videos live in PropertyMedia
-  // (type VIDEO) alongside images; this field is for an embed you don't host.
-  videoUrl String? @map("video_url")
+  // External video links (YouTube/Vimeo/direct URLs). A property can carry
+  // several — a walkthrough, a drone shot, a locality reel — so this is a text
+  // array, not a single field. Uploaded video FILES live in PropertyMedia (type
+  // VIDEO); this is for embeds you don't host. Replaced wholesale on write, the
+  // same way amenities are.
+  videoUrls String[] @map("video_urls")
 
   // Confidential. Gated by property.internalNotes.view and stripped by the
   // serializer — never sent to an actor without the permission.
