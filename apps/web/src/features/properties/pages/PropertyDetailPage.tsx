@@ -14,9 +14,11 @@ import { Select } from '@/components/ui/Select'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { PropertyGallery } from '@/features/properties/components/PropertyGallery'
 import { usePermissions } from '@/features/auth/api/use-auth'
+import { useAssignableAgents } from '@/features/agents/api/use-assignable-agents'
 import { useProperty } from '@/features/properties/api/use-properties'
 import {
   useArchiveProperty,
+  useAssignPropertyAgent,
   useSetPropertyStatus,
 } from '@/features/properties/api/use-property-mutations'
 import { formatArea, formatDate, formatMoney, formatPropertyAge, mapsUrl } from '@/lib/format'
@@ -266,7 +268,27 @@ export default function PropertyDetailPage() {
             </Card.Header>
             <Card.Body>
               <dl className="flex flex-col gap-3">
-                <Fact label="Assigned agent" value={p.assignedAgent?.fullName ?? 'Unassigned'} />
+                <div>
+                  <dt className="text-xs text-text-muted">Assigned agent</dt>
+                  <dd className="mt-1">
+                    {/* Editable for anyone with property.assignAgent; a plain
+                        read-out for everyone else. Reassigning changes who can
+                        see the property, so it is gated, not just a field edit. */}
+                    <Can
+                      permission="property.assignAgent"
+                      fallback={
+                        <span className="text-base text-text-primary">
+                          {p.assignedAgent?.fullName ?? 'Unassigned'}
+                        </span>
+                      }
+                    >
+                      <AssignAgentControl
+                        propertyId={p.id}
+                        currentAgentId={p.assignedAgent?.id ?? null}
+                      />
+                    </Can>
+                  </dd>
+                </div>
                 <Fact label="Shared with" value={`${p.assignedClientCount} client(s)`} />
                 <Fact label="Visibility" value={title(p.visibility)} />
                 <Fact label="Listed" value={formatDate(p.createdAt)} />
@@ -277,6 +299,29 @@ export default function PropertyDetailPage() {
         </div>
       </div>
     </>
+  )
+}
+
+function AssignAgentControl({
+  propertyId,
+  currentAgentId,
+}: {
+  propertyId: string
+  currentAgentId: string | null
+}) {
+  const { data: agents } = useAssignableAgents()
+  const assign = useAssignPropertyAgent(propertyId)
+
+  return (
+    <Select
+      aria-label="Assign agent"
+      placeholder="Unassigned"
+      value={currentAgentId ?? ''}
+      disabled={assign.isPending}
+      options={(agents ?? []).map((a) => ({ value: a.id, label: a.fullName }))}
+      // Empty value clears the assignment (agentId: null).
+      onChange={(e) => assign.mutate(e.target.value || null)}
+    />
   )
 }
 

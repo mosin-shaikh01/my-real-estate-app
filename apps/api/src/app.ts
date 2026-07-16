@@ -4,11 +4,13 @@ import { authenticate } from './middleware/authenticate.js'
 import { errorHandler, notFoundHandler, requestId } from './middleware/error-handler.js'
 import { requestLog } from './middleware/request-log.js'
 import { publicRoute } from './middleware/route-registry.js'
+import { activityRouter, rbacRouter, searchRouter } from './routes/admin-routes.js'
 import { agentRouter } from './routes/agent-routes.js'
 import { authRouter } from './routes/auth-routes.js'
 import { clientRouter } from './routes/client-routes.js'
 import { dashboardRouter } from './routes/dashboard-routes.js'
 import { mediaRouter } from './routes/media-routes.js'
+import { profileRouter } from './routes/profile-routes.js'
 import { propertyRouter } from './routes/property-routes.js'
 
 /**
@@ -30,11 +32,15 @@ export const ROUTE_MOUNTS: ReadonlyArray<{
   requiresAuth: boolean
 }> = [
   { path: '/api/auth', router: authRouter, requiresAuth: false },
+  { path: '/api/profile', router: profileRouter, requiresAuth: true },
   { path: '/api/clients', router: clientRouter, requiresAuth: true },
   { path: '/api/properties', router: propertyRouter, requiresAuth: true },
   { path: '/api/agents', router: agentRouter, requiresAuth: true },
   { path: '/api/dashboard', router: dashboardRouter, requiresAuth: true },
   { path: '/api/media', router: mediaRouter, requiresAuth: true },
+  { path: '/api/activity-logs', router: activityRouter, requiresAuth: true },
+  { path: '/api/search', router: searchRouter, requiresAuth: true },
+  { path: '/api/rbac', router: rbacRouter, requiresAuth: true },
 ]
 
 export function createApp() {

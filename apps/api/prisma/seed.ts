@@ -144,7 +144,17 @@ async function main() {
       phone: '+91 98200 11223',
       status: 'ACTIVE',
     },
-    update: {},
+    // Reset identity + password + status on reseed: a demo database drifts
+    // (a test changes a password, an edit renames the admin), and reseed should
+    // return it to a known-good login. Without this, `npm run db:seed` leaves a
+    // changed password in place and the demo credentials silently stop working.
+    update: {
+      email: 'admin@demo.local',
+      passwordHash: devPassword,
+      fullName: 'Priya Deshmukh',
+      phone: '+91 98200 11223',
+      status: 'ACTIVE',
+    },
   })
   await prisma.userRole.upsert({
     where: { userId_roleId: { userId: admin.id, roleId: superAdminRole.id } },
@@ -169,13 +179,23 @@ async function main() {
         phone: a.phone,
         status: 'ACTIVE',
       },
-      update: {},
+      // Restore identity + password + status on reseed — see the admin above.
+      // Also clears any per-agent permission overrides a test may have left, so
+      // the demo agent starts from the plain role every time.
+      update: {
+        email: a.email,
+        passwordHash: devPassword,
+        fullName: a.name,
+        phone: a.phone,
+        status: 'ACTIVE',
+      },
     })
     await prisma.userRole.upsert({
       where: { userId_roleId: { userId: user.id, roleId: agentRole.id } },
       create: { userId: user.id, roleId: agentRole.id },
       update: {},
     })
+    await prisma.userPermission.deleteMany({ where: { userId: user.id } })
     await prisma.agentProfile.upsert({
       where: { userId: user.id },
       create: {
@@ -185,7 +205,11 @@ async function main() {
         commissionRate: a.rate,
         address: 'Mumbai, Maharashtra',
       },
-      update: {},
+      update: {
+        experienceYears: a.exp,
+        specialization: a.spec,
+        commissionRate: a.rate,
+      },
     })
     agents.push(user)
   }

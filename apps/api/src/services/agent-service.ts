@@ -1,8 +1,15 @@
-import type { AgentCreateInput, AgentUpdateInput, UserStatus } from '@app/shared'
-import { ROLE_SLUGS } from '@app/shared'
+import type {
+  AgentCreateInput,
+  AgentPermissionsInput,
+  AgentPermissionsResponse,
+  AgentUpdateInput,
+  UserStatus,
+} from '@app/shared'
+import { isPermissionKey, ROLE_SLUGS } from '@app/shared'
 import type { Request } from 'express'
+import { resolvePermissions } from '../auth/permissions.js'
 import { hashPassword } from '../auth/tokens.js'
-import { conflict, notFound } from '../lib/errors.js'
+import { conflict, notFound, validationFailed } from '../lib/errors.js'
 import { prisma } from '../lib/prisma.js'
 import { logActivityTx } from './activity-service.js'
 import { revokeAllSessions } from './session-service.js'
@@ -20,6 +27,7 @@ const AGENT_SELECT = {
   createdAt: true,
   agentProfile: {
     select: {
+      code: true,
       address: true,
       experienceYears: true,
       specialization: true,
@@ -101,20 +109,35 @@ export async function createAgent(actorId: string, input: AgentCreateInput, req:
 export async function updateAgent(actorId: string, id: string, input: AgentUpdateInput, req: Request) {
   await getAgent(id) // 404 if not an agent
 
-  const { fullName, phone, ...profile } = input
+  // email lives on User; the rest on AgentProfile. Destructure explicitly so a
+  // stray field can't spread into the wrong table.
+  const { fullName, email, phone, address, experienceYears, specialization, commissionRate } = input
+
+  // Uniqueness before the transaction: a friendly 409 beats the partial unique
+  // index (email WHERE deleted_at IS NULL) throwing a raw constraint violation.
+  let normalisedEmail: string | undefined
+  if (email !== undefined) {
+    normalisedEmail = email.toLowerCase().trim()
+    const clash = await prisma.user.findFirst({
+      where: { email: normalisedEmail, deletedAt: null, id: { not: id } },
+      select: { id: true },
+    })
+    if (clash) throw conflict('Another account already uses that email')
+  }
 
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.update({
       where: { id },
       data: {
         ...(fullName !== undefined && { fullName }),
+        ...(normalisedEmail !== undefined && { email: normalisedEmail }),
         ...('phone' in input && { phone: orNull(phone) }),
         agentProfile: {
           update: {
-            ...('address' in input && { address: orNull(profile.address) }),
-            ...('experienceYears' in input && { experienceYears: profile.experienceYears ?? null }),
-            ...('specialization' in input && { specialization: orNull(profile.specialization) }),
-            ...('commissionRate' in input && { commissionRate: orNull(profile.commissionRate) }),
+            ...('address' in input && { address: orNull(address) }),
+            ...('experienceYears' in input && { experienceYears: experienceYears ?? null }),
+            ...('specialization' in input && { specialization: orNull(specialization) }),
+            ...('commissionRate' in input && { commissionRate: orNull(commissionRate) }),
           },
         },
       },
@@ -173,6 +196,114 @@ export async function setAgentStatus(actorId: string, id: string, status: UserSt
   if (status === 'SUSPENDED') await revokeAllSessions(id)
 
   return getAgent(id)
+}
+
+// ---------------------------------------------------------------------------
+// Per-agent access
+// ---------------------------------------------------------------------------
+
+const PERMISSION_LOAD = {
+  roles: { select: { role: { select: { permissions: { select: { permission: { select: { key: true } } } } } } } },
+  permissions: { select: { effect: true, permission: { select: { key: true } } } },
+} as const
+
+function toPermissionsResponse(user: {
+  roles: Array<{ role: { permissions: Array<{ permission: { key: string } }> } }>
+  permissions: Array<{ effect: 'ALLOW' | 'DENY'; permission: { key: string } }>
+}): AgentPermissionsResponse {
+  const rolePermissionKeys = [
+    ...new Set(user.roles.flatMap((r) => r.role.permissions.map((p) => p.permission.key))),
+  ]
+  const overrides = user.permissions.map((p) => ({ key: p.permission.key, effect: p.effect }))
+
+  // Reuse the ONE resolver the request path uses, so the preview here can never
+  // disagree with what authenticate() will actually enforce.
+  const effective = resolvePermissions({
+    userId: '',
+    sessionId: '',
+    rolePermissions: rolePermissionKeys,
+    userPermissions: overrides,
+  })
+
+  return {
+    rolePermissionKeys: rolePermissionKeys.sort(),
+    overrides,
+    effectivePermissionKeys: [...effective].sort(),
+  }
+}
+
+export async function getAgentPermissions(id: string): Promise<AgentPermissionsResponse> {
+  const user = await prisma.user.findFirst({
+    where: { id, deletedAt: null, agentProfile: { isNot: null } },
+    select: PERMISSION_LOAD,
+  })
+  if (!user) throw notFound('Agent not found')
+  return toPermissionsResponse(user)
+}
+
+/**
+ * Replace an agent's permission overrides.
+ *
+ * Takes effect on the agent's NEXT request, not one token-TTL later —
+ * authenticate() reloads permissions every request, which is the same
+ * JWT-not-stateless property that makes deactivation instant. No token to
+ * refresh, no cache to bust.
+ */
+export async function setAgentPermissions(
+  actorId: string,
+  id: string,
+  input: AgentPermissionsInput,
+  req: Request,
+): Promise<AgentPermissionsResponse> {
+  await getAgent(id) // 404 if not an agent; also refuses super-admins (no profile)
+
+  // Reject unknown keys rather than silently storing a row nothing enforces —
+  // a typo'd override that reads as "granted" in the UI but does nothing is
+  // exactly the kind of quiet RBAC failure we design against.
+  for (const o of input.overrides) {
+    if (!isPermissionKey(o.key)) {
+      throw validationFailed({ overrides: [`Unknown permission: ${o.key}`] })
+    }
+  }
+
+  const keys = input.overrides.map((o) => o.key)
+  const perms = await prisma.permission.findMany({
+    where: { key: { in: keys } },
+    select: { id: true, key: true },
+  })
+  const idByKey = new Map(perms.map((p) => [p.key, p.id]))
+
+  await prisma.$transaction(async (tx) => {
+    // Replace wholesale: the payload is the complete desired override set, so
+    // an override removed on the client (toggled back to the role default)
+    // disappears here. Simpler and less error-prone than diffing.
+    await tx.userPermission.deleteMany({ where: { userId: id } })
+    if (input.overrides.length) {
+      await tx.userPermission.createMany({
+        data: input.overrides.map((o) => ({
+          userId: id,
+          permissionId: idByKey.get(o.key)!,
+          effect: o.effect,
+        })),
+      })
+    }
+
+    await logActivityTx(tx, {
+      actorUserId: actorId,
+      action: 'agent.permissions.changed',
+      entityType: 'user',
+      entityId: id,
+      // Permission KEYS are not PII — safe to record which access changed.
+      summary: `Changed access for an agent`,
+      metadata: {
+        allow: input.overrides.filter((o) => o.effect === 'ALLOW').map((o) => o.key),
+        deny: input.overrides.filter((o) => o.effect === 'DENY').map((o) => o.key),
+      },
+      req,
+    })
+  })
+
+  return getAgentPermissions(id)
 }
 
 /** For assignment dropdowns — active agents only, minimal shape. */

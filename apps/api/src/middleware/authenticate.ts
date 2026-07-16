@@ -108,3 +108,24 @@ export function requirePermission(permission: PermissionKey): RequestHandler {
   Object.defineProperty(handler, 'requiredPermission', { value: permission })
   return handler
 }
+
+/**
+ * Passes if the actor holds ANY of the permissions.
+ *
+ * For shared read surfaces reached by more than one workflow — the assignable-
+ * agents dropdown feeds both "assign agent to client" and "assign agent to
+ * property", which are different permissions. Guarding with the union keeps a
+ * narrow role (only one of them) from being locked out of the list it needs.
+ */
+export function requireAnyPermission(...permissions: PermissionKey[]): RequestHandler {
+  const handler: RequestHandler = (req, _res, next) => {
+    if (!req.actor) return next(unauthenticated())
+    if (!req.actor.hasAny(permissions)) return next(forbidden())
+    next()
+  }
+  // The manifest test reads requiredPermission; expose the first as the
+  // representative, plus the full set for anything that wants it.
+  Object.defineProperty(handler, 'requiredPermission', { value: permissions[0] })
+  Object.defineProperty(handler, 'requiredAnyPermission', { value: permissions })
+  return handler
+}

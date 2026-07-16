@@ -135,11 +135,20 @@ are exactly two shapes. Forty lines.
 gymnastics, and a mental model — to express `{} | { assignedAgentId }`. Wrong
 trade at this size.
 
-### Agent property scope
+### Agent property scope — shared-pool model
 
-An agent sees properties assigned **to them** *or* **to their clients**. The
-spec's own workflow (*Open Client → View Assigned Properties*) requires the
-second clause.
+An agent sees, via three OR'd clauses:
+
+1. **all non-off-market inventory** (`visibility != PRIVATE`) — a brokerage
+   agent must be able to browse available stock to match it to clients;
+2. anything **assigned to them** (including off-market they handle);
+3. anything **assigned to one of their clients** (*Open Client → View Assigned
+   Properties*, including off-market shortlisted stock).
+
+Assignment marks *who is responsible*, not *who may look*. **PRIVATE
+(off-market) listings stay restricted** to the people handling them. Field
+redaction is orthogonal and unchanged: a browsed listing shows its price but
+hides another agent's internal notes.
 
 ### The guard against forgetting
 

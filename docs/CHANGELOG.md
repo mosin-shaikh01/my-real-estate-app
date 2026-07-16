@@ -7,6 +7,154 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Changed — agents browse the shared inventory (not only assigned)
+
+Previously an agent could see only properties assigned to them or to one of
+their clients — a per-agent-exclusive model. For a brokerage that's the wrong
+default: an agent needs to browse available stock to match it to clients.
+
+`scopeForProperty` for an agent is now the **shared-pool model** — three OR
+clauses:
+1. everything that is not off-market (`visibility != PRIVATE`) — the browsable pool
+2. anything assigned to them (including off-market they handle)
+3. anything assigned to one of their clients (the Open Client → View Properties flow)
+
+Assignment now means *who is responsible*, not *who may look*. **Off-market
+(PRIVATE) listings stay restricted** to the agent/clients handling them.
+
+Nothing about field redaction changes: verified that an agent browsing another
+agent's INTERNAL listing sees the **price** (needed to match clients) but the
+owner's **internal notes stay redacted**. Verified end to end: Rohan's list went
+from 4 → 6 (now includes Aisha's INTERNAL listings); an unrelated PRIVATE listing
+is invisible to him (absent from the list, 404 on detail); the redaction holds.
+
+### Fixed — Super Admin can now assign an agent to a property
+
+The property↔agent relationship (`assignedAgentId`) and the `property.assignAgent`
+permission both existed, but **nothing in the UI ever set it** — the property
+pages only *displayed* the agent name. Now:
+
+- **Property detail** has an "Assigned agent" selector (gated by
+  `property.assignAgent`; a plain read-out for everyone else). Choosing an agent
+  — or clearing it — calls a new `POST /api/properties/:id/assign-agent`.
+- **The create form** offers the same selector, so a property can be assigned at
+  creation.
+- A **dedicated endpoint with its own permission**, separate from
+  `property.update`: a manager can reassign inventory without being able to edit
+  prices. Reassigning also **changes who can see the property** (scope keys off
+  `assignedAgentId`), so it's a real authorization action — verified: an agent
+  couldn't see a BKC property, was assigned it, and it appeared in their scoped
+  list.
+- The suspended-agent guard applies (assigning an inactive agent → 400), and an
+  agent without the permission is 403.
+- `/agents/assignable` is now guarded by the **union** of the assignment
+  permissions (`requireAnyPermission`) so it serves both the client- and
+  property-assignment flows, not just the client one.
+
+**Seed hardening** (this test-induced drift bit twice): reseed now restores each
+demo user's email, password, name and status, and clears any per-agent
+permission overrides. A changed password or a stray override no longer survives
+`npm run db:seed` — the demo logins always work after a reseed.
+
+### Added — self-service profile page
+
+Every authenticated user — Super Admin and Agent alike — now has a **Your
+profile** page (`/profile`, linked from the top-bar user menu) to manage their
+own details and password.
+
+- **Edit own** name, email (uniqueness-checked → 409 on a clash), and mobile.
+  Agents can also edit their own specialization, experience, and address;
+  commission is shown **read-only** (it's an admin-set financial field, not
+  self-editable).
+- **Change own password** — verifies the current password, then **signs the user
+  out of every *other* device while keeping the current one**. Changing a
+  password shouldn't eject the person who changed it, but a leaked session
+  elsewhere must die. (`revokeOtherSessions` — a new variant that keeps the
+  acting session.)
+
+This also **fills a Phase 2 gap**: the `changePasswordSchema` existed but no
+change-password endpoint was ever built — only login/refresh/logout/me were
+wired. That endpoint now exists (self-service).
+
+Security shape: the routes are `publicRoute` (authenticated, no permission gate)
+and operate **only on the actor's own id** — never a target from the request
+body. That's the same "you may act on yourself" footing as `/auth/me`.
+
+Verified: agent and admin both load the right profile (admin has no agent
+block); self-edits persist and `/me` reflects a changed name so the top bar
+updates; a password change kept the current session (200) and revoked the other
+(401); a wrong current password is rejected; a `commissionRate` sent by an agent
+is ignored.
+
+### Added — editable agent profiles + agent codes
+
+- Super Admin can now **edit an agent's details** — name, email, mobile number,
+  specialization, experience, commission, address — via an "Edit" dialog on the
+  Agents page (gated by `agent.update`).
+- **Email is now editable** (the `updateAgent` service previously dropped it
+  silently — email lives on `User`, and it was being spread into the profile
+  update). Changing it re-checks uniqueness against active accounts: a clash
+  returns 409, and the agent can immediately sign in with the new address.
+- **Every agent has a human-readable profile code — `AGT-00001`** — matching the
+  `PROP-`/`CLI-` pattern, from a new `agent_code_seq`. Shown on the Agents page.
+  Migration backfilled the two existing agents (AGT-00001, AGT-00002).
+- The Agents page now shows the **ID and mobile** columns (mobile as a `tel:`
+  link).
+
+The `agent_code` migration also cleared a cosmetic drift that had lingered since
+Phase 1: the property/client code defaults were set via raw SQL in `init`, and
+the schema's `dbgenerated` normalises slightly differently, so every
+`migrate diff` re-emitted them. Folded the no-op reconciliation in. Verified:
+`migrate status` is clean, codes generate for new agents (AGT-00003…), and edits
+persist.
+
+### Added — per-agent access editing
+
+Super Admin can now grant or restrict individual permissions for a specific
+agent. This is the "per-agent overrides: UI later" item the plan deferred — the
+schema (`UserPermission` ALLOW/DENY) and resolver already supported it.
+
+- `GET/PUT /api/agents/:id/permissions` (guarded by `agent.permissions.update`).
+- "Access" action on each agent row opens a matrix dialog: every permission is a
+  checkbox showing the agent's *effective* state, with a Granted/Denied badge
+  where it overrides the role default.
+- The client sends only the **diffs** — permissions where the desired state
+  differs from what the Agent role grants. Toggling back to the role default
+  removes the override, so the stored set stays minimal and future role changes
+  still flow through un-overridden permissions.
+- **Takes effect on the agent's next request**, no re-login — the same
+  permissions-loaded-per-request property that makes deactivation instant.
+
+Verified against the running stack: granting `client.budget.view` made budgets
+appear in the agent's very next response; a DENY on a role-granted permission
+(`client.email.view`) redacted it (deny beats the role grant); an unknown key is
+rejected (`VALIDATION_FAILED`) rather than silently stored; an agent without
+`agent.permissions.update` is 403 on both GET and PUT.
+
+### Added — Phases 6–8: activity log, global search, roles matrix
+
+- **Activity log page** (`/activity`, admin-only). The data has accumulated
+  since Phase 2 — every mutation wrote a row; this surfaces it. Safe to render
+  in full because sensitive fields are logged by name, never value.
+- **Global search** in the top bar: debounced, scoped, across properties +
+  clients, with phone normalization ("9876543210" matches "+91 98765 43210").
+  A results popover; scope runs on the query so it can't leak what the lists
+  wouldn't.
+- **Read-only roles matrix** (`/settings/roles`): roles × the 43-permission
+  catalog, grouped by resource. Makes the "catalog is code, grants are data"
+  split visible. Editing deferred (schema/resolver already support it).
+
+**Security fix caught by end-to-end verification.** The first search
+implementation spread `scopeForProperty(actor)` and then added its own
+top-level `OR` for the search terms. `scopeForProperty` for an agent *contains*
+an `OR` (the "assigned to me OR to my client" clause), so the second `OR` key
+**silently overwrote the scope's** — an agent's search returned every property,
+including other agents' inventory. Every unit test passed; only diffing search
+results against the scoped list exposed it. Fixed by composing scope and search
+with `AND` (as the list endpoints already do), and pinned with a regression test
+that reproduces the clobber. Verified: agent search now equals the agent's
+scoped list exactly, and returns nothing for another agent's property.
+
 ### Added — Phase 5: the requirement → match → assign flow (core feature)
 
 The screen the product is built around. `RequirementMatchPage` at `/requirements`.

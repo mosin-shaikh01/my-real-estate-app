@@ -128,3 +128,48 @@ export function diffForLog(before: Record<string, unknown>, after: Record<string
 export function isSensitiveField(field: string): boolean {
   return SENSITIVE_FIELDS.has(field)
 }
+
+// ---------------------------------------------------------------------------
+// Reading the log
+// ---------------------------------------------------------------------------
+// activity.list is admin-only (agents don't hold it), so a flat list is correct
+// — an admin sees all activity. There is deliberately no per-row scoping: the
+// gate is the permission. If activity.list were ever granted to a non-admin,
+// this would need a scope pass, and that decision belongs with whoever grants
+// it, not baked in silently here.
+
+export interface ActivityQuery {
+  page: number
+  pageSize: number
+  action?: string
+  entityType?: string
+  actorUserId?: string
+}
+
+export async function listActivity(query: ActivityQuery) {
+  const where: Prisma.ActivityLogWhereInput = {}
+  if (query.action) where.action = { startsWith: query.action }
+  if (query.entityType) where.entityType = query.entityType
+  if (query.actorUserId) where.actorUserId = query.actorUserId
+
+  const [rows, total] = await Promise.all([
+    prisma.activityLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (query.page - 1) * query.pageSize,
+      take: query.pageSize,
+      select: {
+        id: true,
+        action: true,
+        entityType: true,
+        entityId: true,
+        summary: true,
+        createdAt: true,
+        actor: { select: { id: true, fullName: true } },
+      },
+    }),
+    prisma.activityLog.count({ where }),
+  ])
+
+  return { rows, total }
+}

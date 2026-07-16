@@ -93,6 +93,42 @@ describe('permission resolver: (roles ∪ ALLOWs) \\ DENYs', () => {
   })
 })
 
+// Per-agent access editing: the overrides resolve against the REAL agent role,
+// not a synthetic one — the property the /agents/:id/permissions editor relies on.
+describe('per-agent access overrides against the agent role', () => {
+  it('an ALLOW opens a permission the agent role withholds', () => {
+    expect(AGENT_PERMISSIONS).not.toContain('client.budget.view')
+    const p = resolvePermissions({
+      userId: 'a',
+      sessionId: 's',
+      rolePermissions: AGENT_PERMISSIONS,
+      userPermissions: [{ key: 'client.budget.view', effect: 'ALLOW' }],
+    })
+    expect(p.has('client.budget.view' as PermissionKey)).toBe(true)
+  })
+
+  it('a DENY closes a permission the agent role grants', () => {
+    expect(AGENT_PERMISSIONS).toContain('client.email.view')
+    const p = resolvePermissions({
+      userId: 'a',
+      sessionId: 's',
+      rolePermissions: AGENT_PERMISSIONS,
+      userPermissions: [{ key: 'client.email.view', effect: 'DENY' }],
+    })
+    expect(p.has('client.email.view' as PermissionKey)).toBe(false)
+  })
+
+  it('an empty override set is exactly the role', () => {
+    const p = resolvePermissions({
+      userId: 'a',
+      sessionId: 's',
+      rolePermissions: AGENT_PERMISSIONS,
+      userPermissions: [],
+    })
+    expect([...p].sort()).toEqual([...AGENT_PERMISSIONS].sort())
+  })
+})
+
 // ---------------------------------------------------------------------------
 // 2. Scope resolver
 // ---------------------------------------------------------------------------
@@ -112,13 +148,25 @@ describe('scope resolver', () => {
     expect(scopeForClient(ADMIN).deletedAt).toBeNull()
   })
 
-  it("includes properties assigned to the agent's clients, not just to the agent", () => {
-    // The spec's own workflow -- Open Client -> View Assigned Properties -- is
-    // unreachable without the second clause.
+  it('lets an agent browse the shared pool but keeps off-market restricted', () => {
+    // Shared-pool model: three OR clauses — non-private inventory, own
+    // assignments, and clients' assignments. The workflow "Open Client -> View
+    // Assigned Properties" plus "browse available stock" both live here.
     const scope = scopeForProperty(AGENT)
-    expect(scope.OR).toHaveLength(2)
-    expect(scope.OR?.[0]).toEqual({ assignedAgentId: 'agent-1' })
-    expect(JSON.stringify(scope.OR?.[1])).toContain('assignedAgentId')
+    expect(scope.OR).toHaveLength(3)
+    // Clause 1: everything not off-market — the browsable inventory.
+    expect(scope.OR?.[0]).toEqual({ visibility: { not: 'PRIVATE' } })
+    // Clauses 2 & 3: own + clients' assignments, so an agent still sees an
+    // off-market property they personally handle.
+    expect(scope.OR?.[1]).toEqual({ assignedAgentId: 'agent-1' })
+    expect(JSON.stringify(scope.OR?.[2])).toContain('assignedAgentId')
+  })
+
+  it('an agent still cannot see PRIVATE stock unless it is theirs', () => {
+    // The guardrail: clause 1 excludes PRIVATE, so an unrelated off-market
+    // listing only reaches an agent through clause 2 or 3.
+    const scope = scopeForProperty(AGENT)
+    expect(scope.OR?.[0]).toEqual({ visibility: { not: 'PRIVATE' } })
   })
 })
 
@@ -226,6 +274,7 @@ const AGENT_ROW: AgentRow = {
   status: 'ACTIVE',
   createdAt: new Date('2026-07-01'),
   agentProfile: {
+    code: 'AGT-00001',
     address: 'Mumbai',
     experienceYears: 6,
     specialization: 'Residential',
@@ -255,6 +304,10 @@ describe('agent serializer', () => {
     const dto = toAgentDTO(AGENT_ROW, ADMIN)
     expect(dto.assignedClientCount).toBe(4)
     expect(dto.assignedPropertyCount).toBe(3)
+  })
+
+  it('exposes the human-readable profile code', () => {
+    expect(toAgentDTO(AGENT_ROW, ADMIN).code).toBe('AGT-00001')
   })
 })
 

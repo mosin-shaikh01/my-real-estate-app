@@ -47,6 +47,16 @@ export function useArchiveProperty(id: string) {
   })
 }
 
+export function useAssignPropertyAgent(id: string) {
+  const invalidate = useInvalidateProperties()
+  return useMutation({
+    // null clears the assignment. Reassigning changes who can SEE the property,
+    // so invalidate broadly — the current agent's scoped list may shift.
+    mutationFn: (agentId: string | null) => api.post(`/properties/${id}/assign-agent`, { agentId }),
+    onSuccess: invalidate,
+  })
+}
+
 export function useUploadMedia(propertyId: string) {
   const qc = useQueryClient()
   return useMutation({

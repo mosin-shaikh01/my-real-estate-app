@@ -53,6 +53,7 @@ expensive or invisible.
 | **Filter/sort allowlists must be permission-filtered.** | An agent who can sort by budget infers budgets from row order. This is a security control, not a convenience. |
 | **Media is served through an authorized route, never `express.static`.** | Static hosting makes every document world-readable by URL and invalidates the entire RBAC design. |
 | **Log changed field *names*, not values, for sensitive fields.** | Otherwise PII lands in a log table the redactor does not cover. |
+| **Compose a scope with `AND`, never by spreading it alongside your own `OR`.** | `scopeForProperty` for an agent *contains* an `OR`. Spread it and add a second top-level `OR` and the last one wins — the scope silently vanishes and the query leaks every row. Wrap both in `AND: [scope, { OR: [...] }]`. |
 
 ---
 
@@ -351,9 +352,9 @@ npm run db:studio    # prisma studio
 | 3 · Properties (CRUD, media, dashboard) | ✅ done — read, write, live dashboard, authorized media upload/stream |
 | 4 · Clients + Agents | ✅ done — client CRUD + interactions (lastContactAt in tx), agent CRUD + activate/deactivate (revokes sessions), commission redaction |
 | 5 · Requirement + match + bulk assign (core feature) | ✅ done — atomic new-client create + existing-client bulk assign, two-form matching screen, one log per assignment |
-| 6 · Activity log + dashboard | ⬜ |
-| 7 · Global search | ⬜ |
-| 8 · Reports | ⬜ |
+| 6 · Activity log + dashboard | ✅ done — dashboard live since Phase 3; activity log page surfaced |
+| 7 · Global search | ✅ done — scoped, phone-normalized, properties + clients |
+| 8 · Reports | ⬜ (roles matrix done; transactional reports need a Deal-close flow) |
 
 **Phase 2 precedes properties deliberately.** Build properties first and you
 retrofit scoping into every query — the exact smear the design prevents. Prove
