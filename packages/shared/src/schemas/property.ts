@@ -77,28 +77,39 @@ export type PropertyListQuery = z.infer<typeof propertyListQuerySchema>
  * the object itself (no ZodEffects wrapper to unwrap), so the base has to exist
  * separately rather than be recovered later.
  */
+// CRITICAL: no `.default()` anywhere in this shape.
+//
+// `.partial()` KEEPS defaults, so a defaulted field would arrive on every PATCH
+// even when the caller never sent it — a one-field edit would silently rewrite
+// status, visibility, parking and furnished back to their defaults. That is
+// data corruption, and it passes every unit test because the value is
+// syntactically valid.
+//
+// These fields already have @default in prisma/schema.prisma, so on CREATE an
+// omitted field is filled by the database. The Zod default was redundant there
+// and poison here. Optional throughout; the DB owns create-time defaults.
 const propertyBaseSchema = z.object({
     title: z.string().trim().min(5, 'Give the listing a descriptive title').max(200),
     description: z.string().trim().min(10, 'Add a description'),
 
     propertyType: propertyTypeSchema,
     listingType: listingTypeSchema,
-    status: propertyStatusSchema.default('AVAILABLE'),
-    constructionStatus: constructionStatusSchema.default('READY_TO_MOVE'),
-    visibility: visibilitySchema.default('INTERNAL'),
-    featured: z.boolean().default(false),
+    status: propertyStatusSchema.optional(),
+    constructionStatus: constructionStatusSchema.optional(),
+    visibility: visibilitySchema.optional(),
+    featured: z.boolean().optional(),
 
     salePrice: moneyString.nullish(),
     rentPricePerMonth: moneyString.nullish(),
     securityDeposit: moneyString.nullish(),
     maintenanceCharges: moneyString.nullish(),
-    negotiable: z.boolean().default(false),
+    negotiable: z.boolean().optional(),
 
     areaSqft: moneyString,
     bedrooms: z.number().int().min(0).nullish(),
     bathrooms: z.number().int().min(0).nullish(),
-    parking: z.number().int().min(0).default(0),
-    furnished: furnishedStatusSchema.default('UNFURNISHED'),
+    parking: z.number().int().min(0).optional(),
+    furnished: furnishedStatusSchema.optional(),
     facing: facingSchema.nullish(),
     floor: z.number().int().nullish(),
     totalFloor: z.number().int().min(0).nullish(),
@@ -113,7 +124,7 @@ const propertyBaseSchema = z.object({
     locality: z.string().trim().max(120).nullish(),
     city: z.string().trim().min(1, 'City is required').max(120),
     state: z.string().trim().min(1, 'State is required').max(120),
-    country: z.string().trim().default('India'),
+    country: z.string().trim().optional(),
     pincode: z.string().trim().regex(/^\d{6}$/, 'Enter a 6-digit pincode'),
 
     latitude: z.string().regex(/^-?\d{1,3}(\.\d{1,6})?$/).nullish(),
@@ -122,7 +133,9 @@ const propertyBaseSchema = z.object({
     videoUrl: z.string().url('Enter a valid URL').nullish(),
     internalNotes: z.string().nullish(),
     assignedAgentId: z.string().nullish(),
-    amenityIds: z.array(z.string()).default([]),
+    // Optional, not defaulted: create treats undefined as [], update treats it
+    // as "not sent" so it doesn't wipe existing amenities.
+    amenityIds: z.array(z.string()).optional(),
   })
 
 // A listing's price must match what it is listed FOR. This is cross-FIELD, not
@@ -141,7 +154,8 @@ export const propertyCreateSchema = propertyBaseSchema
 
 export type PropertyCreateInput = z.infer<typeof propertyCreateSchema>
 
-/** PATCH: partial, and deliberately un-refined. See propertyBaseSchema. */
+/** PATCH: partial, un-refined. The base carries no defaults, so `.partial()`
+ *  is safe — an omitted field is genuinely absent, never a silent default. */
 export const propertyUpdateSchema = propertyBaseSchema.partial()
 export type PropertyUpdateInput = z.infer<typeof propertyUpdateSchema>
 

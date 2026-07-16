@@ -7,6 +7,36 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — Phase 3 (write path): properties, activity log, live dashboard
+
+- Property writes: `POST /`, `PATCH /:id`, `POST /:id/status`, `POST /:id/archive`,
+  `DELETE /:id`. Each is a transaction carrying its own `ActivityLog` row —
+  logging goes in *with* the mutation, not bolted on later.
+- **Server refinement layer**: `assignedAgentId` must reference an *active*
+  agent; amenities must exist. Cross-table rules that shared Zod cannot express,
+  returned field-keyed so they map onto RHF.
+- **Activity log service** with the PII guard: sensitive fields (`internalNotes`,
+  prices, budgets, phones, commission) are logged by NAME, never value.
+- **Live dashboard** — every tile runs through the same scope resolver as the
+  lists. Agent headcount and commission are gated (null, not zero). This retires
+  the seeded constants that were the one place the demo lied.
+- Property create form (RHF + shared `propertyCreateSchema`, price fields shown
+  by `watch(listingType)`), plus status/archive actions gated by `<Can>`.
+- `useUrlFilters`, `Select` primitive.
+
+Two bugs that **only driving the live endpoint exposed** — both passed every
+unit test because the wrong values were syntactically valid:
+
+1. **Systemic default-leak (data corruption).** `propertyBaseSchema.partial()`
+   keeps every `.default()`, so a one-field PATCH arrived carrying
+   `status`/`visibility`/`parking`/`furnished`/`amenityIds` and silently rewrote
+   them to defaults. A `{featured:true}` edit reset a RENTED property to
+   AVAILABLE. Fix: no `.default()` in the base — those fields already have
+   `@default` in the DB, so create fills them there and PATCH leaves them alone.
+   Regression test asserts a parsed update equals exactly what was sent.
+2. **Phantom amenities log.** Same root cause, milder: `amenityIds` defaulted to
+   `[]`, and `[]` is truthy, so every edit claimed to touch amenities.
+
 ### Added — Phase 3 (read path): properties
 
 - `GET /api/properties` — scoped, filtered, sorted, paginated; `GET /:id`;

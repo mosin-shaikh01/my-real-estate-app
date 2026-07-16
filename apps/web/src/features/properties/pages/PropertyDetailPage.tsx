@@ -1,13 +1,68 @@
-import { ArrowLeft, ExternalLink, MapPin } from 'lucide-react'
+import { ArrowLeft, Archive, ArchiveRestore, ExternalLink, MapPin } from 'lucide-react'
 import { Link, useParams } from 'react-router'
-import { PROPERTY_TYPE_LABELS, type PropertyStatus, type PropertyType } from '@app/shared'
+import {
+  PROPERTY_STATUS_LABELS,
+  PROPERTY_TYPE_LABELS,
+  type PropertyStatus,
+  type PropertyType,
+} from '@app/shared'
 import { Can, Locked } from '@/components/auth/Can'
 import { PageHeader } from '@/components/layout/AppShell'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { Select } from '@/components/ui/Select'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { useProperty } from '@/features/properties/api/use-properties'
+import {
+  useArchiveProperty,
+  useSetPropertyStatus,
+} from '@/features/properties/api/use-property-mutations'
 import { formatArea, formatDate, formatMoney, formatPropertyAge, mapsUrl } from '@/lib/format'
+
+const STATUS_OPTIONS = (Object.keys(PROPERTY_STATUS_LABELS) as PropertyStatus[]).map((s) => ({
+  value: s,
+  label: PROPERTY_STATUS_LABELS[s],
+}))
+
+function PropertyActions({ id, status, archived }: { id: string; status: PropertyStatus; archived: boolean }) {
+  const setStatus = useSetPropertyStatus(id)
+  const archive = useArchiveProperty(id)
+  return (
+    <div className="flex items-center gap-2">
+      <Can permission="property.status.update">
+        <div className="w-32">
+          <Select
+            aria-label="Change status"
+            value={status}
+            options={STATUS_OPTIONS}
+            disabled={setStatus.isPending}
+            onChange={(e) => setStatus.mutate(e.target.value as PropertyStatus)}
+          />
+        </div>
+      </Can>
+      <Can permission="property.archive">
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={archive.isPending}
+          onClick={() => archive.mutate(!archived)}
+        >
+          {archived ? (
+            <>
+              <ArchiveRestore aria-hidden="true" />
+              Restore
+            </>
+          ) : (
+            <>
+              <Archive aria-hidden="true" />
+              Archive
+            </>
+          )}
+        </Button>
+      </Can>
+    </div>
+  )
+}
 
 export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -53,11 +108,11 @@ export default function PropertyDetailPage() {
         action={
           <div className="flex items-center gap-2">
             <StatusBadge status={p.status as PropertyStatus} />
-            <Can permission="property.update">
-              <Button variant="secondary" size="sm">
-                Edit
-              </Button>
-            </Can>
+            <PropertyActions
+              id={p.id}
+              status={p.status as PropertyStatus}
+              archived={p.archivedAt != null}
+            />
           </div>
         }
       />

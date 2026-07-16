@@ -4,6 +4,7 @@ import { isPermissionKey } from '@app/shared'
 import { ROUTE_MOUNTS } from '../src/app.js'
 import { authRouter } from '../src/routes/auth-routes.js'
 import { clientRouter } from '../src/routes/client-routes.js'
+import { dashboardRouter } from '../src/routes/dashboard-routes.js'
 import { propertyRouter } from '../src/routes/property-routes.js'
 
 // ============================================================================
@@ -66,6 +67,7 @@ const ALL_ROUTES: RouteInfo[] = [
   ...routesOf(authRouter, '/api/auth'),
   ...routesOf(clientRouter, '/api/clients'),
   ...routesOf(propertyRouter, '/api/properties'),
+  ...routesOf(dashboardRouter, '/api/dashboard'),
 ]
 
 describe('route manifest', () => {
@@ -81,6 +83,7 @@ describe('route manifest', () => {
     expect(ROUTE_MOUNTS.map((m) => m.path).sort()).toEqual([
       '/api/auth',
       '/api/clients',
+      '/api/dashboard',
       '/api/properties',
     ])
   })
@@ -131,7 +134,7 @@ describe('route manifest', () => {
     ])
   })
 
-  it.each(['/api/clients', '/api/properties'])('every %s route is guarded, none is public', (prefix) => {
+  it.each(['/api/clients', '/api/properties', '/api/dashboard'])('every %s route is guarded, none is public', (prefix) => {
     const routes = ALL_ROUTES.filter((r) => r.path.startsWith(prefix))
     expect(routes.length).toBeGreaterThan(0)
     for (const r of routes) {
@@ -140,7 +143,25 @@ describe('route manifest', () => {
     }
   })
 
-  it.each(['/api/clients', '/api/properties'])('%s sits behind authenticate', (prefix) => {
-    expect(ROUTE_MOUNTS.find((m) => m.path === prefix)?.requiresAuth).toBe(true)
+  it.each(['/api/clients', '/api/properties', '/api/dashboard'])(
+    '%s sits behind authenticate',
+    (prefix) => {
+      expect(ROUTE_MOUNTS.find((m) => m.path === prefix)?.requiresAuth).toBe(true)
+    },
+  )
+
+  it('every write route declares a WRITE permission, not a read one', () => {
+    // A POST guarded by property.list would be a real hole and would pass every
+    // other assertion in this file.
+    const writes = ALL_ROUTES.filter(
+      (r) => ['POST', 'PATCH', 'DELETE'].includes(r.method) && !r.path.startsWith('/api/auth'),
+    )
+    expect(writes.length).toBeGreaterThan(0)
+    for (const r of writes) {
+      expect(r.permission, `${r.method} ${r.path}`).toBeTruthy()
+      expect(r.permission, `${r.method} ${r.path} is guarded by a read permission`).not.toMatch(
+        /\.(list|view)$/,
+      )
+    }
   })
 })

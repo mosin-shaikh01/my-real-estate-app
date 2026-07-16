@@ -6,6 +6,7 @@ import { requestLog } from './middleware/request-log.js'
 import { publicRoute } from './middleware/route-registry.js'
 import { authRouter } from './routes/auth-routes.js'
 import { clientRouter } from './routes/client-routes.js'
+import { dashboardRouter } from './routes/dashboard-routes.js'
 import { propertyRouter } from './routes/property-routes.js'
 
 /**
@@ -29,6 +30,7 @@ export const ROUTE_MOUNTS: ReadonlyArray<{
   { path: '/api/auth', router: authRouter, requiresAuth: false },
   { path: '/api/clients', router: clientRouter, requiresAuth: true },
   { path: '/api/properties', router: propertyRouter, requiresAuth: true },
+  { path: '/api/dashboard', router: dashboardRouter, requiresAuth: true },
 ]
 
 export function createApp() {

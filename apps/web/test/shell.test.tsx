@@ -22,17 +22,40 @@ const ME: MeResponse = {
 beforeEach(() => {
   // The shell reads /auth/me through TanStack Query. Stub the transport, not
   // the hook — mocking the hook would test the mock rather than the wiring.
+  // Stub the transport, and return the real envelope shapes. Returning a bare
+  // {} would crash the dashboard's `recent?.data.length` — the API contract
+  // guarantees a `data` field, so a stub that omits it is testing a state the
+  // server never produces.
+  const json = (body: unknown) =>
+    new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: string | URL) => {
       const url = String(input)
-      if (url.includes('/api/auth/me')) {
-        return new Response(JSON.stringify(ME), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
+      if (url.includes('/api/auth/me')) return json(ME)
+      if (url.includes('/api/dashboard')) {
+        return json({
+          data: {
+            activeProperties: 3,
+            totalProperties: 6,
+            soldProperties: 1,
+            rentedProperties: 1,
+            totalClients: 4,
+            totalAgents: 2,
+            followUpsDue: 1,
+            commissionEarned: '987500.00',
+            recentActivity: [],
+          },
         })
       }
-      return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } })
+      if (url.includes('/api/properties')) {
+        return json({ data: [], meta: { page: 1, pageSize: 25, total: 0, totalPages: 1 } })
+      }
+      return json({})
     }),
   )
 })

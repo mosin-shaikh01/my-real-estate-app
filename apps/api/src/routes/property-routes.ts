@@ -1,5 +1,12 @@
 import { Router } from 'express'
-import { propertyListQuerySchema, type Paginated } from '@app/shared'
+import { z } from 'zod'
+import {
+  propertyCreateSchema,
+  propertyListQuerySchema,
+  propertyStatusUpdateSchema,
+  propertyUpdateSchema,
+  type Paginated,
+} from '@app/shared'
 import { requirePermission } from '../middleware/authenticate.js'
 import { idParamSchema } from '../lib/params.js'
 import {
@@ -7,6 +14,13 @@ import {
   listProperties,
   listPropertyCities,
 } from '../services/property-service.js'
+import {
+  archiveProperty,
+  createProperty,
+  deleteProperty,
+  setPropertyStatus,
+  updateProperty,
+} from '../services/property-write-service.js'
 import { toPropertyDTO, type PropertyDTO } from '../serializers/property-serializer.js'
 
 export const propertyRouter = Router()
@@ -44,4 +58,41 @@ propertyRouter.get('/:id', requirePermission('property.view'), async (req, res) 
   const actor = req.actor!
   const { id } = idParamSchema.parse(req.params)
   res.json({ data: toPropertyDTO(await getProperty(actor, id), actor) })
+})
+
+// ---------------------------------------------------------------------------
+// Writes
+// ---------------------------------------------------------------------------
+// Every one is a transaction carrying its own ActivityLog row. Logging is not
+// a Phase 6 bolt-on: a log written after the fact lies the moment anything
+// fails between the mutation and the write.
+
+propertyRouter.post('/', requirePermission('property.create'), async (req, res) => {
+  const input = propertyCreateSchema.parse(req.body)
+  const property = await createProperty(req.actor!, input, req)
+  res.status(201).json({ data: property })
+})
+
+propertyRouter.patch('/:id', requirePermission('property.update'), async (req, res) => {
+  const { id } = idParamSchema.parse(req.params)
+  const input = propertyUpdateSchema.parse(req.body)
+  res.json({ data: await updateProperty(req.actor!, id, input, req) })
+})
+
+propertyRouter.post('/:id/status', requirePermission('property.status.update'), async (req, res) => {
+  const { id } = idParamSchema.parse(req.params)
+  const { status } = propertyStatusUpdateSchema.parse(req.body)
+  res.json({ data: await setPropertyStatus(req.actor!, id, status, req) })
+})
+
+propertyRouter.post('/:id/archive', requirePermission('property.archive'), async (req, res) => {
+  const { id } = idParamSchema.parse(req.params)
+  const { archived } = z.object({ archived: z.boolean().default(true) }).parse(req.body ?? {})
+  res.json({ data: await archiveProperty(req.actor!, id, archived, req) })
+})
+
+propertyRouter.delete('/:id', requirePermission('property.delete'), async (req, res) => {
+  const { id } = idParamSchema.parse(req.params)
+  await deleteProperty(req.actor!, id, req)
+  res.status(204).end()
 })

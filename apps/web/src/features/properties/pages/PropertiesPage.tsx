@@ -1,11 +1,11 @@
-import { Search, X } from 'lucide-react'
+import { Plus, Search, X } from 'lucide-react'
 import { Link } from 'react-router'
 import {
   PROPERTY_STATUS_LABELS,
   PROPERTY_TYPE_LABELS,
   type PropertyStatus,
 } from '@app/shared'
-import { Locked } from '@/components/auth/Can'
+import { Can, Locked } from '@/components/auth/Can'
 import { PageHeader } from '@/components/layout/AppShell'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
@@ -85,6 +85,18 @@ export default function PropertiesPage() {
           data
             ? `${data.meta.total} ${data.meta.total === 1 ? 'property' : 'properties'} visible to you`
             : undefined
+        }
+        action={
+          // Gated by the same permission the server enforces on POST. This is
+          // UX — hiding a button an agent's request would be 403'd anyway.
+          <Can permission="property.create">
+            <Button variant="primary" asChild>
+              <Link to="/properties/new">
+                <Plus aria-hidden="true" />
+                New property
+              </Link>
+            </Button>
+          </Can>
         }
       />
 

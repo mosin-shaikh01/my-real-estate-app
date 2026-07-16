@@ -332,6 +332,12 @@ npm run db:studio    # prisma studio
   the module in `src/types/globals.d.ts`.
 - **React Hooks v7 lint is compiler-aware**: no `setState` in an effect (adjust
   during render instead), no impure calls like `Date.now()` during render.
+- **Zod `.partial()` keeps `.default()`.** A partial (PATCH) schema built from a
+  defaulted base carries those defaults on every request, silently overwriting
+  fields the caller never sent. Keep create/update field defaults in the DB
+  (`@default`), not in shared Zod, or a one-field edit corrupts the rest.
+- **`.refine()` returns the object, not a wrapper.** Declare the base shape
+  separately so PATCH can `.partial()` it without the cross-field rules.
 
 ---
 
@@ -342,7 +348,7 @@ npm run db:studio    # prisma studio
 | 0 · De-risk (install spike, strict, gitignore, Postgres) | ✅ done |
 | 1 · Foundation (workspaces, tokens, schema, seed, docs, shell) | ✅ done |
 | 2 · Auth + RBAC end-to-end | ✅ done — verified: agent sees 2/4 clients, `budget` absent from the payload, suspension locks out on the next request |
-| 3 · Properties (CRUD, media, search) | ⬜ |
+| 3 · Properties (CRUD, dashboard, search) | 🔄 read + write + live dashboard done; **media upload** left |
 | 4 · Clients + Agents | ⬜ |
 | 5 · Requirement + match + bulk assign (core feature) | ⬜ |
 | 6 · Activity log + dashboard | ⬜ |

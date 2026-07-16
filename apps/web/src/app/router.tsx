@@ -8,6 +8,7 @@ const Dashboard = lazy(() => import('@/features/dashboard/pages/DashboardPage'))
 const Clients = lazy(() => import('@/features/clients/pages/ClientsPage'))
 const Properties = lazy(() => import('@/features/properties/pages/PropertiesPage'))
 const PropertyDetail = lazy(() => import('@/features/properties/pages/PropertyDetailPage'))
+const PropertyCreate = lazy(() => import('@/features/properties/pages/PropertyCreatePage'))
 const DesignSystem = lazy(() => import('@/features/design-system/pages/DesignSystemPage'))
 const Login = lazy(() => import('@/features/auth/pages/LoginPage'))
 const NotFound = lazy(() => import('@/features/misc/pages/NotFoundPage'))
@@ -39,6 +40,8 @@ export const router = createBrowserRouter([
       { index: true, element: lazyRoute(<Dashboard />) },
       { path: 'clients', element: lazyRoute(<Clients />) },
       { path: 'properties', element: lazyRoute(<Properties />) },
+      // 'new' before ':id', or the detail route swallows it as an id.
+      { path: 'properties/new', element: lazyRoute(<PropertyCreate />) },
       { path: 'properties/:id', element: lazyRoute(<PropertyDetail />) },
       { path: 'design-system', element: lazyRoute(<DesignSystem />) },
       { path: 'requirements', element: lazyRoute(<Placeholder />) },
