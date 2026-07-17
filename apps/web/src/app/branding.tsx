@@ -36,37 +36,38 @@ export function BrandingEffects() {
   return null
 }
 
-// The object URL currently in use, kept so it can be revoked on the next swap.
-let currentObjectUrl: string | null = null
-
-// Dynamic favicons are stubborn: browsers (Chrome especially) often keep the
-// already-painted icon even after you swap the <link href>. Two things make it
-// reliable here:
+// Dynamic favicons are stubborn: browsers (Chrome especially) keep the already-
+// painted icon after a plain href change. Two things make it reliable:
 //   1. Replace the element outright (remove every icon link, append a fresh one).
-//   2. Point it at a `blob:` URL of the fetched bytes, not the http URL. A blob
-//      URL is unique and un-cacheable, so the browser treats it as brand-new
-//      content and repaints the tab.
-// If the fetch fails (e.g. offline), we fall back to the direct URL.
+//   2. Point it at a `data:` URL of the fetched bytes. A data URL is unique,
+//      self-contained and un-cacheable, so the browser repaints — and unlike a
+//      `blob:` URL it needs no revoke, so React Strict Mode's double-invoke can't
+//      leave the <link> pointing at a dead reference (which shows as the browser's
+//      generic globe).
+// Falls back to the direct URL if the fetch fails.
 async function setFavicon(href: string | null): Promise<void> {
-  if (currentObjectUrl) {
-    URL.revokeObjectURL(currentObjectUrl)
-    currentObjectUrl = null
-  }
-
   if (!href) {
     replaceIcon('/favicon.svg', 'image/svg+xml')
     return
   }
-
   try {
     const res = await fetch(href, { cache: 'no-store' })
     if (!res.ok) throw new Error(`favicon ${res.status}`)
     const blob = await res.blob()
-    currentObjectUrl = URL.createObjectURL(blob)
-    replaceIcon(currentObjectUrl, blob.type || undefined)
+    const dataUrl = await blobToDataUrl(blob)
+    replaceIcon(dataUrl, blob.type || undefined)
   } catch {
     replaceIcon(href)
   }
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(blob)
+  })
 }
 
 function replaceIcon(href: string, type?: string): void {
