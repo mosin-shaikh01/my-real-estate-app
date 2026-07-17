@@ -7,6 +7,28 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Changed — dashboard "Recent Properties" widget: search, filters, shared components
+
+Aligned the dashboard's recent-inventory widget with the Property Management
+module by REUSING its parts rather than duplicating them.
+
+- **Renamed** "Recent inventory" → "Recent Properties".
+- **Extracted** the Properties page's search/filter bar (`PropertyFilterBar`) and
+  results table (`PropertyTable`, with a `compact` mode) into shared components.
+  The Properties page and the dashboard widget now render from the same code —
+  they can't drift, and the filter set lives in one place
+  (`lib/property-filters.ts`).
+- **Dashboard** now has the full search + filter bar (status, type, sale/rent,
+  beds, city, sort) over the **same scoped `useProperties` query**, so it stays in
+  sync with the live records and an agent only ever sees/searches/filters their
+  assigned properties (enforced server-side). Loading, empty and responsive
+  states come from the shared table; a subtle Framer Motion transition animates
+  the Clear control.
+- **Shared search widened** to also match **city**, **assigned agent name**, and
+  **property type** (in addition to title/code/locality/address) — a single
+  server-side change that benefits both surfaces. Verified: search by city, type
+  ("villa"), agent ("Aisha") and code all resolve, and agent scoping is preserved.
+
 ### Added — tagline display + a "Show tagline" visibility toggle
 
 The saved tagline was only wired into the login-screen subtitle, so in the app it
