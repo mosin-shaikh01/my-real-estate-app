@@ -1,5 +1,6 @@
 import * as LabelPrimitive from '@radix-ui/react-label'
 import { useId, type InputHTMLAttributes, type ReactNode } from 'react'
+import { InfoHint } from '@/components/ui/Tooltip'
 import { cn } from '@/lib/cn'
 
 // The FormField wrapper owns label + error + aria-describedby wiring so that no
@@ -10,6 +11,9 @@ interface FieldProps {
   label: string
   error?: string
   hint?: string
+  /** Contextual help shown as an ⓘ tooltip next to the label. For meaning that
+   *  is non-obvious but doesn't warrant permanent inline `hint` text. */
+  help?: ReactNode
   required?: boolean
   children: (props: {
     id: string
@@ -18,7 +22,7 @@ interface FieldProps {
   }) => ReactNode
 }
 
-export function FormField({ label, error, hint, required, children }: FieldProps) {
+export function FormField({ label, error, hint, help, required, children }: FieldProps) {
   const id = useId()
   const errorId = `${id}-error`
   const hintId = `${id}-hint`
@@ -28,17 +32,17 @@ export function FormField({ label, error, hint, required, children }: FieldProps
 
   return (
     <div className="flex flex-col gap-1.5">
-      <LabelPrimitive.Root
-        htmlFor={id}
-        className="text-xs font-medium text-text-secondary"
-      >
-        {label}
-        {required ? (
-          <span className="ml-0.5 text-danger-500" aria-hidden="true">
-            *
-          </span>
-        ) : null}
-      </LabelPrimitive.Root>
+      <div className="flex items-center gap-1.5">
+        <LabelPrimitive.Root htmlFor={id} className="text-xs font-medium text-text-secondary">
+          {label}
+          {required ? (
+            <span className="ml-0.5 text-danger-500" aria-hidden="true">
+              *
+            </span>
+          ) : null}
+        </LabelPrimitive.Root>
+        {help ? <InfoHint content={help} label={`About ${label}`} /> : null}
+      </div>
 
       {children({
         id,

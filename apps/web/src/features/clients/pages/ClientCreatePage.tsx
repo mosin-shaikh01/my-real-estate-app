@@ -66,7 +66,7 @@ export default function ClientCreatePage() {
             <FormField label="Email" error={form.formState.errors.email?.message}>
               {(p) => <Input {...p} {...form.register('email')} type="email" placeholder="optional" />}
             </FormField>
-            <FormField label="Priority">
+            <FormField label="Priority" help="How urgently this client needs attention — used to sort and surface follow-ups.">
               {() => (
                 <Select
                   options={[
@@ -94,6 +94,7 @@ export default function ClientCreatePage() {
             <FormField
               label="Budget min (₹)"
               error={form.formState.errors.requirement?.budgetMin?.message}
+              help="The client's price range — used to match them against inventory. Visible only to staff with budget access."
             >
               {(p) => <Input {...p} {...form.register('requirement.budgetMin')} inputMode="numeric" placeholder="5000000" />}
             </FormField>

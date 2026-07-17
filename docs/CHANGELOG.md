@@ -7,6 +7,29 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — reusable Tooltip + contextual help (ⓘ) on non-obvious controls
+
+A single, accessible Tooltip primitive and a curated set of hints — enough to
+teach a first-time user, not enough to clutter the UI.
+
+- **`components/ui/Tooltip`** — one tooltip, built on Radix (hover + keyboard
+  focus, Esc/blur close, `role="tooltip"` + `aria-describedby`, collision-aware
+  placement) with a subtle Framer Motion fade/scale that honours
+  `prefers-reduced-motion`. Content is a `ReactNode`, so it takes a string today
+  and rich content / a docs link later. `InfoHint` is the ⓘ affordance — a real,
+  tab-reachable button (taps focus it on mobile → opens). One global
+  `Tooltip.Provider` (delay) already lives in `app/providers`.
+- **`FormField` gained a `help` prop** — renders an ⓘ next to the label, so any
+  field can carry contextual help without permanent inline text.
+- **Applied only where meaning is non-obvious** (self-explanatory controls left
+  alone): property **Status**, **Visibility**, **Featured**, and **Assigned
+  agent** (reassigning changes who can see it); client **Priority** and
+  **Budget** (matching + who can see it); agents' **Commission** column, the
+  **Access** action ("choose what this agent can view and manage"), and
+  **Deactivate** ("signs the agent out of every device immediately"); and the
+  property detail **Assigned agent** (admin only).
+- `Button` now forwards its `ref`, so it can anchor a tooltip via Radix `asChild`.
+
 ### Changed — dashboard "Recent Properties" widget: search, filters, shared components
 
 Aligned the dashboard's recent-inventory widget with the Property Management

@@ -1,5 +1,5 @@
 import { Slot } from '@radix-ui/react-slot'
-import type { ButtonHTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, Ref } from 'react'
 import { cn } from '@/lib/cn'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
@@ -26,6 +26,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: Size
   /** Render as the child element (e.g. a router Link) while keeping styles. */
   asChild?: boolean
+  /** Forwarded to the DOM node so a Tooltip (Radix asChild) can anchor to it. */
+  ref?: Ref<HTMLButtonElement>
 }
 
 export function Button({
@@ -34,11 +36,13 @@ export function Button({
   size = 'md',
   asChild = false,
   type,
+  ref,
   ...props
 }: ButtonProps) {
   const Comp = asChild ? Slot : 'button'
   return (
     <Comp
+      ref={ref}
       // Buttons inside a form default to submit, which causes surprise
       // submissions. Opt in explicitly instead.
       type={asChild ? undefined : (type ?? 'button')}

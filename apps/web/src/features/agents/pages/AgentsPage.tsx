@@ -4,6 +4,7 @@ import { Can, Locked } from '@/components/auth/Can'
 import { PageHeader } from '@/components/layout/AppShell'
 import { Button } from '@/components/ui/Button'
 import { Table, TableEmpty, TableWrapper, TD, TH, THead, TR } from '@/components/ui/Table'
+import { InfoHint, Tooltip } from '@/components/ui/Tooltip'
 import { useAgents, useSetAgentStatus, type AgentDTO } from '@/features/agents/api/use-agents'
 import { AgentAccessDialog } from '@/features/agents/components/AgentAccessDialog'
 import { AgentCreateDialog } from '@/features/agents/components/AgentCreateDialog'
@@ -45,7 +46,12 @@ export default function AgentsPage() {
                   <TH>Specialization</TH>
                   <TH numeric className="w-20">Clients</TH>
                   <TH numeric className="w-24">Properties</TH>
-                  <TH numeric className="w-24">Commission</TH>
+                  <TH numeric className="w-24">
+                    <span className="inline-flex items-center gap-1">
+                      Commission
+                      <InfoHint content="Commission rate applied on this agent's closed deals. Visible to admins only." />
+                    </span>
+                  </TH>
                   <TH className="w-24">Status</TH>
                   <TH className="w-40" />
                 </tr>
@@ -123,24 +129,34 @@ function AgentRow({ agent }: { agent: AgentDTO }) {
             </Button>
           </Can>
           <Can permission="agent.permissions.update">
-            <Button variant="ghost" size="sm" onClick={() => setEditingAccess(true)}>
-              <KeyRound aria-hidden="true" />
-              Access
-            </Button>
+            <Tooltip content="Choose which information this agent can view and manage.">
+              <Button variant="ghost" size="sm" onClick={() => setEditingAccess(true)}>
+                <KeyRound aria-hidden="true" />
+                Access
+              </Button>
+            </Tooltip>
           </Can>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={setStatus.isPending}
-            onClick={() => setStatus.mutate(suspended ? 'ACTIVE' : 'SUSPENDED')}
+          <Tooltip
+            content={
+              suspended
+                ? 'Reactivate this agent and restore their access.'
+                : 'Deactivating signs the agent out of every device immediately.'
+            }
           >
-            {suspended ? 'Activate' : (
-              <>
-                <UserX aria-hidden="true" />
-                Deactivate
-              </>
-            )}
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={setStatus.isPending}
+              onClick={() => setStatus.mutate(suspended ? 'ACTIVE' : 'SUSPENDED')}
+            >
+              {suspended ? 'Activate' : (
+                <>
+                  <UserX aria-hidden="true" />
+                  Deactivate
+                </>
+              )}
+            </Button>
+          </Tooltip>
         </div>
       </TD>
       {editing ? <AgentEditDialog agent={agent} onClose={() => setEditing(false)} /> : null}

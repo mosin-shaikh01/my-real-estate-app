@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FormField, Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
+import { InfoHint } from '@/components/ui/Tooltip'
 import { useAssignableAgents } from '@/features/agents/api/use-assignable-agents'
 import { usePermissions } from '@/features/auth/api/use-auth'
 import type { PropertyDTO } from '@/features/properties/api/use-properties'
@@ -246,7 +247,11 @@ export function PropertyForm({ mode, property }: Props) {
           <FormField label="Property type" error={errors.propertyType?.message} required>
             {(p) => <Select {...p} options={TYPE_OPTIONS} {...reg('propertyType')} value={form.watch('propertyType')} />}
           </FormField>
-          <FormField label="Status" error={errors.status?.message}>
+          <FormField
+            label="Status"
+            error={errors.status?.message}
+            help="Controls how the listing appears — Available, Under offer, Rented or Sold."
+          >
             {(p) => <Select {...p} options={STATUS_OPTIONS} {...reg('status')} value={form.watch('status') ?? 'AVAILABLE'} />}
           </FormField>
           <FormField label="Listing" error={errors.listingType?.message} required>
@@ -297,13 +302,20 @@ export function PropertyForm({ mode, property }: Props) {
               />
             )}
           </FormField>
-          <FormField label="Visibility" error={errors.visibility?.message}>
+          <FormField
+            label="Visibility"
+            error={errors.visibility?.message}
+            help="Who can see this listing — Public (the future site), Internal (staff only), or Private."
+          >
             {(p) => <Select {...p} options={VISIBILITY_OPTIONS} {...reg('visibility')} value={form.watch('visibility') ?? 'INTERNAL'} />}
           </FormField>
-          <label className="flex items-center gap-2 text-sm text-text-secondary">
-            <input type="checkbox" {...reg('featured')} className="size-4 accent-brand-600" />
-            Featured listing
-          </label>
+          <div className="flex items-center gap-1.5">
+            <label className="flex items-center gap-2 text-sm text-text-secondary">
+              <input type="checkbox" {...reg('featured')} className="size-4 accent-brand-600" />
+              Featured listing
+            </label>
+            <InfoHint content="Featured properties get higher visibility across the app." label="About featured listings" />
+          </div>
         </Card.Body>
       </Card>
 
@@ -416,7 +428,11 @@ export function PropertyForm({ mode, property }: Props) {
           </div>
           {canAssignAgent ? (
             <div className="sm:col-span-2">
-              <FormField label="Assigned agent" error={errors.assignedAgentId?.message}>
+              <FormField
+                label="Assigned agent"
+                error={errors.assignedAgentId?.message}
+                help="The agent responsible for this property. Reassigning also changes who can see it."
+              >
                 {(p) => (
                   <Select
                     {...p}
