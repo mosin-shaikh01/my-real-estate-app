@@ -4,6 +4,7 @@ import type { SettingsDTO } from '@app/shared'
 export interface SettingsRow {
   crmName: string
   tagline: string | null
+  showTagline: boolean
   primaryColor: string | null
   secondaryColor: string | null
   logoStorageKey: string | null
@@ -47,6 +48,7 @@ export function toSettingsDTO(row: SettingsRow): SettingsDTO {
   return {
     crmName: row.crmName,
     tagline: row.tagline,
+    showTagline: row.showTagline,
     primaryColor: row.primaryColor,
     secondaryColor: row.secondaryColor,
     logoUrl: row.logoStorageKey ? `/api/settings/logo?v=${v}` : null,

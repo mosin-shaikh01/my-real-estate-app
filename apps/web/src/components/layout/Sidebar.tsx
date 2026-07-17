@@ -111,7 +111,12 @@ export function Sidebar({ className }: { className?: string }) {
             <Building2 className="size-3.5" aria-hidden="true" />
           </div>
         )}
-        <span className="truncate text-base font-semibold text-text-primary">{crmName}</span>
+        <div className="flex min-w-0 flex-col justify-center">
+          <span className="truncate text-base font-semibold text-text-primary">{crmName}</span>
+          {settings?.showTagline && settings.tagline ? (
+            <span className="truncate text-2xs leading-tight text-text-muted">{settings.tagline}</span>
+          ) : null}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3">

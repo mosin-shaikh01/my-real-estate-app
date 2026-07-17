@@ -33,6 +33,9 @@ export const settingsUpdateSchema = z.object({
   // Branding
   crmName: z.string().trim().min(1, 'A name is required').max(120).optional(),
   tagline: text(200),
+  // Visibility toggle — hides the tagline everywhere without deleting its value.
+  // First of a family (showLogo, showCompanyName, …); add more here + a column.
+  showTagline: z.boolean().optional(),
   primaryColor: color,
   secondaryColor: color,
 
@@ -80,6 +83,7 @@ export type SettingsField = keyof SettingsUpdateInput
 export interface SettingsDTO {
   crmName: string
   tagline: string | null
+  showTagline: boolean
   primaryColor: string | null
   secondaryColor: string | null
   /** Versioned URLs (or null). The version busts the browser cache after a

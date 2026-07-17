@@ -14,6 +14,7 @@ import { SETTINGS_KEY } from '@/features/settings/api/use-settings'
 const base: SettingsDTO = {
   crmName: 'Estate',
   tagline: null,
+  showTagline: true,
   primaryColor: null,
   secondaryColor: null,
   logoUrl: null,

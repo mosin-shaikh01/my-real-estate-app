@@ -7,6 +7,26 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — tagline display + a "Show tagline" visibility toggle
+
+The saved tagline was only wired into the login-screen subtitle, so in the app it
+looked like it wasn't showing. Now it appears in the branding areas and has an
+admin visibility control.
+
+- **Display**: the tagline shows under the CRM name in the **sidebar** and as the
+  **login** subtitle. It's hidden (no empty space) when unset or when Show tagline
+  is off — the two are gated together (`showTagline && tagline`).
+- **Setting**: `Show tagline` toggle in Settings → Branding, directly below the
+  Tagline field (default on). Turning it off hides the tagline everywhere WITHOUT
+  deleting the text — verified: disable keeps the value, edits persist while
+  hidden, re-enabling restores the updated text.
+- **DB**: a new `AppSetting.showTagline` boolean (`@default(true)`). This is the
+  first of a family of visibility flags — `showLogo`, `showCompanyName`, … each a
+  boolean column plus one `kind: 'boolean'` entry in the settings form config, so
+  new toggles are additive, not a rewrite.
+- **Live**: updating the tagline or the toggle updates the sidebar/login
+  immediately via the shared settings query — no refresh.
+
 ### Added — Settings module (CRM branding & company configuration)
 
 An admin Settings page to manage the app's branding and company information,

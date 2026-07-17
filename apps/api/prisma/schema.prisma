@@ -111,6 +111,13 @@ model AppSetting {
   primaryColor   String? @map("primary_color") @db.VarChar(32)
   secondaryColor String? @map("secondary_color") @db.VarChar(32)
 
+  // Branding VISIBILITY toggles. Kept separate from the values so hiding an
+  // element never deletes it. This is the first of a family — showLogo,
+  // showCompanyName, showSocialLinks, … each a nullable-free boolean column with
+  // a sensible default — so new visibility controls are one column + one form
+  // line, never a rewrite.
+  showTagline Boolean @default(true) @map("show_tagline")
+
   logoStorageKey    String? @map("logo_storage_key")
   logoMimeType      String? @map("logo_mime_type") @db.VarChar(128)
   faviconStorageKey String? @map("favicon_storage_key")

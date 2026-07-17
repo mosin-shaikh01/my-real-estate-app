@@ -8,6 +8,7 @@ import { toSettingsDTO, type SettingsRow } from '../src/serializers/settings-ser
 const baseRow: SettingsRow = {
   crmName: 'Estate',
   tagline: null,
+  showTagline: true,
   primaryColor: null,
   secondaryColor: null,
   logoStorageKey: null,
@@ -47,6 +48,13 @@ describe('toSettingsDTO', () => {
     expect(dto.logoUrl).toBeNull()
     expect(dto.faviconUrl).toBeNull()
     expect(dto.crmName).toBe('Estate')
+  })
+
+  it('carries the tagline value AND its visibility flag independently', () => {
+    // Hidden but not deleted — the value survives so re-enabling restores it.
+    const dto = toSettingsDTO({ ...baseRow, tagline: 'Find your next home', showTagline: false })
+    expect(dto.tagline).toBe('Find your next home')
+    expect(dto.showTagline).toBe(false)
   })
 
   it('turns a stored key into a versioned URL, never a raw path', () => {

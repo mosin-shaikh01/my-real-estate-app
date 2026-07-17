@@ -27,7 +27,7 @@ import { cn } from '@/lib/cn'
 // on a hidden tab switches to it rather than failing silently.
 // ============================================================================
 
-type FieldKind = 'text' | 'email' | 'url' | 'tel' | 'color' | 'multiline'
+type FieldKind = 'text' | 'email' | 'url' | 'tel' | 'color' | 'multiline' | 'boolean'
 interface FieldDef {
   name: SettingsField
   label: string
@@ -52,6 +52,13 @@ const SECTIONS: SectionDef[] = [
     fields: [
       { name: 'crmName', label: 'CRM / Company name', required: true, placeholder: 'Estate' },
       { name: 'tagline', label: 'Tagline', placeholder: 'Find your next home', full: true },
+      {
+        name: 'showTagline',
+        label: 'Show tagline',
+        kind: 'boolean',
+        hint: 'Display the tagline across the app. Unchecking hides it without deleting the text.',
+        full: true,
+      },
       { name: 'primaryColor', label: 'Primary brand colour', kind: 'color' },
       { name: 'secondaryColor', label: 'Secondary brand colour', kind: 'color' },
     ],
@@ -121,11 +128,12 @@ const FIELD_TAB = new Map<string, string>(
 )
 
 function toDefaults(s: SettingsDTO): SettingsUpdateInput {
-  const out: Record<string, string> = {}
+  const out: Record<string, string | boolean> = {}
   for (const section of SECTIONS) {
     for (const f of section.fields) {
       const v = s[f.name as keyof SettingsDTO]
-      out[f.name] = typeof v === 'string' ? v : ''
+      if (f.kind === 'boolean') out[f.name] = typeof v === 'boolean' ? v : true
+      else out[f.name] = typeof v === 'string' ? v : ''
     }
   }
   return out as SettingsUpdateInput
@@ -313,6 +321,31 @@ function SettingsForm({ settings }: { settings: SettingsDTO }) {
 function FieldRow({ field, form }: { field: FieldDef; form: UseFormReturn<SettingsUpdateInput> }) {
   const error = form.formState.errors[field.name]?.message
   const span = field.full || field.kind === 'multiline' ? 'sm:col-span-2' : ''
+
+  // A visibility toggle — accessible switch built on a native checkbox. Adding
+  // more toggles (showLogo, showCompanyName, …) is just another 'boolean' field.
+  if (field.kind === 'boolean') {
+    return (
+      <div className={span}>
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            role="switch"
+            {...form.register(field.name)}
+            className="peer sr-only"
+          />
+          <span
+            aria-hidden="true"
+            className="relative mt-0.5 h-5 w-9 shrink-0 rounded-full bg-border-strong transition-colors peer-checked:bg-brand-600 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-500 after:absolute after:top-0.5 after:left-0.5 after:size-4 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-4"
+          />
+          <span className="flex flex-col">
+            <span className="text-xs font-medium text-text-secondary">{field.label}</span>
+            {field.hint ? <span className="text-2xs text-text-muted">{field.hint}</span> : null}
+          </span>
+        </label>
+      </div>
+    )
+  }
 
   if (field.kind === 'color') {
     const value = (form.watch(field.name) as string) || ''

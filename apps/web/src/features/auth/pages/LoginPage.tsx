@@ -68,7 +68,9 @@ export default function LoginPage() {
 
         <h1 className="text-xl font-semibold text-text-primary">Sign in</h1>
         <p className="mt-1 text-base text-text-secondary">
-          {settings?.tagline || 'Use your work account to continue.'}
+          {settings?.showTagline && settings.tagline
+            ? settings.tagline
+            : 'Use your work account to continue.'}
         </p>
 
         <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4" noValidate>
