@@ -118,6 +118,34 @@ async function main() {
     PUBLIC_PERMISSIONS,
   )
 
+  // --- App settings (singleton) -----------------------------------------
+  // Seed sensible demo branding so the app looks configured out of the box.
+  // Upsert on the singleton, so re-running never creates a duplicate.
+  await prisma.appSetting.upsert({
+    where: { singleton: true },
+    create: {
+      singleton: true,
+      crmName: 'Estate',
+      tagline: 'Property, client and agent management',
+      primaryColor: '#4f46e5',
+      companyName: 'Estate Realty Pvt. Ltd.',
+      ownerName: 'Priya Deshmukh',
+      email: 'hello@estate.local',
+      phone: '+91 22 4000 1000',
+      mobile: '+91 98765 43210',
+      website: 'https://estate.local',
+      addressLine1: '4th Floor, Trade Tower, BKC',
+      city: 'Mumbai',
+      state: 'Maharashtra',
+      country: 'India',
+      pincode: '400051',
+      businessHours: 'Mon–Sat, 10:00–19:00 IST',
+      description: 'A modern real-estate CRM for property, client and agent management.',
+    },
+    update: {},
+  })
+  console.log('  app settings: singleton upserted')
+
   // --- Amenities ---------------------------------------------------------
   for (const a of AMENITIES) {
     await prisma.amenity.upsert({

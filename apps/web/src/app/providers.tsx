@@ -1,6 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import type { ReactNode } from 'react'
+import { BrandingEffects } from './branding'
+import { ThemeProvider } from './theme-provider'
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,8 +25,14 @@ export const queryClient = new QueryClient({
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
+    // Query wraps Theme: the theme preference is now server state (the ['me']
+    // query is its source of truth), so ThemeProvider must sit inside the
+    // QueryClientProvider to read and persist it.
     <QueryClientProvider client={queryClient}>
-      <Tooltip.Provider delayDuration={300}>{children}</Tooltip.Provider>
+      <ThemeProvider>
+        <BrandingEffects />
+        <Tooltip.Provider delayDuration={300}>{children}</Tooltip.Provider>
+      </ThemeProvider>
     </QueryClientProvider>
   )
 }

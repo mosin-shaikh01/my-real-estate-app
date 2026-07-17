@@ -92,7 +92,7 @@ export function AgentCreateDialog({ onClose }: { onClose: () => void }) {
         </div>
 
         {form.formState.errors.root ? (
-          <p role="alert" className="text-xs text-danger-700 sm:col-span-2">
+          <p role="alert" className="text-xs text-text-danger sm:col-span-2">
             {form.formState.errors.root.message}
           </p>
         ) : null}

@@ -84,7 +84,7 @@ export function InteractionForm({ clientId }: { clientId: string }) {
       </FormField>
 
       {form.formState.errors.root ? (
-        <p role="alert" className="text-xs text-danger-700">
+        <p role="alert" className="text-xs text-text-danger">
           {form.formState.errors.root.message}
         </p>
       ) : null}

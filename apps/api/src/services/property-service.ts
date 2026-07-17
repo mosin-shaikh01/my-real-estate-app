@@ -1,9 +1,9 @@
-import type { PropertyListQuery } from '@app/shared'
-import { parseSort } from '@app/shared'
+import type { PropertyListQuery, PropertyType } from '@app/shared'
+import { parseSort, PROPERTY_TYPE_LABELS } from '@app/shared'
 import type { Prisma } from '../generated/prisma/client.js'
 import type { Actor } from '../auth/permissions.js'
 import { scopeForProperty } from '../auth/scope.js'
-import { notFound } from '../lib/errors.js'
+import { forbidden, notFound } from '../lib/errors.js'
 import { prisma } from '../lib/prisma.js'
 import { canFilterByPrice, sortablePropertyFields } from '../serializers/property-serializer.js'
 
@@ -40,7 +40,8 @@ const DETAIL_SELECT = {
   pincode: true,
   latitude: true,
   longitude: true,
-  videoUrl: true,
+  googleMapUrl: true,
+  videoUrls: true,
   internalNotes: true,
   assignedAgentId: true,
   createdAt: true,
@@ -68,12 +69,25 @@ export async function listProperties(actor: Actor, query: PropertyListQuery) {
   if (query.includeArchived !== 'true') and.push({ archivedAt: null })
 
   if (query.q) {
+    const q = query.q
+    // The propertyType column is an enum, so it can't be `contains`-matched.
+    // Resolve the term to the enum values whose label/key matches ("villa" ->
+    // VILLA), and search those — so a type name in the search box works too.
+    const ql = q.toLowerCase()
+    const typeMatches = (Object.keys(PROPERTY_TYPE_LABELS) as PropertyType[]).filter(
+      (t) => PROPERTY_TYPE_LABELS[t].toLowerCase().includes(ql) || t.toLowerCase().includes(ql),
+    )
     and.push({
       OR: [
-        { title: { contains: query.q, mode: 'insensitive' } },
-        { code: { contains: query.q, mode: 'insensitive' } },
-        { locality: { contains: query.q, mode: 'insensitive' } },
-        { address: { contains: query.q, mode: 'insensitive' } },
+        { title: { contains: q, mode: 'insensitive' } },
+        { code: { contains: q, mode: 'insensitive' } },
+        { locality: { contains: q, mode: 'insensitive' } },
+        { address: { contains: q, mode: 'insensitive' } },
+        { city: { contains: q, mode: 'insensitive' } },
+        // Agent (if assigned). A relation filter — an unassigned property has no
+        // agent and simply won't match, which is the intended behaviour.
+        { assignedAgent: { fullName: { contains: q, mode: 'insensitive' } } },
+        ...(typeMatches.length ? [{ propertyType: { in: typeMatches } }] : []),
       ],
     })
   }
@@ -125,14 +139,27 @@ export async function listProperties(actor: Actor, query: PropertyListQuery) {
 }
 
 export async function getProperty(actor: Actor, id: string) {
-  // Scope is in the WHERE, not a post-fetch check: a scoped-out row is
-  // indistinguishable from a missing one, which is the point.
   const row = await prisma.property.findFirst({
     where: { ...scopeForProperty(actor), id },
     select: DETAIL_SELECT,
   })
-  if (!row) throw notFound('Property not found')
-  return row
+  if (row) return row
+
+  // Not in the actor's scope. The RBAC spec calls for an explicit "Access
+  // Denied" when an agent reaches for a property that exists but isn't theirs —
+  // by URL or a forged request — rather than a silent 404. So we distinguish:
+  //   exists but not assigned to this actor -> 403 Access denied
+  //   genuinely absent (or soft-deleted)    -> 404 Not found
+  //
+  // This intentionally reveals that the id names a real property. That is a
+  // deliberate trade the spec asks for; for endpoints where existence must stay
+  // hidden, keep the plain scoped 404 (see docs/RBAC.md).
+  const exists = await prisma.property.findFirst({
+    where: { id, deletedAt: null },
+    select: { id: true },
+  })
+  if (exists) throw forbidden('Access denied: this property is not assigned to you')
+  throw notFound('Property not found')
 }
 
 /** Distinct cities present in the actor's scope — powers the filter dropdown. */

@@ -23,29 +23,20 @@ export function scopeForClient(actor: Actor): Prisma.ClientWhereInput {
 
 export function scopeForProperty(actor: Actor): Prisma.PropertyWhereInput {
   const base: Prisma.PropertyWhereInput = { deletedAt: null }
+
+  // Admin (property.list.all): unrestricted — sees every property, assigned or
+  // not, so an UNASSIGNED property is admin-only until it is assigned.
   if (actor.has('property.list.all')) return base
 
-  // Shared-pool model: an agent browses the whole listable inventory so they can
-  // match stock to their clients — NOT just their own listings. Assignment marks
-  // who is responsible, not who may look.
-  //
-  // Three clauses, OR'd:
-  //   1. everything that is not off-market (PUBLIC/INTERNAL) — the browsable pool
-  //   2. anything assigned to them            — including off-market they handle
-  //   3. anything assigned to one of their clients — the "Open Client -> View
-  //      Assigned Properties" workflow, including off-market shortlisted stock
-  //
-  // PRIVATE (off-market) stays restricted to the people handling it. Field
-  // redaction is unchanged: a browsed listing shows its price but hides another
-  // agent's internal notes.
-  return {
-    ...base,
-    OR: [
-      { visibility: { not: 'PRIVATE' } },
-      { assignedAgentId: actor.userId },
-      { assignments: { some: { removedAt: null, client: { assignedAgentId: actor.userId } } } },
-    ],
-  }
+  // STRICT RBAC. An agent sees ONLY properties explicitly assigned to them by an
+  // admin. There is no browse pool, no client-shortlist widening, no visibility
+  // shortcut: assignedAgentId is the single, exclusive gate. This flows through
+  // every read — list, search, filters, detail, dashboard counts, media — and
+  // WRITE services scope-check with the same predicate, so an agent cannot
+  // touch another agent's property even by forging an id. Reassignment (an admin
+  // changing assignedAgentId) instantly moves the property between agents'
+  // scopes on the next request.
+  return { ...base, assignedAgentId: actor.userId }
 }
 
 export function scopeForAgent(actor: Actor): Prisma.UserWhereInput {

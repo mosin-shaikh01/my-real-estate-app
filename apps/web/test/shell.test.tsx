@@ -5,7 +5,10 @@ import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import type { MeResponse } from '@app/shared'
+import { PERMISSION_KEYS } from '@app/shared'
+import { ThemeProvider } from '@/app/theme-provider'
 import { AppShell } from '@/components/layout/AppShell'
+import { Sidebar } from '@/components/layout/Sidebar'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import DashboardPage from '@/features/dashboard/pages/DashboardPage'
 import { formatMoney, formatMoneyShort } from '@/lib/format'
@@ -17,6 +20,7 @@ const ME: MeResponse = {
   user: { id: 'u1', email: 'admin@demo.local', fullName: 'Priya Deshmukh', phone: null },
   roles: [{ slug: 'super_admin', name: 'Super Admin' }],
   permissions: ['client.list', 'property.list'],
+  preferences: { theme: 'light' },
 }
 
 beforeEach(() => {
@@ -64,7 +68,11 @@ function withProviders(ui: ReactNode) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   })
-  return <QueryClientProvider client={qc}>{ui}</QueryClientProvider>
+  return (
+    <QueryClientProvider client={qc}>
+      <ThemeProvider>{ui}</ThemeProvider>
+    </QueryClientProvider>
+  )
 }
 
 function renderShell(path = '/') {
@@ -81,12 +89,55 @@ describe('app shell', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeDefined()
   })
 
-  it('renders one navigation, shared by admin and agent', () => {
+  it('renders one navigation, shared by admin and agent', async () => {
     renderShell()
+    // The sidebar filters on the async /me query, so links appear once it
+    // resolves — await, don't assume synchronous.
+    expect(await screen.findByRole('link', { name: /Properties/ })).toBeDefined()
     const navs = screen.getAllByRole('navigation', { name: 'Main' })
     // Two route trees would mean two navs. There is deliberately one.
     expect(navs).toHaveLength(1)
-    expect(within(navs[0]!).getByRole('link', { name: /Properties/ })).toBeDefined()
+  })
+
+  it('shows an AGENT only Dashboard, Properties and Clients — no admin items', async () => {
+    // ME here holds client.list + property.list only (an agent). The sidebar is
+    // filtered from the permission config, so the admin sections must be absent
+    // even though the same NAV array declares them.
+    renderShell()
+    const nav = await screen.findByRole('navigation', { name: 'Main' })
+    // Wait for the permission-gated items to appear after /me resolves.
+    expect(await within(nav).findByRole('link', { name: /Clients/ })).toBeDefined()
+    for (const shown of ['Dashboard', 'Properties', 'Clients']) {
+      expect(within(nav).getByRole('link', { name: new RegExp(shown) }), shown).toBeDefined()
+    }
+    for (const hidden of ['Requirements', 'Agents', 'Activity log', 'Roles & access']) {
+      expect(within(nav).queryByRole('link', { name: new RegExp(hidden) }), hidden).toBeNull()
+    }
+  })
+
+  it('shows an ADMIN every nav item', () => {
+    // Seed the ['me'] cache with the full permission set (super admin) and
+    // render the sidebar directly. Same config, but every gated item now shows.
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const adminMe: MeResponse = {
+      user: { id: 'a1', email: 'admin@demo.local', fullName: 'Priya', phone: null },
+      roles: [{ slug: 'super_admin', name: 'Super Admin' }],
+      permissions: [...PERMISSION_KEYS],
+      preferences: { theme: 'light' },
+    }
+    qc.setQueryData(['me'], adminMe)
+    const router = createMemoryRouter([{ path: '/', element: <Sidebar /> }], {
+      initialEntries: ['/'],
+    })
+    render(
+      <QueryClientProvider client={qc}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    )
+    const nav = screen.getByRole('navigation', { name: 'Main' })
+    for (const shown of ['Dashboard', 'Properties', 'Clients', 'Requirements', 'Agents', 'Activity log', 'Roles & access']) {
+      expect(within(nav).getByRole('link', { name: new RegExp(shown) }), shown).toBeDefined()
+    }
   })
 
   it('exposes the mobile nav trigger with an accessible name', async () => {

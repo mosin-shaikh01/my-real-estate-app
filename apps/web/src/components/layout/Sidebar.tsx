@@ -1,33 +1,45 @@
 import {
   Building2,
   ClipboardList,
+  Cog,
   LayoutDashboard,
   ScrollText,
   Settings2,
   Users,
   UserSquare2,
 } from 'lucide-react'
+import { useMemo } from 'react'
 import { NavLink } from 'react-router'
 import type { PermissionKey } from '@app/shared'
+import { usePermissions } from '@/features/auth/api/use-auth'
+import { useSettings } from '@/features/settings/api/use-settings'
 import { cn } from '@/lib/cn'
 
 // ============================================================================
-// ONE nav for both admin and agent.
+// ONE config-driven nav for every role.
 // ============================================================================
-// Not two sidebars, not a role switch. The agent's "Clients" and the admin's
-// "Clients" are the SAME route -- the server's scope resolver already returns
-// the right rows. Two trees would mean two implementations that drift, and
-// every bug fixed twice.
+// Not two sidebars, not hardcoded role checks. Each item declares the
+// permission it needs; the render filters by the logged-in user's effective
+// permissions. Adding a role changes what appears for free (a role is just a
+// set of permissions), and adding a page is one line in NAV with its
+// permission key — no `if (role === 'admin')` anywhere.
 //
-// `permission` here is UX only: it hides a link the user can't use. The route
-// guard and the API are what actually enforce it.
+// The agent role holds property.list + client.list (and no admin permissions),
+// so an agent sees exactly Dashboard, Properties, Clients. An admin holds
+// everything and sees the whole tree.
+//
+// This is UX: the route guard (<RequirePermission>) and the API enforce access.
+// A hidden link is a convenience, never the security boundary.
 // ============================================================================
 
 interface NavItem {
   to: string
   label: string
   icon: typeof LayoutDashboard
+  /** Omit for items everyone signed-in may use (e.g. Dashboard). */
   permission?: PermissionKey
+  /** Exact-match only — so /settings isn't "active" while on /settings/roles. */
+  end?: boolean
 }
 
 const NAV: ReadonlyArray<{ heading?: string; items: readonly NavItem[] }> = [
@@ -56,11 +68,30 @@ const NAV: ReadonlyArray<{ heading?: string; items: readonly NavItem[] }> = [
     items: [
       { to: '/activity', label: 'Activity log', icon: ScrollText, permission: 'activity.list' },
       { to: '/settings/roles', label: 'Roles & access', icon: Settings2, permission: 'rbac.role.list' },
+      { to: '/settings', label: 'Settings', icon: Cog, permission: 'settings.view', end: true },
     ],
   },
 ]
 
 export function Sidebar({ className }: { className?: string }) {
+  // RequireAuth blocks AppShell (and thus this) until /me resolves, so
+  // permissions are already loaded by the time the sidebar renders — no flicker.
+  const { has } = usePermissions()
+  const { data: settings } = useSettings()
+  const crmName = settings?.crmName ?? 'Estate'
+
+  // Filter the declarative config against the user's permissions: keep items
+  // with no permission or a held one, then drop any group left with no items
+  // (so an empty "Admin" heading never renders for an agent).
+  const visibleGroups = useMemo(
+    () =>
+      NAV.map((group) => ({
+        ...group,
+        items: group.items.filter((item) => !item.permission || has(item.permission)),
+      })).filter((group) => group.items.length > 0),
+    [has],
+  )
+
   return (
     <nav
       aria-label="Main"
@@ -70,14 +101,26 @@ export function Sidebar({ className }: { className?: string }) {
       )}
     >
       <div className="flex h-14 items-center gap-2 border-b border-border-subtle px-4">
-        <div className="grid size-6 place-items-center rounded bg-brand-600 text-white">
-          <Building2 className="size-3.5" aria-hidden="true" />
+        {settings?.logoUrl ? (
+          <img src={settings.logoUrl} alt="" className="size-6 shrink-0 rounded object-contain" />
+        ) : (
+          <div
+            className="grid size-6 shrink-0 place-items-center rounded text-white"
+            style={{ backgroundColor: 'var(--brand-mark, var(--color-brand-600))' }}
+          >
+            <Building2 className="size-3.5" aria-hidden="true" />
+          </div>
+        )}
+        <div className="flex min-w-0 flex-col justify-center">
+          <span className="truncate text-base font-semibold text-text-primary">{crmName}</span>
+          {settings?.showTagline && settings.tagline ? (
+            <span className="truncate text-2xs leading-tight text-text-muted">{settings.tagline}</span>
+          ) : null}
         </div>
-        <span className="text-base font-semibold text-text-primary">Estate</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3">
-        {NAV.map((group, i) => (
+        {visibleGroups.map((group, i) => (
           <div key={group.heading ?? i} className={cn(i > 0 && 'mt-5')}>
             {group.heading ? (
               <p className="mb-1.5 px-2 text-2xs font-semibold tracking-wide text-text-muted uppercase">
@@ -89,14 +132,14 @@ export function Sidebar({ className }: { className?: string }) {
                 <li key={item.to}>
                   <NavLink
                     to={item.to}
-                    end={item.to === '/'}
+                    end={item.to === '/' || item.end}
                     className={({ isActive }) =>
                       cn(
                         'flex items-center gap-2.5 rounded-md px-2 py-1.5 text-base',
                         'transition-colors duration-[120ms]',
                         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
                         isActive
-                          ? 'bg-surface-selected font-medium text-brand-700'
+                          ? 'bg-surface-selected font-medium text-text-brand'
                           : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary',
                       )
                     }
@@ -106,7 +149,7 @@ export function Sidebar({ className }: { className?: string }) {
                         <item.icon
                           className={cn(
                             'size-4 shrink-0',
-                            isActive ? 'text-brand-600' : 'text-text-muted',
+                            isActive ? 'text-text-brand' : 'text-text-muted',
                           )}
                           aria-hidden="true"
                         />

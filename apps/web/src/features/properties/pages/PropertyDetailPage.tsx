@@ -1,4 +1,4 @@
-import { ArrowLeft, Archive, ArchiveRestore, ExternalLink, MapPin } from 'lucide-react'
+import { ArrowLeft, Archive, ArchiveRestore, ExternalLink, Lock, MapPin, Pencil } from 'lucide-react'
 import { Link, useParams } from 'react-router'
 import {
   PROPERTY_STATUS_LABELS,
@@ -21,6 +21,7 @@ import {
   useAssignPropertyAgent,
   useSetPropertyStatus,
 } from '@/features/properties/api/use-property-mutations'
+import { ApiClientError } from '@/lib/api'
 import { formatArea, formatDate, formatMoney, formatPropertyAge, mapsUrl } from '@/lib/format'
 
 const STATUS_OPTIONS = (Object.keys(PROPERTY_STATUS_LABELS) as PropertyStatus[]).map((s) => ({
@@ -81,16 +82,25 @@ export default function PropertyDetailPage() {
     )
   }
 
-  // A scoped-out property is a 404, byte-identical to one that never existed.
-  // The copy has to be honest about that ambiguity without confirming anything.
+  // Strict RBAC: the API returns 403 for a property that exists but isn't
+  // assigned to this agent, and 404 for one that genuinely doesn't exist. Show
+  // the two distinctly — "Access denied" is exactly what the spec asks an agent
+  // to see when they reach for another agent's property by URL.
   if (isError || !p) {
+    const denied = error instanceof ApiClientError && error.code === 'FORBIDDEN'
     return (
       <div className="grid place-items-center px-6 py-20">
         <div className="max-w-sm text-center">
-          <h1 className="text-lg font-semibold text-text-primary">Property not found</h1>
+          {denied ? (
+            <Lock className="mx-auto size-8 text-text-muted" aria-hidden="true" />
+          ) : null}
+          <h1 className="mt-3 text-lg font-semibold text-text-primary">
+            {denied ? 'Access denied' : 'Property not found'}
+          </h1>
           <p className="mt-1 text-base text-text-secondary">
-            {(error as Error | null)?.message ??
-              "It may not exist, or it may not be assigned to you."}
+            {denied
+              ? 'This property is not assigned to you. Ask an admin to assign it if you need access.'
+              : ((error as Error | null)?.message ?? 'It may not exist, or it may not be assigned to you.')}
           </p>
           <Button variant="secondary" asChild className="mt-6">
             <Link to="/properties">
@@ -113,6 +123,14 @@ export default function PropertyDetailPage() {
         action={
           <div className="flex items-center gap-2">
             <StatusBadge status={p.status as PropertyStatus} />
+            <Can permission="property.update">
+              <Button variant="secondary" size="sm" asChild>
+                <Link to={`/properties/${p.id}/edit`}>
+                  <Pencil aria-hidden="true" />
+                  Edit
+                </Link>
+              </Button>
+            </Can>
             <PropertyActions
               id={p.id}
               status={p.status as PropertyStatus}
@@ -128,6 +146,7 @@ export default function PropertyDetailPage() {
             propertyId={p.id}
             media={p.media}
             canDownload={has('property.media.download')}
+            videoLinks={p.videoUrls}
           />
 
           <Card>
@@ -245,14 +264,14 @@ export default function PropertyDetailPage() {
                 <br />
                 {[p.locality, p.city, p.state].filter(Boolean).join(', ')} {p.pincode}
               </p>
-              {/* Derived from lat/lng. We store no googleMap column — two
-                  sources of truth would disagree. */}
-              {maps ? (
+              {/* Prefer the admin's pasted share link; fall back to one derived
+                  from lat/lng. The stored link is the future map-preview seam. */}
+              {p.googleMapUrl ?? maps ? (
                 <a
-                  href={maps}
+                  href={p.googleMapUrl ?? maps ?? undefined}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs text-brand-700 hover:underline"
+                  className="inline-flex items-center gap-1.5 text-xs text-text-brand hover:underline"
                 >
                   <MapPin className="size-3.5" aria-hidden="true" />
                   Open in Google Maps

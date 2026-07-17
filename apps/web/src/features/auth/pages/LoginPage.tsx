@@ -6,12 +6,14 @@ import { loginSchema, type LoginInput } from '@app/shared'
 import { Button } from '@/components/ui/Button'
 import { FormField, Input } from '@/components/ui/Input'
 import { useLogin, useMe } from '@/features/auth/api/use-auth'
+import { useSettings } from '@/features/settings/api/use-settings'
 import { ApiClientError } from '@/lib/api'
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { data: me, isLoading } = useMe()
+  const { data: settings } = useSettings()
   const login = useLogin()
 
   const form = useForm<LoginInput>({
@@ -51,15 +53,24 @@ export default function LoginPage() {
     <main className="grid min-h-dvh place-items-center bg-surface-sunken px-6 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex items-center gap-2">
-          <div className="grid size-7 place-items-center rounded bg-brand-600 text-white">
-            <Building2 className="size-4" aria-hidden="true" />
-          </div>
-          <span className="text-md font-semibold text-text-primary">Estate</span>
+          {settings?.logoUrl ? (
+            <img src={settings.logoUrl} alt="" className="size-7 shrink-0 rounded object-contain" />
+          ) : (
+            <div
+              className="grid size-7 shrink-0 place-items-center rounded text-white"
+              style={{ backgroundColor: 'var(--brand-mark, var(--color-brand-600))' }}
+            >
+              <Building2 className="size-4" aria-hidden="true" />
+            </div>
+          )}
+          <span className="text-md font-semibold text-text-primary">{settings?.crmName ?? 'Estate'}</span>
         </div>
 
         <h1 className="text-xl font-semibold text-text-primary">Sign in</h1>
         <p className="mt-1 text-base text-text-secondary">
-          Use your work account to continue.
+          {settings?.showTagline && settings.tagline
+            ? settings.tagline
+            : 'Use your work account to continue.'}
         </p>
 
         <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4" noValidate>
@@ -90,7 +101,7 @@ export default function LoginPage() {
           {form.formState.errors.root ? (
             <p
               role="alert"
-              className="rounded-md border border-danger-100 bg-danger-100/40 px-3 py-2 text-xs text-danger-700"
+              className="rounded-md border border-border-danger-soft bg-surface-danger-soft/40 px-3 py-2 text-xs text-text-danger"
             >
               {form.formState.errors.root.message}
             </p>

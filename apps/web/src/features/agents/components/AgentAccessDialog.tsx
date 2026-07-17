@@ -113,7 +113,7 @@ export function AgentAccessDialog({
       ) : (
         <div className="flex flex-col gap-4">
           {error ? (
-            <p role="alert" className="text-xs text-danger-700">{error}</p>
+            <p role="alert" className="text-xs text-text-danger">{error}</p>
           ) : null}
 
           {catalog!.map((group) => (
@@ -142,7 +142,7 @@ export function AgentAccessDialog({
                           <span
                             className={cn(
                               'shrink-0 rounded px-1.5 py-0.5 text-2xs font-medium',
-                              isChecked ? 'bg-success-100 text-success-700' : 'bg-warning-100 text-warning-700',
+                              isChecked ? 'bg-surface-success-soft text-text-success' : 'bg-surface-warning-soft text-text-warning',
                             )}
                           >
                             {isChecked ? 'Granted' : 'Denied'}

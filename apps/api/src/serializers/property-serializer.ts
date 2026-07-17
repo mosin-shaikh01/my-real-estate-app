@@ -41,7 +41,8 @@ export interface PropertyRow {
   pincode: string
   latitude: Decimalish
   longitude: Decimalish
-  videoUrl: string | null
+  googleMapUrl: string | null
+  videoUrls: string[]
   internalNotes: string | null
   assignedAgentId: string | null
   createdAt: Date
@@ -82,7 +83,8 @@ export interface PropertyDTO {
   pincode: string
   latitude: string | null
   longitude: string | null
-  videoUrl: string | null
+  googleMapUrl: string | null
+  videoUrls: string[]
   createdAt: string
   archivedAt: string | null
   assignedAgent: { id: string; fullName: string } | null
@@ -138,7 +140,8 @@ export function toPropertyDTO(row: PropertyRow, actor: Actor): PropertyDTO {
     // UI derives the maps URL from these.
     latitude: money(row.latitude),
     longitude: money(row.longitude),
-    videoUrl: row.videoUrl,
+    googleMapUrl: row.googleMapUrl,
+    videoUrls: row.videoUrls ?? [],
     createdAt: row.createdAt.toISOString(),
     archivedAt: row.archivedAt?.toISOString() ?? null,
     assignedAgent: row.assignedAgent ?? null,

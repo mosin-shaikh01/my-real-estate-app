@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { UserPreferencesDTO } from './preferences.js'
 
 // Shared: shape, format, coercion. The server ADDS a refinement layer for what
 // needs the database (uniqueness, cross-field DB rules). One schema does not do
@@ -40,6 +41,8 @@ export interface MeResponse {
   roles: Array<{ slug: string; name: string }>
   /** Effective permission keys. What <Can> and usePermissions() read. */
   permissions: string[]
+  /** The user's own UI preferences — the DB source of truth for their theme. */
+  preferences: UserPreferencesDTO
 }
 
 // ---------------------------------------------------------------------------

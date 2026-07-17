@@ -139,7 +139,7 @@ function DetailsCard({ profile }: { profile: ProfileResponse }) {
           ) : null}
 
           {form.formState.errors.root ? (
-            <p role="alert" className="text-xs text-danger-700 sm:col-span-2">
+            <p role="alert" className="text-xs text-text-danger sm:col-span-2">
               {form.formState.errors.root.message}
             </p>
           ) : null}
@@ -156,7 +156,7 @@ function DetailsCard({ profile }: { profile: ProfileResponse }) {
               )}
             </Button>
             {saved ? (
-              <span className="flex items-center gap-1 text-xs text-success-700">
+              <span className="flex items-center gap-1 text-xs text-text-success">
                 <Check className="size-3.5" aria-hidden="true" />
                 Saved
               </span>
@@ -223,7 +223,7 @@ function PasswordCard() {
           </FormField>
 
           {form.formState.errors.root ? (
-            <p role="alert" className="text-xs text-danger-700">
+            <p role="alert" className="text-xs text-text-danger">
               {form.formState.errors.root.message}
             </p>
           ) : null}
@@ -240,7 +240,7 @@ function PasswordCard() {
               )}
             </Button>
             {done ? (
-              <span className="flex items-center gap-1 text-xs text-success-700">
+              <span className="flex items-center gap-1 text-xs text-text-success">
                 <Check className="size-3.5" aria-hidden="true" />
                 Password changed
               </span>

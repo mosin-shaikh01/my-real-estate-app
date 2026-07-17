@@ -11,10 +11,12 @@ const ClientCreate = lazy(() => import('@/features/clients/pages/ClientCreatePag
 const Properties = lazy(() => import('@/features/properties/pages/PropertiesPage'))
 const PropertyDetail = lazy(() => import('@/features/properties/pages/PropertyDetailPage'))
 const PropertyCreate = lazy(() => import('@/features/properties/pages/PropertyCreatePage'))
+const PropertyEdit = lazy(() => import('@/features/properties/pages/PropertyEditPage'))
 const Agents = lazy(() => import('@/features/agents/pages/AgentsPage'))
 const RequirementMatch = lazy(() => import('@/features/requirements/pages/RequirementMatchPage'))
 const Activity = lazy(() => import('@/features/activity/pages/ActivityPage'))
 const Roles = lazy(() => import('@/features/rbac/pages/RolesPage'))
+const Settings = lazy(() => import('@/features/settings/pages/SettingsPage'))
 const Profile = lazy(() => import('@/features/profile/pages/ProfilePage'))
 const DesignSystem = lazy(() => import('@/features/design-system/pages/DesignSystemPage'))
 const Login = lazy(() => import('@/features/auth/pages/LoginPage'))
@@ -47,11 +49,38 @@ export const router = createBrowserRouter([
       // Self-service — any authenticated user, no permission guard.
       { path: 'profile', element: lazyRoute(<Profile />) },
       { path: 'clients', element: lazyRoute(<Clients />) },
-      // 'new' before ':id', or the detail route swallows it as an id.
-      { path: 'clients/new', element: lazyRoute(<ClientCreate />) },
+      // 'new' before ':id', or the detail route swallows it as an id. Creating
+      // is admin-only, so guard it — an agent hitting /clients/new by URL is
+      // denied, not shown a form whose submit would 403 anyway.
+      {
+        path: 'clients/new',
+        element: lazyRoute(
+          <RequirePermission permission="client.create">
+            <ClientCreate />
+          </RequirePermission>,
+        ),
+      },
       { path: 'clients/:id', element: lazyRoute(<ClientDetail />) },
       { path: 'properties', element: lazyRoute(<Properties />) },
-      { path: 'properties/new', element: lazyRoute(<PropertyCreate />) },
+      {
+        path: 'properties/new',
+        element: lazyRoute(
+          <RequirePermission permission="property.create">
+            <PropertyCreate />
+          </RequirePermission>,
+        ),
+      },
+      // 'edit' before ':id' so the detail route doesn't swallow it. Editing is
+      // gated — an agent reaching /properties/:id/edit by URL is denied rather
+      // than shown a form whose submit would 403.
+      {
+        path: 'properties/:id/edit',
+        element: lazyRoute(
+          <RequirePermission permission="property.update">
+            <PropertyEdit />
+          </RequirePermission>,
+        ),
+      },
       { path: 'properties/:id', element: lazyRoute(<PropertyDetail />) },
       // Admin-only SURFACE — a guard, not a parallel tree. An agent hitting
       // /agents gets the same 404 the API would give them.
@@ -78,6 +107,14 @@ export const router = createBrowserRouter([
         element: lazyRoute(
           <RequirePermission permission="activity.list">
             <Activity />
+          </RequirePermission>,
+        ),
+      },
+      {
+        path: 'settings',
+        element: lazyRoute(
+          <RequirePermission permission="settings.view">
+            <Settings />
           </RequirePermission>,
         ),
       },

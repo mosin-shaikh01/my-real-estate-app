@@ -201,7 +201,24 @@ currently zero camelCase columns; keep it that way.
 - **Tokens**: `@theme` for primitives (it *snapshots* values); `:root` +
   **`@theme inline`** for anything that remaps at runtime. Miss this and dark
   mode silently no-ops.
-- **Dark mode**: architecture exists, not shipped. Keep it that way until asked.
+- **Dark mode**: SHIPPED, and the theme is a **per-user, database-backed**
+  preference. A `ThemeProvider` (`app/theme-provider.tsx`) toggles `.dark` on
+  `<html>`; the token layer remaps every semantic var. The source of truth is
+  `UserPreference.theme`, carried on `/me` and written via self-service
+  `PATCH /api/me/preferences` (a user only ever touches their own). `localStorage`
+  is a CACHE only, and **keyed per user** (`estate-theme` = `{ [userId]: theme }`,
+  plus `estate-last-user` cleared on logout) — never a single global value, which
+  is what leaks the previous user's theme onto the next. The boot script in
+  `index.html` paints the active user's cached theme before `/me` resolves (no
+  FOUC), and a logged-out browser resolves to the system theme. The applied theme
+  is the CURRENT user's DB pref (via `['me']`); the fallback resets to system on
+  logout, applied in a `useLayoutEffect` so the protected app's first frame is
+  correct. First login with no saved theme seeds the DB default from
+  `prefers-color-scheme`.
+  `UserPreference` is built to grow (language, timezone, …) — one nullable column
+  each. The header `ThemeToggle` is visible to every signed-in user. Raw `-700`
+  brand/status text and `-100` tints don't adapt on dark surfaces — use the
+  semantic `text-brand/danger/success/warning` and `surface-*-soft` tokens.
 
 ### Accessibility (WCAG 2.1 AA — treat as a requirement, not a nicety)
 
@@ -355,6 +372,7 @@ npm run db:studio    # prisma studio
 | 6 · Activity log + dashboard | ✅ done — dashboard live since Phase 3; activity log page surfaced |
 | 7 · Global search | ✅ done — scoped, phone-normalized, properties + clients |
 | 8 · Reports | ⬜ (roles matrix done; transactional reports need a Deal-close flow) |
+| 9 · Settings (branding + company config) | ✅ done — `AppSetting` singleton, `settings.view/update` perms, public branding (name/logo/favicon/colour read pre-auth), admin tabbed form. `GET /api/settings\|logo\|favicon` are deliberately PUBLIC; all writes need `settings.update`. |
 
 **Phase 2 precedes properties deliberately.** Build properties first and you
 retrofit scoping into every query — the exact smear the design prevents. Prove
@@ -365,7 +383,7 @@ the pattern on one vertical slice, then generalize.
 Notifications (email/WhatsApp/SMS — the WhatsApp Business API alone is a
 multi-week compliance project), video upload (URL field instead), radius/map
 search (no PostGIS), a calendar UI (`scheduledAt` + a list), outbound messaging
-(`tel:`/`wa.me` links only), dark mode, an editable permission matrix
+(`tel:`/`wa.me` links only), an editable permission matrix
 (read-only in v1), and global search beyond properties + clients.
 
 ### Future

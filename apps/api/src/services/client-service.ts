@@ -128,7 +128,10 @@ const DETAIL_SELECT = {
     select: {
       id: true,
       status: true,
-      property: { select: { id: true, code: true, title: true, status: true } },
+      // assignedAgentId is carried so the serializer can drop shortlisted
+      // properties that belong to OTHER agents — strict RBAC applies even to a
+      // client's shortlist, not only to the property endpoints.
+      property: { select: { id: true, code: true, title: true, status: true, assignedAgentId: true } },
     },
   },
 } as const

@@ -7,26 +7,41 @@ import {
   Users,
 } from 'lucide-react'
 import { Link } from 'react-router'
-import type { PropertyStatus } from '@app/shared'
 import { PageHeader } from '@/components/layout/AppShell'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { StatusBadge } from '@/components/ui/StatusBadge'
-import { Table, TableEmpty, TableWrapper, TD, TH, THead, TR } from '@/components/ui/Table'
-import { useMe } from '@/features/auth/api/use-auth'
+import { usePermissions, useMe } from '@/features/auth/api/use-auth'
 import { useDashboard } from '@/features/dashboard/api/use-dashboard'
+import { PropertyFilterBar } from '@/features/properties/components/PropertyFilterBar'
+import { PropertyTable } from '@/features/properties/components/PropertyTable'
 import { useProperties } from '@/features/properties/api/use-properties'
-import { formatArea, formatMoneyShort, formatRelative } from '@/lib/format'
+import { PROPERTY_FILTER_KEYS } from '@/features/properties/lib/property-filters'
+import { formatMoneyShort, formatRelative } from '@/lib/format'
+import { useUrlFilters } from '@/lib/use-url-filters'
 
 // Every figure here is live and SCOPED. An agent's "properties" tile counts the
 // properties an agent can actually open — a tile showing 6 next to a list
 // showing 4 would either look broken or leak how much inventory exists that
 // they cannot see.
 
+// Cap the widget — it's a glanceable "recent" view, not the paginated list.
+const RECENT_LIMIT = 8
+
 export default function DashboardPage() {
   const { data: me } = useMe()
+  const { has } = usePermissions()
+  const canSeePrice = has('property.price.view')
   const { data, isLoading } = useDashboard()
-  const { data: recent } = useProperties({ page: 1, sort: '-createdAt' })
+
+  // The SAME search/filter bar and results table as the Properties page, over the
+  // SAME scoped query — so the widget stays in sync and agents only ever see,
+  // search and filter what's assigned to them (enforced server-side).
+  const { filters, setFilter, clearAll, activeCount } = useUrlFilters(PROPERTY_FILTER_KEYS)
+  const { data: recent, isLoading: recentLoading } = useProperties({
+    ...filters,
+    page: 1,
+    sort: filters.sort ?? '-createdAt',
+  })
 
   const firstName = me?.user.fullName.split(' ')[0]
 
@@ -98,59 +113,28 @@ export default function DashboardPage() {
                 </Button>
               }
             >
-              <Card.Title>Recent inventory</Card.Title>
+              <Card.Title>Recent Properties</Card.Title>
               <Card.Description>The newest properties you have access to.</Card.Description>
             </Card.Header>
 
-            <TableWrapper className="rounded-none border-0">
-              <Table>
-                <THead>
-                  <tr>
-                    <TH className="w-28">Code</TH>
-                    <TH>Property</TH>
-                    <TH className="w-32">Status</TH>
-                    <TH numeric className="w-24">Area</TH>
-                    <TH numeric className="w-28">Price</TH>
-                  </tr>
-                </THead>
-                <tbody>
-                  {recent?.data.length ? (
-                    recent.data.slice(0, 6).map((p) => (
-                      <TR key={p.id}>
-                        <TD className="font-mono text-xs text-text-muted">{p.code}</TD>
-                        <TD className="max-w-0">
-                          <Link
-                            to={`/properties/${p.id}`}
-                            className="block truncate hover:text-brand-700 hover:underline"
-                          >
-                            {p.title}
-                          </Link>
-                        </TD>
-                        <TD>
-                          <StatusBadge status={p.status as PropertyStatus} />
-                        </TD>
-                        <TD numeric className="text-text-secondary">
-                          {formatArea(p.areaSqft)}
-                        </TD>
-                        <TD numeric className="font-medium">
-                          {p.salePrice
-                            ? formatMoneyShort(p.salePrice)
-                            : p.rentPricePerMonth
-                              ? `${formatMoneyShort(p.rentPricePerMonth)}/mo`
-                              : '—'}
-                        </TD>
-                      </TR>
-                    ))
-                  ) : (
-                    <TableEmpty
-                      colSpan={5}
-                      title={isLoading ? 'Loading…' : 'Nothing assigned to you yet'}
-                      hint={isLoading ? undefined : 'Properties assigned to you, or to your clients, appear here.'}
-                    />
-                  )}
-                </tbody>
-              </Table>
-            </TableWrapper>
+            <div className="border-b border-border-subtle px-5 py-3">
+              <PropertyFilterBar
+                filters={filters}
+                setFilter={setFilter}
+                clearAll={clearAll}
+                activeCount={activeCount}
+                canSeePrice={canSeePrice}
+              />
+            </div>
+
+            <PropertyTable
+              rows={recent?.data.slice(0, RECENT_LIMIT)}
+              isLoading={recentLoading}
+              canSeePrice={canSeePrice}
+              activeCount={activeCount}
+              compact
+              emptyHint="Properties assigned to you, or to your clients, appear here."
+            />
           </Card>
 
           {/* Only rendered for actors with activity.list — an agent has no

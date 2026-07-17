@@ -44,3 +44,32 @@ export const uploadMedia: RequestHandler = (req, res, next) => {
     next(err)
   })
 }
+
+// A single branding image (logo / favicon). Small cap — these are icons, not
+// media. The service re-validates the MIME strictly (SVG is refused: it carries
+// script); this filter is the cheap first gate.
+export const BRANDING_MAX_BYTES = 2 * 1024 * 1024
+const brandingUpload = multer({
+  storage,
+  limits: { fileSize: BRANDING_MAX_BYTES, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    const ok = /^image\/(png|jpeg|webp|x-icon|vnd\.microsoft\.icon)$/.test(file.mimetype)
+    if (!ok) {
+      cb(new AppError('VALIDATION_FAILED', 400, `Unsupported image type: ${file.mimetype}`))
+      return
+    }
+    cb(null, true)
+  },
+})
+
+export const uploadBrandingImage: RequestHandler = (req, res, next) => {
+  brandingUpload.single('file')(req, res, (err: unknown) => {
+    if (err instanceof multer.MulterError) {
+      const message =
+        err.code === 'LIMIT_FILE_SIZE' ? 'The image exceeds the 2 MB limit' : err.message
+      next(new AppError('VALIDATION_FAILED', 400, message))
+      return
+    }
+    next(err)
+  })
+}

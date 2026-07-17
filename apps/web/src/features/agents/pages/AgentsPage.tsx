@@ -31,7 +31,7 @@ export default function AgentsPage() {
 
       <div className="p-6">
         {isError ? (
-          <div role="alert" className="rounded-lg border border-danger-100 bg-danger-100/40 p-4 text-base text-danger-700">
+          <div role="alert" className="rounded-lg border border-border-danger-soft bg-surface-danger-soft/40 p-4 text-base text-text-danger">
             {(error as Error).message}
           </div>
         ) : (
@@ -84,7 +84,7 @@ function AgentRow({ agent }: { agent: AgentDTO }) {
       </TD>
       <TD className="text-text-secondary">
         {agent.phone ? (
-          <a href={`tel:${agent.phone}`} className="hover:text-brand-700 hover:underline">
+          <a href={`tel:${agent.phone}`} className="hover:text-text-brand hover:underline">
             {agent.phone}
           </a>
         ) : (
@@ -107,7 +107,7 @@ function AgentRow({ agent }: { agent: AgentDTO }) {
         <span
           className={cn(
             'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-2xs font-medium',
-            suspended ? 'bg-surface-hover text-text-muted' : 'bg-success-100 text-success-700',
+            suspended ? 'bg-surface-hover text-text-muted' : 'bg-surface-success-soft text-text-success',
           )}
         >
           <span className={cn('size-1.5 rounded-full', suspended ? 'bg-status-archived' : 'bg-status-available')} />

@@ -4,9 +4,32 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="description" content="Real Estate CRM — property, client and agent management." />
     <title>Real Estate CRM</title>
+    <!-- Applied BEFORE the first paint so the theme never flashes the wrong
+         palette. Reads the ACTIVE user's cached theme (keyed by user id) so a
+         logged-out browser resolves to the system preference, never the previous
+         user's theme. Mirror the logic in src/lib/theme.ts. -->
+    <script>
+      (function () {
+        try {
+          var theme = null
+          var lastUser = localStorage.getItem('estate-last-user')
+          if (lastUser) {
+            var map = JSON.parse(localStorage.getItem('estate-theme') || '{}')
+            var cached = map && map[lastUser]
+            if (cached === 'light' || cached === 'dark') theme = cached
+          }
+          if (!theme) {
+            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          }
+          var root = document.documentElement
+          if (theme === 'dark') root.classList.add('dark')
+          root.style.colorScheme = theme
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -6,15 +6,18 @@ import { scopeForProperty } from '../src/auth/scope.js'
 // ============================================================================
 // The search scope-composition trap
 // ============================================================================
-// scopeForProperty for an AGENT returns an object containing `OR` — the
-// "assigned to me OR to my client" clause. A search that spreads that scope and
-// then adds its OWN top-level `OR` for the search terms silently OVERWRITES the
-// scope's OR (two `OR` keys, last wins), and the agent's search returns every
-// property. It leaked in the demo and a unit test never saw it — only diffing
-// search results against the scoped list did.
+// A search that SPREADS a scope and then adds its OWN top-level `OR` for the
+// search terms silently OVERWRITES any `OR` the scope carried (two `OR` keys,
+// last wins) — the row-level restriction vanishes and the search returns rows it
+// shouldn't. It leaked once (an agent's search returned other agents' inventory)
+// and no unit test saw it; only diffing search results against the scoped list
+// did.
 //
-// This pins the property of the scope that makes the bug possible, so a future
-// refactor of either side gets a loud reminder.
+// The agent PROPERTY scope is currently strict (assignedAgentId = self, no OR),
+// so this specific clobber isn't reachable through it today. But the AND-
+// composition pattern is the standing defence — any scope that gains an OR later
+// (a widened role, a client scope) is protected for free. This test pins both:
+// the current strict shape, and the principle.
 // ============================================================================
 
 const agent = buildActor({
@@ -24,31 +27,28 @@ const agent = buildActor({
   userPermissions: [],
 })
 
-describe('search must compose scope with AND, not spread it', () => {
-  it('the agent property scope contains an OR that a naive spread would clobber', () => {
+describe('scope composition in search', () => {
+  it('the agent property scope is strict (assignedAgentId only, no OR to clobber)', () => {
     const scope = scopeForProperty(agent)
-    // If this ever stops being true, the spread-then-OR bug becomes impossible
-    // and this test can relax — but until then, the OR is exactly the thing a
-    // second top-level OR would overwrite.
-    expect(scope.OR).toBeDefined()
-    expect(scope.OR?.length).toBeGreaterThan(1)
+    expect(scope).toEqual({ deletedAt: null, assignedAgentId: 'agent-1' })
+    expect(scope.OR).toBeUndefined()
   })
 
-  it('demonstrates the clobber: spreading loses the scope OR', () => {
-    const scope = scopeForProperty(agent)
+  it('AND composition is safe even for a scope that DOES carry an OR', () => {
+    // Synthetic scope-with-OR (as a widened role would produce), to pin the
+    // principle regardless of the current strict shape.
+    const scopeWithOr = { deletedAt: null, OR: [{ assignedAgentId: 'a' }, { featured: true }] }
     const searchOr = [{ title: { contains: 'x' } }, { code: { contains: 'x' } }]
 
-    // The BUG, reproduced: spread the scope, then add a top-level OR.
-    const buggy = { ...scope, OR: searchOr }
-    // The scope's OR is gone — replaced by the search terms. deletedAt survives,
-    // but the row-level restriction does not.
+    // The BUG, reproduced: spread the scope, then add a top-level OR — the
+    // scope's OR is replaced by the search terms, and the restriction is lost.
+    const buggy = { ...scopeWithOr, OR: searchOr }
     expect(buggy.OR).toBe(searchOr)
-    expect(buggy.OR).not.toBe(scope.OR)
+    expect(buggy.OR).not.toBe(scopeWithOr.OR)
 
-    // The FIX: compose with AND so both predicates survive independently.
-    const safe = { AND: [scope, { OR: searchOr }] }
-    expect(safe.AND[0]).toBe(scope)
-    expect(safe.AND[0]?.OR).toBeDefined() // scope's row restriction intact
+    // The FIX search uses: AND, so both predicates survive independently.
+    const safe = { AND: [scopeWithOr, { OR: searchOr }] }
+    expect(safe.AND[0]?.OR).toBeDefined() // scope's restriction intact
     expect(safe.AND[1].OR).toBe(searchOr) // search terms intact
   })
 })

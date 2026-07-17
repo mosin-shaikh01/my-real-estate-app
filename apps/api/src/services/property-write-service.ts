@@ -38,6 +38,27 @@ async function assertAmenitiesExist(ids: string[]) {
   }
 }
 
+// Optional string fields that a cleared form sends as "". Store them as NULL,
+// not empty string, so "no maps link" is one value everywhere and downstream
+// `?? null` checks behave. Required fields (title, city…) are min-length
+// validated upstream, so they never arrive empty.
+const NULLABLE_STRINGS = [
+  'googleMapUrl',
+  'locality',
+  'internalNotes',
+  'latitude',
+  'longitude',
+  'facing',
+] as const
+
+function normaliseEmptyToNull(data: Record<string, unknown>) {
+  const out = { ...data }
+  for (const key of NULLABLE_STRINGS) {
+    if (out[key] === '') out[key] = null
+  }
+  return out
+}
+
 /** Only what the actor is permitted to write reaches Prisma. */
 function stripUnwritable(data: Record<string, unknown>, actor: Actor) {
   const out = { ...data }
@@ -58,12 +79,18 @@ export async function createProperty(actor: Actor, input: PropertyCreateInput, r
   const amenityIds = input.amenityIds ?? []
   await assertAmenitiesExist(amenityIds)
 
-  const { amenityIds: _drop, ...rest } = stripUnwritable(input, actor) as PropertyCreateInput
+  const { amenityIds: _drop, ...rest } = normaliseEmptyToNull(
+    stripUnwritable(input, actor),
+  ) as PropertyCreateInput
 
   return prisma.$transaction(async (tx) => {
     const property = await tx.property.create({
       data: {
         ...rest,
+        // Never let the array column go in as NULL — the schema field is a
+        // required String[], and a NULL would fail Prisma's read on the next
+        // fetch. An omitted or absent value means "no external videos" = [].
+        videoUrls: rest.videoUrls ?? [],
         // `code` omitted deliberately — the Postgres sequence default fills it
         // (PROP-00007). Status/visibility/etc. omitted when absent → the DB's
         // @default fills them. That is why the Zod defaults were removed.
@@ -102,7 +129,9 @@ export async function updateProperty(
   if ('assignedAgentId' in input) await assertAssignableAgent(input.assignedAgentId)
   if (input.amenityIds) await assertAmenitiesExist(input.amenityIds)
 
-  const { amenityIds, ...rest } = stripUnwritable(input, actor) as PropertyUpdateInput
+  const { amenityIds, ...rest } = normaliseEmptyToNull(
+    stripUnwritable(input, actor),
+  ) as PropertyUpdateInput
 
   return prisma.$transaction(async (tx) => {
     const property = await tx.property.update({

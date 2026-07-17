@@ -183,7 +183,7 @@ export interface ClientDetailDTO extends ClientDTO {
 export interface AssignmentRow {
   id: string
   status: string
-  property: { id: string; code: string; title: string; status: string }
+  property: { id: string; code: string; title: string; status: string; assignedAgentId: string | null }
 }
 
 export function toClientDetailDTO(
@@ -208,14 +208,22 @@ export function toClientDetailDTO(
       outcome: i.outcome,
       authorName: i.author?.fullName ?? null,
     })),
-    assignedProperties: (row.assignments ?? []).map((a) => ({
-      id: a.id,
-      propertyId: a.property.id,
-      code: a.property.code,
-      title: a.property.title,
-      status: a.property.status,
-      assignmentStatus: a.status,
-    })),
+    // Strict RBAC reaches the shortlist too: an agent sees only the properties
+    // that are BOTH shortlisted for this client AND assigned to them. An admin
+    // (property.list.all) sees the whole shortlist. Without this, an agent could
+    // read another agent's property code/title through their client's page.
+    assignedProperties: (row.assignments ?? [])
+      .filter(
+        (a) => actor.has('property.list.all') || a.property.assignedAgentId === actor.userId,
+      )
+      .map((a) => ({
+        id: a.id,
+        propertyId: a.property.id,
+        code: a.property.code,
+        title: a.property.title,
+        status: a.property.status,
+        assignmentStatus: a.status,
+      })),
   }
 }
 

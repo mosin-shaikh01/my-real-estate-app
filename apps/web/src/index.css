@@ -2,8 +2,30 @@
 @import './styles/tokens.css';
 
 @layer base {
+  /* Fallback for when JS is disabled; the boot script also sets this inline on
+     <html> so native controls and scrollbars match the active theme. */
   html {
     color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+
+  /* A brief cross-fade between palettes on theme switch. The provider adds this
+     class for one beat, then removes it, so it never lags ordinary hover/press.
+     Gated on the motion preference — reduced-motion users get an instant swap. */
+  @media (prefers-reduced-motion: no-preference) {
+    html.theme-transition,
+    html.theme-transition *,
+    html.theme-transition *::before,
+    html.theme-transition *::after {
+      transition:
+        background-color 220ms ease,
+        border-color 220ms ease,
+        color 220ms ease,
+        fill 220ms ease,
+        stroke 220ms ease;
+    }
   }
 
   body {

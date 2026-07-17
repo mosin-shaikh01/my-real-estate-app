@@ -7,6 +7,299 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Changed — dashboard "Recent Properties" widget: search, filters, shared components
+
+Aligned the dashboard's recent-inventory widget with the Property Management
+module by REUSING its parts rather than duplicating them.
+
+- **Renamed** "Recent inventory" → "Recent Properties".
+- **Extracted** the Properties page's search/filter bar (`PropertyFilterBar`) and
+  results table (`PropertyTable`, with a `compact` mode) into shared components.
+  The Properties page and the dashboard widget now render from the same code —
+  they can't drift, and the filter set lives in one place
+  (`lib/property-filters.ts`).
+- **Dashboard** now has the full search + filter bar (status, type, sale/rent,
+  beds, city, sort) over the **same scoped `useProperties` query**, so it stays in
+  sync with the live records and an agent only ever sees/searches/filters their
+  assigned properties (enforced server-side). Loading, empty and responsive
+  states come from the shared table; a subtle Framer Motion transition animates
+  the Clear control.
+- **Shared search widened** to also match **city**, **assigned agent name**, and
+  **property type** (in addition to title/code/locality/address) — a single
+  server-side change that benefits both surfaces. Verified: search by city, type
+  ("villa"), agent ("Aisha") and code all resolve, and agent scoping is preserved.
+
+### Added — tagline display + a "Show tagline" visibility toggle
+
+The saved tagline was only wired into the login-screen subtitle, so in the app it
+looked like it wasn't showing. Now it appears in the branding areas and has an
+admin visibility control.
+
+- **Display**: the tagline shows under the CRM name in the **sidebar** and as the
+  **login** subtitle. It's hidden (no empty space) when unset or when Show tagline
+  is off — the two are gated together (`showTagline && tagline`).
+- **Setting**: `Show tagline` toggle in Settings → Branding, directly below the
+  Tagline field (default on). Turning it off hides the tagline everywhere WITHOUT
+  deleting the text — verified: disable keeps the value, edits persist while
+  hidden, re-enabling restores the updated text.
+- **DB**: a new `AppSetting.showTagline` boolean (`@default(true)`). This is the
+  first of a family of visibility flags — `showLogo`, `showCompanyName`, … each a
+  boolean column plus one `kind: 'boolean'` entry in the settings form config, so
+  new toggles are additive, not a rewrite.
+- **Live**: updating the tagline or the toggle updates the sidebar/login
+  immediately via the shared settings query — no refresh.
+
+### Added — Settings module (CRM branding & company configuration)
+
+An admin Settings page to manage the app's branding and company information,
+stored in the database and reused across the app.
+
+- **Schema**: a new `AppSetting` **singleton** table (a unique `singleton`
+  boolean pinned to true → exactly one row, every write an upsert, no duplicates).
+  Holds branding, company info, office address, social links and business copy.
+  Logo/favicon are stored on disk like other media and streamed, never a static
+  path.
+- **API**: reading is PUBLIC (`GET /api/settings`, `/logo`, `/favicon`) so the
+  login screen and favicon can brand themselves before auth; writing is gated by
+  the new `settings.update` permission (`PATCH /api/settings`, and
+  `POST`/`DELETE` for each asset). Uploads are MIME- and size-validated (PNG/JPEG/
+  WebP/ICO, ≤ 2 MB; SVG refused — it carries script). New `settings.view` /
+  `settings.update` permissions; super admin holds both, agents neither.
+- **Page**: `/settings` (guarded by `settings.view`), a tabbed form — Branding,
+  Company, Office address, Social media, Business — built from the shared Zod
+  schema with reusable form components, logo/favicon upload widgets, Framer Motion
+  tab/section transitions, a save toast, and validation that jumps to the tab of
+  the first error. A **Settings** item appears in the admin sidebar; agents don't
+  see it and are shown Access Denied if they navigate there directly.
+- **Global branding**: `BrandingEffects` applies the configured name (page
+  title), favicon and primary colour app-wide; the sidebar and login screen show
+  the uploaded logo + name + tagline. The same `useSettings` query is the single
+  seam for future reuse (email/PDF/print templates).
+
+Verified end-to-end: public read, admin PATCH + logo upload/stream/delete,
+non-image rejected (400), agent write blocked (403). Typecheck, build, lint and
+125 tests all green.
+
+### Fixed — the REAL cause of the cross-user theme leak: logout orphaned the theme observer
+
+The earlier fix (per-user cache, logout reset) wasn't enough — the theme still
+showed the previous user until a refresh. The actual root cause was in `useLogout`:
+it called `queryClient.clear()`, which drops cached data but **orphans long-lived
+observers**. The `ThemeProvider`'s `useMe` would freeze on the previous user and
+keep applying their theme; only a full refresh (which remounts everything) fixed
+it — exactly the reported symptom.
+
+- **Fix:** `useLogout` now calls `queryClient.resetQueries()` instead of
+  `clear()`. Both empty the cache (so a new user never sees the previous user's
+  cached clients), but `resetQueries()` keeps observers **subscribed**, so `/me`
+  re-resolves to the next user and the theme follows them with no refresh.
+- **Provider simplified.** The applied theme is now derived purely from the
+  `['me']` query (`serverTheme ?? resolveBootTheme()`) with no local mirror of
+  server state that could drift — removing the fragile during-render state that
+  the previous attempt relied on.
+- **Regression test** (`theme-flow.test.tsx`) drives the REAL `useLogin`/
+  `useLogout` hooks through Admin(light) → logout → Agent(dark) → logout → Admin,
+  four times, asserting the theme is always the current user's. This is the only
+  setup that reproduces the observer-orphaning; the isolated provider tests
+  didn't (they used `resetQueries`, which sidesteps the bug).
+
+### Fixed — theme no longer leaks the previous user's preference across logins
+
+On the same browser, logging in as a second user (or back as the first) could
+briefly show the previous user's theme until a refresh. Three root causes, all
+fixed:
+
+- **Global localStorage key.** The cache was a single `estate-theme` value shared
+  by everyone on the device. It's now **keyed per user** (`{ [userId]: theme }`)
+  plus an `estate-last-user` pointer that is **cleared on logout**, so the boot
+  script resolves a logged-out browser to the system theme, never the last user's.
+- **Stale fallback during the login transition.** The provider fell back to that
+  global cache while `/me` was refetching. It now derives the applied theme from
+  the current user's DB preference (the `['me']` query) and, when there's no
+  authenticated user, falls back to the neutral **system** theme — reset the
+  instant a session ends (during render, before paint).
+- **Post-paint application.** The theme was applied in a `useEffect` (after the
+  first frame). It's now a `useLayoutEffect`, and `RequireAuth` already blocks the
+  protected app until `/me` resolves — so the dashboard's first frame is already
+  the correct user's theme.
+
+Verified with a test that repeats Admin(light) → Agent(dark) → logout → Admin
+several times and asserts the theme is always the current user's, with the
+active-user pointer cleared on each logout. 122 tests, lint and build green.
+
+### Changed — theme preference is now per-user and database-backed
+
+The theme was device-local (localStorage). It now follows the **user** across
+sessions and devices, with the database as the source of truth.
+
+- **Schema**: a new `UserPreference` table (1:1 with `User`, created lazily) with
+  a nullable `theme`. Separate from `User` because a display choice is the user's
+  own concern, not part of their auth identity — and it's built to grow
+  (language, timezone, dateFormat, currency, sidebar state, … each become one
+  more nullable column, no new table). NULL `theme` means "never chosen".
+- **API**: `/me` now returns `preferences`; a self-service
+  `PATCH /api/me/preferences` (authenticated, no permission gate) upserts. Every
+  handler keys off the caller's own `userId`, so a user can only read/write their
+  own preference and an admin can't reach another user's — theme is unrelated to
+  permissions. Invalid values are rejected (field-keyed 400).
+- **Client**: `ThemeProvider` now derives the applied theme from the `['me']`
+  query (server state stays in Query, not a store). Toggling optimistically
+  patches the cache and persists via the mutation; `localStorage` is kept purely
+  as a pre-paint cache so the boot script still avoids FOUC, then the DB value
+  reconciles it. First login with no saved theme seeds the DB default from the
+  OS `prefers-color-scheme`.
+- Verified end-to-end: Admin → dark and Agent → light persist independently and
+  restore after logout/login; typecheck, build, lint, 122 tests (incl. new
+  DB-backed theme tests + route-manifest coverage of `/api/me`).
+
+### Added — global dark / light theme switcher
+
+The token layer was built dark-aware from day one; this ships it.
+
+- **ThemeProvider** (`app/theme-provider.tsx`) centralizes theme state and
+  toggles `.dark` on `<html>`, which the semantic token layer keys off — no
+  duplicated theme logic, and every existing component adapts for free.
+- **Persistence**: the choice is saved to `localStorage` (`estate-theme`). With
+  no saved choice we follow the OS `prefers-color-scheme` **live**; once the user
+  picks, we stop tracking it. A boot script in `index.html` applies the resolved
+  theme before first paint, so there's no flash of the wrong palette.
+- **Header toggle** (`ThemeToggle`): a Sun/Moon button in the top bar, visible to
+  every signed-in user (admin and agent), with a Framer Motion icon swap and a
+  brief cross-fade between palettes — both gated on `prefers-reduced-motion`.
+- **Contrast**: added semantic `text-brand/danger/success/warning` and
+  `surface-*-soft` / `border-danger-soft` tokens that remap lighter on dark
+  surfaces, and refactored ~45 hardcoded `-700` text / `-100` tint usages onto
+  them. Light mode is pixel-identical; dark-mode text pairs verified ≥ 4.5:1
+  (muted lifted to clear AA while staying a step below secondary). `color-scheme`
+  now follows the theme so native controls and scrollbars match.
+
+Verified: typecheck, build, lint, 119 tests (incl. new theme-toggle tests) green.
+
+### Added — split media galleries (image lightbox + video gallery) & multiple video links
+
+The detail page never rendered the external video link — a pasted YouTube URL was
+stored and silently invisible. Fixed, and the media area is now split into two
+purpose-built galleries.
+
+- **Schema**: `Property.videoUrl` (single) → `videoUrls String[]` (multiple).
+  Migration backfills any existing single link into the array before dropping the
+  old column, so no data is lost. Replaced wholesale on write, like amenities.
+- **Image Gallery**: a responsive, lazy-loaded grid that opens a **full-screen
+  lightbox** — previous/next, keyboard (arrows + Esc), zoom, an `n / total`
+  counter, and a close button. Built on Radix Dialog (focus trap, scroll lock,
+  Esc) with Framer Motion transitions.
+- **Video Gallery** (`VideoGallery`): shows uploaded video **files** and external
+  **links** together, and renders nothing when there are none (no empty
+  placeholder). YouTube uses a thumbnail + play **facade** — the iframe mounts
+  only on click, so several embeds don't slow the page. Vimeo and direct-file
+  URLs are supported too (`parseVideoUrl` helper, unit-tested).
+- **Forms**: a `VideoLinkEditor` (add / edit-in-place / remove, with a live
+  preview) replaces the single video input on both the Add and Edit forms;
+  uploaded image/video files continue through the media picker/gallery. Invalid
+  URLs are caught inline and re-validated server-side (field-keyed 400).
+- `PropertyGallery` now composes the two galleries and gained section headings
+  (Images / Property videos / Documents); it's shared by the detail page and the
+  edit form, so both stay identical.
+
+Verified: create/update/clear `videoUrls` round-trip, invalid URL rejected,
+uploaded videos still stream (range requests), typecheck, build, 116 tests
+(incl. 11 new parser tests) and lint all green.
+
+### Added — full property editing + extended Add form
+
+A property can now be **edited in full**, and the Add form gained everything the
+Edit form has — the two are literally the **same component** (`PropertyForm`,
+`mode="create" | "edit"`), so they can never drift. Edit auto-populates from the
+property's DTO; the admin changes only what they need.
+
+- **Every field is editable** across Overview, Pricing, Amenities, Internal
+  notes, Location and Media. Reused the existing `FormField`/`Input`/`Select`
+  primitives and the shared Zod schema, so client and server validate identically
+  and server field-errors map back onto the form.
+- **Amenities** — a grouped chip picker (`AmenityPicker`) backed by a new
+  `GET /api/amenities` catalog endpoint (guarded by `property.create` OR
+  `property.update`). Add/remove on both forms; the update replaces the set
+  wholesale in one transaction.
+- **Internal notes** — a dedicated textarea, shown only to holders of
+  `property.internalNotes.view`. Hidden from agents, and the write path strips
+  the field for anyone who can't read it (a hidden field is not a writable one).
+- **Google Maps link** — a **separate** `googleMapUrl` column and input, distinct
+  from lat/lng, stored verbatim for future map previews. The detail page prefers
+  it over the coordinate-derived link. Empty string normalises to `NULL`.
+- **Media** — images **and** video, multiple, with previews for both, remove, and
+  client-side type/size validation mirroring the server (images/PDF 10 MB, video
+  100 MB). Live gallery on Edit (immediate upload/delete, range-served playback);
+  a staged local picker on Add that uploads once the property exists — a failed
+  upload no longer strands the created property behind a form error.
+- **Edit actions** — a pencil action on every property row (gated by
+  `property.update`) and an Edit button on the detail page; a new
+  `/properties/:id/edit` route guarded by `property.update`, with the same
+  403/404 strict-RBAC distinction the detail page draws.
+
+Verified end-to-end: create-with-all-fields, edit round-trip (title, maps link,
+internal notes, coordinates, amenity replacement all persisted), typecheck,
+build, 105 tests and lint all green.
+
+### Changed — role-based sidebar + Access Denied on admin routes
+
+The sidebar config already tagged each item with the permission it needs, but
+the render ignored it — every item showed for everyone. Now it **filters the
+declarative config against the user's effective permissions**, and drops any
+group left empty. No `if (role === 'admin')` anywhere: a role is a set of
+permissions, so adding a role or a page is a config change, not a code change.
+
+- An **agent** (holds `property.list` + `client.list`) sees exactly
+  **Dashboard, Properties, Clients**. Requirements, Agents, Activity log and
+  Roles & access disappear (their whole "Admin" group collapses).
+- An **admin** sees every item.
+- **Admin routes render an Access Denied (403) page** instead of the old silent
+  `/404` redirect — `RequirePermission` now shows `ForbiddenPage` in place, so
+  an agent typing `/settings/roles` (or any admin URL) is told plainly they're
+  restricted, with a link back to the dashboard.
+- Guarded the create routes too (`/properties/new` → `property.create`,
+  `/clients/new` → `client.create`), so an agent can't reach a form whose
+  submit would 403 anyway.
+
+The UI is convenience; enforcement is the guard + the API. Verified: an agent
+hitting `/api/agents`, `/api/activity-logs`, `/api/rbac/*`, bulk-assign, or
+create-property/client directly gets **403** every time, sidebar or not.
+
+### Changed — STRICT property RBAC: agents see only what's assigned to them
+
+Reverses the shared-pool change from the previous entry. Requirement: an agent
+must see **only** properties explicitly assigned to them by an admin, and never
+another agent's — enforced at the backend across every surface.
+
+`scopeForProperty(agent)` is now exactly `{ deletedAt: null, assignedAgentId:
+self }` — one exclusive gate, no OR, no browse pool, no client-shortlist
+widening. It flows through list, search, filters, detail, dashboard counts and
+media; write services scope-check with the same predicate.
+
+- **Unassigned properties are admin-only** until assigned (`assignedAgentId`
+  null never matches an agent).
+- **Reassignment** moves a property between agents' scopes on the next request.
+- **Access Denied**: opening another agent's property by direct id returns
+  **403 "Access denied: this property is not assigned to you"**; a nonexistent
+  id returns 404. The property detail page renders the two distinctly.
+- The client shortlist is filtered too — an agent viewing their client sees only
+  the shortlisted properties that are also assigned to them.
+
+Verified against the running backend, all seven requirements:
+
+| # | Requirement | Result |
+|---|---|---|
+| 1 | Agent sees only assigned | Rohan: PROP-1/2/5; Aisha: PROP-3/4/6 |
+| 2 | Never sees others' | cross-access absent from list, search, filters |
+| 3 | Enforced in search + filters | search "BKC" → nothing for Rohan; city filter scoped |
+| 4 | Admin unrestricted | sees all 6, opens any |
+| 5 | Reassignment moves scope | assign PROP-1 to Aisha → hers next request, gone from Rohan |
+| 6 | Unassigned is admin-only | cleared PROP-1 → invisible to Rohan, visible to admin |
+| 7 | Access Denied by URL | 403 "Access denied…" on another agent's id; 404 on nonexistent |
+
+Model & scalability: assignment is the single indexed FK `Property.assignedAgentId`.
+Co-assignment (multiple agents per property), if ever needed, is a `PropertyAgent`
+join-table migration touching only the scope resolver — see docs/RBAC.md.
+
 ### Changed — agents browse the shared inventory (not only assigned)
 
 Previously an agent could see only properties assigned to them or to one of

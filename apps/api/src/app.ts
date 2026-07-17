@@ -6,12 +6,15 @@ import { requestLog } from './middleware/request-log.js'
 import { publicRoute } from './middleware/route-registry.js'
 import { activityRouter, rbacRouter, searchRouter } from './routes/admin-routes.js'
 import { agentRouter } from './routes/agent-routes.js'
+import { amenityRouter } from './routes/amenity-routes.js'
 import { authRouter } from './routes/auth-routes.js'
 import { clientRouter } from './routes/client-routes.js'
 import { dashboardRouter } from './routes/dashboard-routes.js'
 import { mediaRouter } from './routes/media-routes.js'
+import { meRouter } from './routes/me-routes.js'
 import { profileRouter } from './routes/profile-routes.js'
 import { propertyRouter } from './routes/property-routes.js'
+import { settingsRouter } from './routes/settings-routes.js'
 
 /**
  * Declared mount table.
@@ -32,9 +35,14 @@ export const ROUTE_MOUNTS: ReadonlyArray<{
   requiresAuth: boolean
 }> = [
   { path: '/api/auth', router: authRouter, requiresAuth: false },
+  // Mixed public/protected (branding is read pre-auth), so authenticate is NOT
+  // applied at the mount — the write routes declare it themselves.
+  { path: '/api/settings', router: settingsRouter, requiresAuth: false },
+  { path: '/api/me', router: meRouter, requiresAuth: true },
   { path: '/api/profile', router: profileRouter, requiresAuth: true },
   { path: '/api/clients', router: clientRouter, requiresAuth: true },
   { path: '/api/properties', router: propertyRouter, requiresAuth: true },
+  { path: '/api/amenities', router: amenityRouter, requiresAuth: true },
   { path: '/api/agents', router: agentRouter, requiresAuth: true },
   { path: '/api/dashboard', router: dashboardRouter, requiresAuth: true },
   { path: '/api/media', router: mediaRouter, requiresAuth: true },

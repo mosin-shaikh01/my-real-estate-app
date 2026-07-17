@@ -73,7 +73,7 @@ export default function ActivityPage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-text-primary">
                           {href ? (
-                            <Link to={href} className="hover:text-brand-700 hover:underline">
+                            <Link to={href} className="hover:text-text-brand hover:underline">
                               {e.summary}
                             </Link>
                           ) : (
