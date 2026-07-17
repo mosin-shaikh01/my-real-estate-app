@@ -24,7 +24,7 @@ export function BrandingEffects() {
 
   useEffect(() => {
     if (crmName === undefined) return // wait until settings resolve
-    setFavicon(faviconUrl)
+    void setFavicon(faviconUrl)
   }, [crmName, faviconUrl])
 
   useEffect(() => {
@@ -36,24 +36,44 @@ export function BrandingEffects() {
   return null
 }
 
-// Dynamic favicons are unreliable when you mutate an existing <link>: Chrome
-// (and others) frequently keep the already-loaded icon. The robust fix is to
-// REMOVE every icon link and append a fresh element — the browser then re-reads
-// it. The href carries a ?v= version, so a replacement is a new URL and can't be
-// served from cache.
-function setFavicon(href: string | null): void {
-  document.querySelectorAll("link[rel~='icon']").forEach((el) => el.remove())
+// The object URL currently in use, kept so it can be revoked on the next swap.
+let currentObjectUrl: string | null = null
 
+// Dynamic favicons are stubborn: browsers (Chrome especially) often keep the
+// already-painted icon even after you swap the <link href>. Two things make it
+// reliable here:
+//   1. Replace the element outright (remove every icon link, append a fresh one).
+//   2. Point it at a `blob:` URL of the fetched bytes, not the http URL. A blob
+//      URL is unique and un-cacheable, so the browser treats it as brand-new
+//      content and repaints the tab.
+// If the fetch fails (e.g. offline), we fall back to the direct URL.
+async function setFavicon(href: string | null): Promise<void> {
+  if (currentObjectUrl) {
+    URL.revokeObjectURL(currentObjectUrl)
+    currentObjectUrl = null
+  }
+
+  if (!href) {
+    replaceIcon('/favicon.svg', 'image/svg+xml')
+    return
+  }
+
+  try {
+    const res = await fetch(href, { cache: 'no-store' })
+    if (!res.ok) throw new Error(`favicon ${res.status}`)
+    const blob = await res.blob()
+    currentObjectUrl = URL.createObjectURL(blob)
+    replaceIcon(currentObjectUrl, blob.type || undefined)
+  } catch {
+    replaceIcon(href)
+  }
+}
+
+function replaceIcon(href: string, type?: string): void {
+  document.querySelectorAll("link[rel~='icon']").forEach((el) => el.remove())
   const link = document.createElement('link')
   link.rel = 'icon'
-  if (href) {
-    // The uploaded file's type is decided by its bytes; leave `type` unset so an
-    // SVG-typed tag can't mislabel a PNG.
-    link.href = href
-  } else {
-    // No custom favicon — restore the bundled default.
-    link.type = 'image/svg+xml'
-    link.href = '/favicon.svg'
-  }
+  if (type) link.type = type
+  link.href = href
   document.head.appendChild(link)
 }
