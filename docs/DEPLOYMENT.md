@@ -79,6 +79,11 @@ NODE_ENV=production npm start
   production dependency), which resolves the path aliases and the `@app/shared`
   source that a plain `tsc` emit cannot. This is a deliberate, documented choice
   (see `docs/ARCHITECTURE.md`).
+- **`NODE_ENV=production` and devDependencies.** Hosts that set
+  `NODE_ENV=production` make npm skip `devDependencies` — but the build needs them
+  (Vite, its plugins, TypeScript) as does the Prisma CLI. The repo-root **`.npmrc`**
+  sets `include=dev` so `npm ci` installs them regardless, on every platform,
+  without changing the build command.
 - **`npm start`** runs the API, which serves both `/api` and the SPA.
 - **`db:deploy` is the release step** — `prisma migrate deploy` is idempotent and
   applies only pending migrations. Never run `migrate dev` or `migrate reset`
