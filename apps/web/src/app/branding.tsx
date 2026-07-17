@@ -11,37 +11,49 @@ import { useSettings } from '@/features/settings/api/use-settings'
 // settings query later.
 export function BrandingEffects() {
   const { data } = useSettings()
+  // Depend on the primitives, not the whole object, so a background refetch that
+  // returns identical values doesn't needlessly re-swap the favicon.
+  const crmName = data?.crmName
+  const faviconUrl = data?.faviconUrl ?? null
+  const primaryColor = data?.primaryColor ?? null
 
   useEffect(() => {
-    if (!data) return
+    if (crmName === undefined) return // settings not loaded yet
+    document.title = crmName
+  }, [crmName])
 
-    document.title = data.crmName
+  useEffect(() => {
+    if (crmName === undefined) return // wait until settings resolve
+    setFavicon(faviconUrl)
+  }, [crmName, faviconUrl])
 
-    setFavicon(data.faviconUrl)
-
+  useEffect(() => {
     const root = document.documentElement
-    if (data.primaryColor) root.style.setProperty('--brand-mark', data.primaryColor)
+    if (primaryColor) root.style.setProperty('--brand-mark', primaryColor)
     else root.style.removeProperty('--brand-mark')
-  }, [data])
+  }, [primaryColor])
 
   return null
 }
 
+// Dynamic favicons are unreliable when you mutate an existing <link>: Chrome
+// (and others) frequently keep the already-loaded icon. The robust fix is to
+// REMOVE every icon link and append a fresh element — the browser then re-reads
+// it. The href carries a ?v= version, so a replacement is a new URL and can't be
+// served from cache.
 function setFavicon(href: string | null): void {
-  let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
-  if (!link) {
-    link = document.createElement('link')
-    link.rel = 'icon'
-    document.head.appendChild(link)
-  }
+  document.querySelectorAll("link[rel~='icon']").forEach((el) => el.remove())
+
+  const link = document.createElement('link')
+  link.rel = 'icon'
   if (href) {
-    // The uploaded file's type is decided by its bytes; drop the static
-    // type hint so an SVG-typed tag doesn't mislabel a PNG.
-    link.removeAttribute('type')
+    // The uploaded file's type is decided by its bytes; leave `type` unset so an
+    // SVG-typed tag can't mislabel a PNG.
     link.href = href
   } else {
-    // Fall back to the bundled default.
+    // No custom favicon — restore the bundled default.
     link.type = 'image/svg+xml'
     link.href = '/favicon.svg'
   }
+  document.head.appendChild(link)
 }
