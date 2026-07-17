@@ -18,6 +18,17 @@ const envSchema = z.object({
 
   UPLOAD_DIR: z.string().default('./uploads'),
   MAILER: z.enum(['console', 'ethereal', 'smtp']).default('console'),
+
+  // Deployment: in production the API process also serves the built SPA so the
+  // whole app is one origin (which is what keeps the httpOnly auth cookies
+  // working without CORS). Defaults to on in production; override to decouple
+  // the two behind a reverse proxy. WEB_DIST_DIR points at apps/web/dist and is
+  // only consulted when serving is on.
+  SERVE_WEB: z
+    .enum(['true', 'false', '1', '0'])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === 'true' || v === '1')),
+  WEB_DIST_DIR: z.string().optional(),
 })
 
 const parsed = envSchema.safeParse(process.env)

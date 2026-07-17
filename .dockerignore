@@ -1,0 +1,22 @@
+# Everything here is either reinstalled, regenerated, or a secret. Keeping it out
+# of the build context makes builds faster and prevents host artifacts (or a
+# committed .env) from leaking into the image.
+node_modules
+**/node_modules
+dist
+**/dist
+**/src/generated
+uploads
+**/uploads
+.git
+.gitignore
+.env
+**/.env
+!**/.env.example
+*.log
+npm-debug.log*
+Dockerfile
+.dockerignore
+docker-compose.yml
+.vscode
+.idea

@@ -303,7 +303,9 @@ is the part that decays.
 
 ## 9. Environment
 
-- Windows 10, Node 24, npm 11. **No Docker.**
+- Windows 10, Node 24, npm 11. **No Docker on the dev machine** — local dev is
+  bare `npm run dev`. (Production ships as a single-origin container; the
+  `Dockerfile`/compose are for deploy, not local dev. See `docs/DEPLOYMENT.md`.)
 - PostgreSQL 17 local, port 5432, database `real_estate_crm`, role `crm_app`
   (has `CREATEDB` — Prisma migrate needs it for the shadow DB).
 - Secrets in `apps/api/.env` (gitignored). Template: `.env.example`.

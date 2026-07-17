@@ -15,6 +15,7 @@ These documents go deeper on the *why*.
 | [COMPONENT_GUIDELINES.md](./COMPONENT_GUIDELINES.md) | You're writing a component. |
 | [CODING_STANDARDS.md](./CODING_STANDARDS.md) | You want the naming/style rules. |
 | [DEVELOPMENT_RULES.md](./DEVELOPMENT_RULES.md) | You're setting up, or about to run a git command. |
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | You're shipping this to a server (Docker, VPS, Railway, Render, Hostinger…). |
 | [ROADMAP.md](./ROADMAP.md) | You're deciding what to build next. |
 | [CHANGELOG.md](./CHANGELOG.md) | You want to know what shipped. |
 

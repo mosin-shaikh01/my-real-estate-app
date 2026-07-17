@@ -7,6 +7,33 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — production deployment: single-origin serving + container/build config
+
+Made the app deployable on any standard Node host from a clean clone, without
+platform-specific hacks. The model is **one origin**: the API process serves the
+built SPA and the JSON API together, so the httpOnly auth cookies keep working
+without CORS.
+
+- **API serves the SPA in production** (`apps/api/src/app.ts`) — `express.static`
+  for hashed assets plus an `index.html` fallback for client routes, registered
+  after `/api` (so API misses still return the JSON 404) and before the 404
+  handler. Toggled by `SERVE_WEB` (defaults on when `NODE_ENV=production`);
+  `WEB_DIST_DIR` overrides the bundle location. Verified end-to-end.
+- **Fresh-clone build fixed** — the generated Prisma client is gitignored, so
+  `apps/api` now runs `prisma generate` on `postinstall`; the root `build` also
+  generates it before building web. Without this a clean clone had no Prisma
+  client and the API could not start.
+- **`tsx` moved to production dependencies** — it's the runtime for `start`, so a
+  `--omit=dev` production install no longer breaks. Added `db:deploy`
+  (`prisma migrate deploy`) as the release migration step, and root `start` /
+  `build` / `db:deploy` scripts.
+- **`Dockerfile` (multi-stage) + `.dockerignore` + `docker-compose.yml`** — builds
+  the SPA + Prisma client and runs the single-origin process with a Postgres
+  service, persistent `uploads`/`pgdata` volumes, and a `/api/health` healthcheck.
+- **Committed `package-lock.json`** for reproducible `npm ci`, added `.nvmrc` (22),
+  documented every env var and the serverless/disk caveat in
+  [DEPLOYMENT.md](./DEPLOYMENT.md).
+
 ### Added — reusable Tooltip + contextual help (ⓘ) on non-obvious controls
 
 A single, accessible Tooltip primitive and a curated set of hints — enough to
