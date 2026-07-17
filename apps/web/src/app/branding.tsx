@@ -12,20 +12,18 @@ import { useSettings } from '@/features/settings/api/use-settings'
 export function BrandingEffects() {
   const { data } = useSettings()
   // Depend on the primitives, not the whole object, so a background refetch that
-  // returns identical values doesn't needlessly re-swap the favicon.
+  // returns identical values doesn't re-touch the DOM.
   const crmName = data?.crmName
   const faviconUrl = data?.faviconUrl ?? null
   const primaryColor = data?.primaryColor ?? null
 
   useEffect(() => {
-    if (crmName === undefined) return // settings not loaded yet
-    document.title = crmName
+    if (crmName !== undefined) document.title = crmName
   }, [crmName])
 
   useEffect(() => {
-    if (crmName === undefined) return // wait until settings resolve
-    void setFavicon(faviconUrl)
-  }, [crmName, faviconUrl])
+    applyFavicon(faviconUrl)
+  }, [faviconUrl])
 
   useEffect(() => {
     const root = document.documentElement
@@ -36,45 +34,45 @@ export function BrandingEffects() {
   return null
 }
 
-// Dynamic favicons are stubborn: browsers (Chrome especially) keep the already-
-// painted icon after a plain href change. Two things make it reliable:
-//   1. Replace the element outright (remove every icon link, append a fresh one).
-//   2. Point it at a `data:` URL of the fetched bytes. A data URL is unique,
-//      self-contained and un-cacheable, so the browser repaints — and unlike a
-//      `blob:` URL it needs no revoke, so React Strict Mode's double-invoke can't
-//      leave the <link> pointing at a dead reference (which shows as the browser's
-//      generic globe).
-// Falls back to the direct URL if the fetch fails.
-async function setFavicon(href: string | null): Promise<void> {
-  if (!href) {
-    replaceIcon('/favicon.svg', 'image/svg+xml')
-    return
-  }
-  try {
-    const res = await fetch(href, { cache: 'no-store' })
-    if (!res.ok) throw new Error(`favicon ${res.status}`)
-    const blob = await res.blob()
-    const dataUrl = await blobToDataUrl(blob)
-    replaceIcon(dataUrl, blob.type || undefined)
-  } catch {
-    replaceIcon(href)
-  }
-}
+const DEFAULT_FAVICON = '/favicon.svg'
 
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(reader.error)
-    reader.readAsDataURL(blob)
+// Update the favicon IN PLACE and idempotently. The single most important thing
+// here is what it does NOT do: it never removes the <link rel="icon"> element.
+// Removing it drops the document to a "no favicon" state (the browser's generic
+// globe) — which is exactly why even the bundled default was disappearing. We
+// keep the one link from index.html and only change its href when it actually
+// differs, so:
+//   • no custom favicon  → a no-op; the default stays exactly as the browser
+//                          loaded it;
+//   • custom favicon     → href becomes the versioned API URL (the ?v= busts the
+//                          cache), which the browser fetches and repaints;
+//   • removed            → href returns to the default.
+// Setting the same href twice is a no-op, so React Strict Mode's double-invoke
+// is harmless. No blob/data URLs, so there are no revocable/stale references.
+function applyFavicon(customUrl: string | null): void {
+  const link = getOrCreateIconLink()
+
+  // Exactly one icon link — collapse any duplicates onto the canonical one.
+  document.querySelectorAll("link[rel~='icon']").forEach((el) => {
+    if (el !== link) el.remove()
   })
+
+  if (customUrl) {
+    // Unknown type — let the browser sniff it from the response Content-Type,
+    // rather than mislabel a PNG as the index.html's image/svg+xml.
+    if (link.hasAttribute('type')) link.removeAttribute('type')
+    if (link.getAttribute('href') !== customUrl) link.setAttribute('href', customUrl)
+  } else {
+    if (link.getAttribute('type') !== 'image/svg+xml') link.setAttribute('type', 'image/svg+xml')
+    if (link.getAttribute('href') !== DEFAULT_FAVICON) link.setAttribute('href', DEFAULT_FAVICON)
+  }
 }
 
-function replaceIcon(href: string, type?: string): void {
-  document.querySelectorAll("link[rel~='icon']").forEach((el) => el.remove())
+function getOrCreateIconLink(): HTMLLinkElement {
+  const existing = document.querySelector<HTMLLinkElement>("link[rel~='icon']")
+  if (existing) return existing
   const link = document.createElement('link')
   link.rel = 'icon'
-  if (type) link.type = type
-  link.href = href
   document.head.appendChild(link)
+  return link
 }
