@@ -375,6 +375,8 @@ npm run db:studio    # prisma studio
 | 7 · Global search | ✅ done — scoped, phone-normalized, properties + clients |
 | 8 · Reports | ⬜ (roles matrix done; transactional reports need a Deal-close flow) |
 | 9 · Settings (branding + company config) | ✅ done — `AppSetting` singleton, `settings.view/update` perms, public branding (name/logo/favicon/colour read pre-auth), admin tabbed form. `GET /api/settings\|logo\|favicon` are deliberately PUBLIC; all writes need `settings.update`. |
+| 10 · Auth self-service (forgot/reset password) | ✅ done — hashed single-use tokens (30 min), always-200 (no enumeration), reset revokes all sessions, per-IP rate limiting. |
+| 11 · Notification Service | ✅ done — centralized `notificationService.send()`; **nothing calls SMTP directly**. Real email (nodemailer, retry/timeout, console fallback), DB templates + encrypted provider config + logs, Settings → Notifications admin UI, `notifications.view/manage` perms. SMS/WhatsApp/Push/In-App/Webhook are stub providers. See `docs/NOTIFICATION_SERVICE.md`. |
 
 **Phase 2 precedes properties deliberately.** Build properties first and you
 retrofit scoping into every query — the exact smear the design prevents. Prove
@@ -382,8 +384,10 @@ the pattern on one vertical slice, then generalize.
 
 ### Explicitly out of scope for v1
 
-Notifications (email/WhatsApp/SMS — the WhatsApp Business API alone is a
-multi-week compliance project), video upload (URL field instead), radius/map
+Non-email notification channels (SMS/WhatsApp/Push/In-App/Webhook — the WhatsApp
+Business API alone is a multi-week compliance project) are stubbed but not sent;
+**email is shipped** via the Notification Service (Phase 11). Video upload (URL
+field instead), radius/map
 search (no PostGIS), a calendar UI (`scheduledAt` + a list), outbound messaging
 (`tel:`/`wa.me` links only), an editable permission matrix
 (read-only in v1), and global search beyond properties + clients.

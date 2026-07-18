@@ -7,6 +7,72 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — Notification Service (centralized communication layer)
+
+A single, extensible service every feature sends through — **nothing in the CRM
+talks to SMTP directly anymore**. Email is fully implemented; SMS/WhatsApp/Push/
+In-App/Webhook are wired as honest stubs so new channels are additive.
+
+- **`src/notification/`** — a Prisma-free module (clean DI): orchestrator, channel
+  provider interface, a `Dispatcher` queue seam (inline today, BullMQ/Redis-ready),
+  `{{placeholder}}` rendering with HTML escaping, a branded email layout, and
+  default templates. The Prisma-backed `NotificationStore` lives in `services/` and
+  is injected at the composition root — honouring "Prisma only in services/**".
+- **Email provider** — real SMTP via `nodemailer` with retry on transient
+  failures, connection/socket timeouts, and a console fallback when unconfigured
+  (so dev/demo and forgot-password keep working with zero setup).
+- **`NotificationService.send({ channel, template, recipient, data })`** — resolves
+  template → injects branding (from CRM Settings) → renders → dispatches → logs.
+  Never throws on delivery failure; returns a `SendResult`. **forgot-password now
+  sends through it** (the old `lib/mailer` is removed).
+- **Prisma**: `NotificationProviderConfig` (encrypted secrets), `NotificationTemplate`,
+  `NotificationLog` + migration; 11 default templates seeded (create-only).
+- **Security**: SMTP credentials **encrypted at rest** (AES-256-GCM, key derived
+  from `APP_ENCRYPTION_KEY` or `JWT_REFRESH_SECRET` — no new required config);
+  passwords never returned by the API; all routes Super-Admin gated
+  (`notifications.view` / `notifications.manage`); test-sends rate limited.
+- **Settings → Notifications** (admin) — tabs for Email (provider presets for
+  Gmail/Outlook/365/Zoho/Hostinger/GoDaddy/cPanel/SendGrid/Brevo/SES/Mailgun/Custom,
+  auto-filling defaults), a **Send Test Email** card (real send, Ethereal preview
+  link), a **Template Manager** (subject + HTML editor + live sandboxed preview +
+  placeholder chips), a **Logs** table, and "Coming soon" tabs for the other
+  channels.
+- Verified end-to-end: real SMTP delivery through an Ethereal account, encryption
+  round-trip + tamper-fail-closed, template rendering/branding, channel routing,
+  and logging. Docs: [NOTIFICATION_SERVICE.md](./NOTIFICATION_SERVICE.md).
+
+### Added — Forgot / Reset Password
+
+A complete self-service password-reset flow, built on the auth primitives the
+schema already anticipated (`PasswordResetToken`, the `MAILER` setting, and the
+`RATE_LIMITED` error code all pre-existed).
+
+- **Two public pages** (`/forgot-password`, `/reset-password`) plus a "Forgot
+  password?" link under the login password field. A new shared `AuthLayout`
+  frames all three auth screens (login included) so they stay identical; the
+  reset page shows a live password-strength meter, confirm-match validation,
+  loading states, and success/invalid-link states. Fully responsive, design-token
+  styled, keyboard- and screen-reader-accessible.
+- **Backend** (`POST /api/auth/forgot-password`, `/reset-password`,
+  `/reset-password/verify`) — all public (pre-session) and rate limited:
+  - Tokens are 256-bit random, stored **sha256-hashed** (never raw), single-use,
+    30-minute expiry. One live link per user (a new request invalidates the old).
+  - `forgot-password` **always returns 200** whether or not the email exists — no
+    account enumeration — and a per-account 60s cooldown blunts email-bombing.
+  - A completed reset **revokes every session** and re-hashes the password with
+    argon2 in one transaction; the token is consumed with a guarded update so a
+    concurrent replay can't double-spend it.
+- **Mailer seam** (`lib/mailer.ts`) — a transport-agnostic `Mailer` with a
+  production-safe **console** transport that logs the reset link as one JSON line
+  (what you copy when no SMTP is configured); `smtp`/`ethereal` degrade to console
+  with a warning until a real transport is wired. New optional `APP_URL` builds
+  the absolute link (derived from the request in prod, `WEB_ORIGIN` in dev).
+- **Rate limiter** (`middleware/rate-limit.ts`) — dependency-free, in-memory,
+  per-IP fixed window (per-instance; documented Redis path for multi-instance).
+- Tests: rate-limiter (budget, per-key isolation, custom key) and mailer console
+  transport; the public-route manifest snapshot updated to include the three new
+  endpoints. Full reset flow verified end-to-end against the live database.
+
 ### Added — production deployment: single-origin serving + container/build config
 
 Made the app deployable on any standard Node host from a clean clone, without

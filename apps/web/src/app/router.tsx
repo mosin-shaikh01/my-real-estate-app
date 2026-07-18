@@ -17,9 +17,12 @@ const RequirementMatch = lazy(() => import('@/features/requirements/pages/Requir
 const Activity = lazy(() => import('@/features/activity/pages/ActivityPage'))
 const Roles = lazy(() => import('@/features/rbac/pages/RolesPage'))
 const Settings = lazy(() => import('@/features/settings/pages/SettingsPage'))
+const Notifications = lazy(() => import('@/features/notifications/pages/NotificationsPage'))
 const Profile = lazy(() => import('@/features/profile/pages/ProfilePage'))
 const DesignSystem = lazy(() => import('@/features/design-system/pages/DesignSystemPage'))
 const Login = lazy(() => import('@/features/auth/pages/LoginPage'))
+const ForgotPassword = lazy(() => import('@/features/auth/pages/ForgotPasswordPage'))
+const ResetPassword = lazy(() => import('@/features/auth/pages/ResetPasswordPage'))
 const NotFound = lazy(() => import('@/features/misc/pages/NotFoundPage'))
 
 function Fallback() {
@@ -38,6 +41,8 @@ const lazyRoute = (element: ReactNode) => <Suspense fallback={<Fallback />}>{ele
 // a guard, not a parallel tree.
 export const router = createBrowserRouter([
   { path: '/login', element: lazyRoute(<Login />) },
+  { path: '/forgot-password', element: lazyRoute(<ForgotPassword />) },
+  { path: '/reset-password', element: lazyRoute(<ResetPassword />) },
   {
     element: (
       <RequireAuth>
@@ -123,6 +128,14 @@ export const router = createBrowserRouter([
         element: lazyRoute(
           <RequirePermission permission="rbac.role.list">
             <Roles />
+          </RequirePermission>,
+        ),
+      },
+      {
+        path: 'settings/notifications',
+        element: lazyRoute(
+          <RequirePermission permission="notifications.view">
+            <Notifications />
           </RequirePermission>,
         ),
       },

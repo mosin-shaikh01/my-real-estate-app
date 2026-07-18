@@ -323,6 +323,66 @@ model PasswordResetToken {
 }
 
 // ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+// The CRM's single communication layer. Provider config is one row per channel;
+// the SMTP password lives ENCRYPTED in `secret` (AES-256-GCM) and is never
+// returned to a client. Templates are DB-backed so admins edit copy without a
+// deploy. Every send attempt (success, failure, or skip) writes a
+// NotificationLog. Designed so a queue can sit between the service and the
+// provider later with no schema change.
+
+model NotificationProviderConfig {
+  id       String  @id @default(cuid(2))
+  channel  String  @unique @db.VarChar(32)
+  enabled  Boolean @default(false)
+  provider String  @default("custom") @db.VarChar(40)
+  // Non-secret settings (host, port, encryption, username, sender, replyTo) as
+  // JSON — validated at the app edge by the shared Zod schema.
+  settings Json    @default("{}")
+  // Encrypted secret bundle (e.g. the SMTP password). Opaque ciphertext here.
+  secret   String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("notification_provider_configs")
+}
+
+model NotificationTemplate {
+  id       String  @id @default(cuid(2))
+  key      String  @unique @db.VarChar(64)
+  name     String  @db.VarChar(120)
+  channel  String  @default("email") @db.VarChar(32)
+  subject  String  @db.VarChar(300)
+  bodyHtml String  @map("body_html") @db.Text
+  enabled  Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("notification_templates")
+}
+
+model NotificationLog {
+  id          String    @id @default(cuid(2))
+  channel     String    @db.VarChar(32)
+  templateKey String?   @map("template_key") @db.VarChar(64)
+  provider    String?   @db.VarChar(40)
+  recipient   String    @db.VarChar(320)
+  subject     String?   @db.VarChar(300)
+  status      String    @db.VarChar(24)
+  error       String?   @db.Text
+  retryCount  Int       @default(0) @map("retry_count")
+  sentAt      DateTime? @map("sent_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([channel, status])
+  @@map("notification_logs")
+}
+
+// ============================================================================
 // PROPERTY
 // ============================================================================
 

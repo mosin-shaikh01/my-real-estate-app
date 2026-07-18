@@ -1,13 +1,16 @@
 import { hash } from '@node-rs/argon2'
 import {
   AGENT_PERMISSIONS,
+  NOTIFICATION_TEMPLATE_KEYS,
   PERMISSIONS,
   PUBLIC_PERMISSIONS,
   ROLE_SLUGS,
   SUPER_ADMIN_PERMISSIONS,
+  TEMPLATE_LABELS,
   type PermissionKey,
 } from '@app/shared'
 import { prisma } from '../src/lib/prisma.js'
+import { DEFAULT_TEMPLATES } from '../src/notification/templates/default-templates.js'
 
 // ============================================================================
 // SEED — idempotent. Safe to run repeatedly; never destructive.
@@ -145,6 +148,25 @@ async function main() {
     update: {},
   })
   console.log('  app settings: singleton upserted')
+
+  // --- Notification templates -------------------------------------------
+  // Create-only: seed the built-in defaults but NEVER overwrite an admin's
+  // edits on a re-run (update is a no-op).
+  for (const key of NOTIFICATION_TEMPLATE_KEYS) {
+    const def = DEFAULT_TEMPLATES[key]
+    await prisma.notificationTemplate.upsert({
+      where: { key },
+      create: {
+        key,
+        name: TEMPLATE_LABELS[key],
+        channel: 'email',
+        subject: def.subject,
+        bodyHtml: def.bodyHtml,
+      },
+      update: {},
+    })
+  }
+  console.log(`  notification templates: ${NOTIFICATION_TEMPLATE_KEYS.length} upserted`)
 
   // --- Amenities ---------------------------------------------------------
   for (const a of AMENITIES) {

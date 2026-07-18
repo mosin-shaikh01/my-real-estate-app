@@ -1,4 +1,5 @@
 import {
+  Bell,
   Building2,
   ClipboardList,
   Cog,
@@ -68,6 +69,12 @@ const NAV: ReadonlyArray<{ heading?: string; items: readonly NavItem[] }> = [
     items: [
       { to: '/activity', label: 'Activity log', icon: ScrollText, permission: 'activity.list' },
       { to: '/settings/roles', label: 'Roles & access', icon: Settings2, permission: 'rbac.role.list' },
+      {
+        to: '/settings/notifications',
+        label: 'Notifications',
+        icon: Bell,
+        permission: 'notifications.view',
+      },
       { to: '/settings', label: 'Settings', icon: Cog, permission: 'settings.view', end: true },
     ],
   },

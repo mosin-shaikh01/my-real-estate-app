@@ -9,6 +9,7 @@ These documents go deeper on the *why*.
 | [REQUIREMENTS.md](./REQUIREMENTS.md) | You need to know what's in scope — and what deliberately isn't. |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | You're adding a module or wondering why the repo is shaped like this. |
 | [RBAC.md](./RBAC.md) | **Before touching auth, scoping, or any field-level permission.** |
+| [NOTIFICATION_SERVICE.md](./NOTIFICATION_SERVICE.md) | You're sending email/notifications or adding a channel or template. |
 | [DATABASE.md](./DATABASE.md) | You're changing the schema or writing a migration. |
 | [API.md](./API.md) | You're adding an endpoint. |
 | [UI_UX_GUIDELINES.md](./UI_UX_GUIDELINES.md) | You're designing a screen or reaching for a colour. |

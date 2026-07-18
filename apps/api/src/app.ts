@@ -15,6 +15,7 @@ import { clientRouter } from './routes/client-routes.js'
 import { dashboardRouter } from './routes/dashboard-routes.js'
 import { mediaRouter } from './routes/media-routes.js'
 import { meRouter } from './routes/me-routes.js'
+import { notificationRouter } from './routes/notification-routes.js'
 import { profileRouter } from './routes/profile-routes.js'
 import { propertyRouter } from './routes/property-routes.js'
 import { settingsRouter } from './routes/settings-routes.js'
@@ -48,6 +49,7 @@ export const ROUTE_MOUNTS: ReadonlyArray<{
   { path: '/api/amenities', router: amenityRouter, requiresAuth: true },
   { path: '/api/agents', router: agentRouter, requiresAuth: true },
   { path: '/api/dashboard', router: dashboardRouter, requiresAuth: true },
+  { path: '/api/notifications', router: notificationRouter, requiresAuth: true },
   { path: '/api/media', router: mediaRouter, requiresAuth: true },
   { path: '/api/activity-logs', router: activityRouter, requiresAuth: true },
   { path: '/api/search', router: searchRouter, requiresAuth: true },

@@ -19,6 +19,20 @@ const envSchema = z.object({
   UPLOAD_DIR: z.string().default('./uploads'),
   MAILER: z.enum(['console', 'ethereal', 'smtp']).default('console'),
 
+  // Public base URL used to build absolute links in emails (e.g. the password
+  // reset link). Optional: when unset we derive it from the request in
+  // production (single origin) and fall back to WEB_ORIGIN in dev (the Vite
+  // server that actually serves the SPA). Set it explicitly behind proxies/CDNs
+  // where the request host isn't the public host.
+  APP_URL: z.string().url().optional(),
+
+  // Key material for encrypting stored secrets at rest (e.g. the SMTP password).
+  // Optional: when unset we derive a stable key from JWT_REFRESH_SECRET, so the
+  // app is deployable with ZERO extra config. Set a dedicated value if you want
+  // to rotate it independently of the auth secrets. Rotating the source
+  // invalidates stored secrets (re-enter them in Settings) — never the app.
+  APP_ENCRYPTION_KEY: z.string().min(16).optional(),
+
   // Deployment: in production the API process also serves the built SPA so the
   // whole app is one origin (which is what keeps the httpOnly auth cookies
   // working without CORS). Defaults to on in production; override to decouple
