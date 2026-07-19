@@ -24,7 +24,13 @@ export function AppShell() {
   }
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-surface-sunken">
+    // `fixed inset-0`, not `h-dvh` in normal flow: a normal-flow shell — even
+    // h-dvh + overflow-hidden — still lets the DOCUMENT scroll to accommodate the
+    // inner `<main>` scroller's tall content (a Chromium quirk), producing a
+    // second, phantom scrollbar next to main's. Taking the shell out of flow
+    // viewport-locks it, so only `main` ever scrolls. The login page (AuthLayout,
+    // a separate route) is unaffected and still scrolls on short screens.
+    <div className="fixed inset-0 flex overflow-hidden bg-surface-sunken">
       {/* Desktop: persistent. Mobile: drawer. Same component, no duplication. */}
       <Sidebar className="hidden lg:flex" />
 
