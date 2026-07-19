@@ -1,4 +1,4 @@
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, Star } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router'
 import { FOLLOW_UP_STATUS_LABELS, type FollowUpStatus } from '@app/shared'
 import { Can, Locked } from '@/components/auth/Can'
@@ -41,12 +41,17 @@ export default function ClientsPage() {
   const [params, setParams] = useSearchParams()
   const q = params.get('q') ?? ''
   const page = Number(params.get('page') ?? 1)
+  const importantOnly = params.get('importantLead') === 'true'
 
   const { has } = usePermissions()
   const canSeeBudget = has('client.budget.view')
   const canSeePhone = has('client.phone.view')
 
-  const { data, isLoading, isError, error } = useClients({ q: q || undefined, page })
+  const { data, isLoading, isError, error } = useClients({
+    q: q || undefined,
+    page,
+    importantLead: importantOnly ? 'true' : undefined,
+  })
 
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params)
@@ -92,6 +97,20 @@ export default function ClientsPage() {
               className="h-9 w-full rounded-md border border-border-default bg-surface pr-3 pl-9 text-base placeholder:text-text-muted hover:border-border-strong focus-visible:border-brand-500 focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-brand-500"
             />
           </div>
+          <button
+            type="button"
+            onClick={() => setParam('importantLead', importantOnly ? '' : 'true')}
+            aria-pressed={importantOnly}
+            className={cn(
+              'flex h-9 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors',
+              importantOnly
+                ? 'border-brand-500 bg-surface-brand-soft text-text-brand'
+                : 'border-border-default text-text-secondary hover:border-border-strong',
+            )}
+          >
+            <Star className={cn('size-3.5', importantOnly && 'fill-current')} aria-hidden="true" />
+            Important leads
+          </button>
         </div>
 
         {isError ? (
@@ -191,6 +210,12 @@ function ClientRow({
         >
           {client.priority}
         </span>
+        {client.importantLead ? (
+          <span className="ml-1.5 inline-flex items-center gap-0.5 rounded bg-surface-brand-soft px-1.5 py-0.5 text-2xs font-medium text-text-brand" title="Important lead">
+            <Star className="size-2.5 fill-current" aria-hidden="true" />
+            Important
+          </span>
+        ) : null}
       </TD>
 
       {/* Absent vs null are DIFFERENT. `phone` missing means redacted -> lock.

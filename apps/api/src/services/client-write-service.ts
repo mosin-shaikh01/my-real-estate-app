@@ -63,6 +63,9 @@ export async function createClient(actor: Actor, input: ClientCreateInput, req: 
         phoneNormalized: normalisePhone(client.phone),
         email: orNull(client.email),
         whatsapp: orNull(client.whatsapp),
+        buyerType: client.buyerType ?? null,
+        city: orNull(client.city),
+        importantLead: client.importantLead ?? false,
         priority: client.priority,
         source: orNull(client.source),
         notes: orNull(client.notes),
@@ -126,6 +129,7 @@ export async function updateClient(actor: Actor, id: string, input: ClientUpdate
   if ('email' in input) data.email = orNull(input.email)
   if ('whatsapp' in input) data.whatsapp = orNull(input.whatsapp)
   if ('source' in input) data.source = orNull(input.source)
+  if ('city' in input) data.city = orNull(input.city)
 
   return prisma.$transaction(async (tx) => {
     const client = await tx.client.update({

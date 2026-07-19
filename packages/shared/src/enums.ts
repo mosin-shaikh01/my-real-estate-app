@@ -94,6 +94,16 @@ export type DocumentType = z.infer<typeof documentTypeSchema>
 export const clientPrioritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH'])
 export type ClientPriority = z.infer<typeof clientPrioritySchema>
 
+export const buyerTypeSchema = z.enum([
+  'INDIVIDUAL',
+  'INVESTOR',
+  'BROKER',
+  'BUILDER',
+  'FARMER',
+  'OTHER',
+])
+export type BuyerType = z.infer<typeof buyerTypeSchema>
+
 export const followUpStatusSchema = z.enum([
   'NEW',
   'CONTACTED',
@@ -163,6 +173,15 @@ export const AREA_UNIT_LABELS: Record<AreaUnit, string> = {
   ACRE: 'Acre',
   GUNTHA: 'Guntha',
   HECTARE: 'Hectare',
+}
+
+export const BUYER_TYPE_LABELS: Record<BuyerType, string> = {
+  INDIVIDUAL: 'Individual',
+  INVESTOR: 'Investor',
+  BROKER: 'Broker',
+  BUILDER: 'Builder',
+  FARMER: 'Farmer',
+  OTHER: 'Other',
 }
 
 export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {

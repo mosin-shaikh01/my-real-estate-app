@@ -7,6 +7,25 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — Client fields: buyer type, buyer city, important lead (CRM expansion Phase 3)
+
+Additive client attributes. Email was already optional and phone already required,
+matching the spec.
+
+- **`BuyerType` enum** (Individual / Investor / Broker / Builder / Farmer / Other)
+  + `Client.buyerType`; **`Client.city`** (the buyer's own city, distinct from the
+  property city on ClientRequirement); **`Client.importantLead`** boolean.
+- **Important-lead** is a first-class hot-lead flag: a ★ badge next to the name in
+  the clients list and a one-click **"Important leads" filter** (URL-backed, so a
+  filtered view is shareable). Server-side filter added to the (permission-checked)
+  client filter allowlist.
+- Wired through the shared schema (create + update + list query), write-service,
+  serializer/DTO, the clients list, and the create form (buyer-type select, buyer
+  city, and an important-lead toggle using the shared Switch). Mirrored in the
+  enum-parity test.
+- Migration applied; 154 tests green; typecheck/lint/build clean; create + filter
+  verified end-to-end against the DB.
+
 ### Added — Property Documents (CRM expansion Phase 2)
 
 Categorised legal documents per property, on top of the existing authorized media

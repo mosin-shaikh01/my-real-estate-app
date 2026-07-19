@@ -623,6 +623,12 @@ model Client {
 
   source   String?        @db.VarChar(80)
   priority ClientPriority @default(MEDIUM)
+  buyerType BuyerType?    @map("buyer_type")
+  // A hot lead to surface first — shown as a badge and filterable in the list.
+  importantLead Boolean   @default(false) @map("important_lead")
+  // The buyer's own city (distinct from the property city they're looking in,
+  // which lives on ClientRequirement).
+  city     String?        @db.VarChar(120)
   notes    String?
 
   // No `budget` here — budget is a RANGE and lives on ClientRequirement. A
@@ -895,6 +901,15 @@ enum AreaUnit {
   ACRE
   GUNTHA
   HECTARE
+}
+
+enum BuyerType {
+  INDIVIDUAL
+  INVESTOR
+  BROKER
+  BUILDER
+  FARMER
+  OTHER
 }
 
 enum Visibility {

@@ -8,6 +8,8 @@ export const clientListQuerySchema = z.object({
   priority: z.string().optional(),
   city: z.string().optional(),
   assignedAgentId: z.string().optional(),
+  /** Only hot leads when 'true'. */
+  importantLead: z.enum(['true', 'false']).optional(),
   /** `-field` = descending. */
   sort: z.string().optional(),
 

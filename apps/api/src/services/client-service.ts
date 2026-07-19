@@ -16,6 +16,9 @@ const LIST_SELECT = {
   email: true,
   phone: true,
   whatsapp: true,
+  buyerType: true,
+  city: true,
+  importantLead: true,
   priority: true,
   source: true,
   notes: true,
@@ -61,6 +64,7 @@ export async function listClients(actor: Actor, query: ClientListQuery) {
   }
   if (query.followUpStatus) and.push({ followUpStatus: query.followUpStatus })
   if (query.priority) and.push({ priority: query.priority })
+  if (query.importantLead === 'true') and.push({ importantLead: true })
   if (query.assignedAgentId) and.push({ assignedAgentId: query.assignedAgentId })
   if (query.city) and.push({ requirements: { some: { isActive: true, city: query.city } } })
 

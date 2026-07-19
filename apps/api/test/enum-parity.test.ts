@@ -30,6 +30,7 @@ const PAIRS: ReadonlyArray<[string, readonly string[], Record<string, string>]> 
   ['MediaType', shared.mediaTypeSchema.options, prismaEnums.MediaType],
   ['DocumentType', shared.documentTypeSchema.options, prismaEnums.DocumentType],
   ['ClientPriority', shared.clientPrioritySchema.options, prismaEnums.ClientPriority],
+  ['BuyerType', shared.buyerTypeSchema.options, prismaEnums.BuyerType],
   ['FollowUpStatus', shared.followUpStatusSchema.options, prismaEnums.FollowUpStatus],
   ['InteractionType', shared.interactionTypeSchema.options, prismaEnums.InteractionType],
   ['AssignmentStatus', shared.assignmentStatusSchema.options, prismaEnums.AssignmentStatus],

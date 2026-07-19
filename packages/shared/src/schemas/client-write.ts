@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import {
+  buyerTypeSchema,
   clientPrioritySchema,
   constructionStatusSchema,
   followUpStatusSchema,
@@ -61,6 +62,9 @@ const clientFields = z.object({
   phone,
   email: z.string().trim().email('Enter a valid email').nullish().or(z.literal('')),
   whatsapp: phone.nullish().or(z.literal('')),
+  buyerType: buyerTypeSchema.nullish(),
+  city: z.string().trim().max(120).nullish().or(z.literal('')),
+  importantLead: z.boolean().optional(),
   priority: clientPrioritySchema.optional(),
   source: z.string().trim().max(80).nullish(),
   notes: z.string().nullish(),

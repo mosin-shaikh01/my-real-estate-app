@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router'
 import {
+  BUYER_TYPE_LABELS,
   clientCreateSchema,
   PROPERTY_TYPE_LABELS,
   type ClientCreateInput,
@@ -12,6 +13,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FormField, Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
+import { Switch } from '@/components/ui/Switch'
 import { useCreateClient } from '@/features/clients/api/use-client'
 import { ApiClientError } from '@/lib/api'
 
@@ -82,6 +84,28 @@ export default function ClientCreatePage() {
             <FormField label="Source">
               {(p) => <Input {...p} {...form.register('source')} placeholder="Referral, website…" />}
             </FormField>
+            <FormField label="Buyer type">
+              {() => (
+                <Select
+                  options={[
+                    { value: '', label: '— Not set —' },
+                    ...Object.entries(BUYER_TYPE_LABELS).map(([value, label]) => ({ value, label })),
+                  ]}
+                  {...form.register('buyerType', { setValueAs: (v: string) => (v === '' ? null : v) })}
+                  value={form.watch('buyerType') ?? ''}
+                />
+              )}
+            </FormField>
+            <FormField label="Buyer city">
+              {(p) => <Input {...p} {...form.register('city')} placeholder="Pune" />}
+            </FormField>
+            <div className="flex items-center gap-2.5 sm:col-span-2">
+              <Switch {...form.register('importantLead')} aria-label="Important lead" />
+              <div>
+                <p className="text-xs font-medium text-text-secondary">Important lead</p>
+                <p className="text-2xs text-text-muted">Surfaces first in the clients list with a badge, and is filterable.</p>
+              </div>
+            </div>
           </Card.Body>
         </Card>
 

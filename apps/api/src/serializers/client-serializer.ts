@@ -32,6 +32,9 @@ export interface ClientRow {
   email: string | null
   phone: string
   whatsapp: string | null
+  buyerType: string | null
+  city: string | null
+  importantLead: boolean
   priority: string
   source: string | null
   notes: string | null
@@ -57,6 +60,9 @@ export interface ClientDTO {
   id: string
   code: string
   fullName: string
+  buyerType: string | null
+  city: string | null
+  importantLead: boolean
   priority: string
   followUpStatus: string
   source: string | null
@@ -92,6 +98,9 @@ export function toClientDTO(row: ClientRow, actor: Actor): ClientDTO {
     id: row.id,
     code: row.code,
     fullName: row.fullName,
+    buyerType: row.buyerType,
+    city: row.city,
+    importantLead: row.importantLead,
     priority: row.priority,
     followUpStatus: row.followUpStatus,
     source: row.source,
@@ -248,7 +257,7 @@ export function sortableClientFields(actor: Actor): string[] {
 }
 
 export function filterableClientFields(actor: Actor): string[] {
-  const fields = ['q', 'followUpStatus', 'priority', 'city', 'assignedAgentId']
+  const fields = ['q', 'followUpStatus', 'priority', 'city', 'assignedAgentId', 'importantLead']
   if (actor.has('client.budget.view')) fields.push('minBudget', 'maxBudget')
   return fields
 }

@@ -15,6 +15,9 @@ export interface ClientDTO {
   id: string
   code: string
   fullName: string
+  buyerType: string | null
+  city: string | null
+  importantLead: boolean
   priority: string
   followUpStatus: string
   source: string | null
@@ -44,6 +47,7 @@ export interface ClientFilters {
   page?: number
   q?: string
   followUpStatus?: string
+  importantLead?: string
   sort?: string
 }
 
@@ -58,6 +62,7 @@ export function useClients(filters: ClientFilters) {
           page: filters.page ?? 1,
           q: filters.q,
           followUpStatus: filters.followUpStatus,
+          importantLead: filters.importantLead,
           sort: filters.sort,
         })}`,
         signal,
