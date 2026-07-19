@@ -9,12 +9,14 @@ These documents go deeper on the *why*.
 | [REQUIREMENTS.md](./REQUIREMENTS.md) | You need to know what's in scope — and what deliberately isn't. |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | You're adding a module or wondering why the repo is shaped like this. |
 | [RBAC.md](./RBAC.md) | **Before touching auth, scoping, or any field-level permission.** |
+| [NOTIFICATION_SERVICE.md](./NOTIFICATION_SERVICE.md) | You're sending email/notifications or adding a channel or template. |
 | [DATABASE.md](./DATABASE.md) | You're changing the schema or writing a migration. |
 | [API.md](./API.md) | You're adding an endpoint. |
 | [UI_UX_GUIDELINES.md](./UI_UX_GUIDELINES.md) | You're designing a screen or reaching for a colour. |
 | [COMPONENT_GUIDELINES.md](./COMPONENT_GUIDELINES.md) | You're writing a component. |
 | [CODING_STANDARDS.md](./CODING_STANDARDS.md) | You want the naming/style rules. |
 | [DEVELOPMENT_RULES.md](./DEVELOPMENT_RULES.md) | You're setting up, or about to run a git command. |
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | You're shipping this to a server (Docker, VPS, Railway, Render, Hostinger…). |
 | [ROADMAP.md](./ROADMAP.md) | You're deciding what to build next. |
 | [CHANGELOG.md](./CHANGELOG.md) | You want to know what shipped. |
 

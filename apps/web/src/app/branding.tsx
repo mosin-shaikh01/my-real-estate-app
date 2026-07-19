@@ -2,13 +2,15 @@ import { useEffect } from 'react'
 import { useSettings } from '@/features/settings/api/use-settings'
 
 // Applies the CRM's configured branding to the document, app-wide and live: the
-// browser-tab title, the favicon, and the primary brand colour (exposed as the
-// `--brand-mark` CSS variable that the logo mark uses). Renders nothing — it is
-// a set of effects that run wherever it's mounted (inside the query provider).
+// browser-tab title, the favicon, and BOTH brand colours (exposed as the
+// `--brand-primary` / `--brand-secondary` CSS variables the token layer maps to
+// `--color-brand-primary` / `--color-brand-secondary`). Renders nothing — it is a
+// set of effects that run wherever it's mounted (inside the query provider).
 //
 // This is the single seam the spec's "reuse globally" list hangs off: page
-// titles, favicon and colour today; email/PDF/print templates can read the same
-// settings query later.
+// titles, favicon and BOTH colours today; email/PDF/print templates read the same
+// settings query later. Setting a CSS var on <html> overrides the :root default;
+// clearing it falls back to the default — so an unset colour reverts, live.
 export function BrandingEffects() {
   const { data } = useSettings()
   // Depend on the primitives, not the whole object, so a background refetch that
@@ -16,6 +18,7 @@ export function BrandingEffects() {
   const crmName = data?.crmName
   const faviconUrl = data?.faviconUrl ?? null
   const primaryColor = data?.primaryColor ?? null
+  const secondaryColor = data?.secondaryColor ?? null
 
   useEffect(() => {
     if (crmName !== undefined) document.title = crmName
@@ -26,12 +29,22 @@ export function BrandingEffects() {
   }, [faviconUrl])
 
   useEffect(() => {
-    const root = document.documentElement
-    if (primaryColor) root.style.setProperty('--brand-mark', primaryColor)
-    else root.style.removeProperty('--brand-mark')
+    applyBrandColor('--brand-primary', primaryColor)
   }, [primaryColor])
 
+  useEffect(() => {
+    applyBrandColor('--brand-secondary', secondaryColor)
+  }, [secondaryColor])
+
   return null
+}
+
+// Set a brand CSS var on <html> (overriding the token default), or clear it so
+// the default takes over again. Both colours use the exact same mechanism.
+function applyBrandColor(varName: string, value: string | null): void {
+  const root = document.documentElement
+  if (value) root.style.setProperty(varName, value)
+  else root.style.removeProperty(varName)
 }
 
 const DEFAULT_FAVICON = '/favicon.svg'

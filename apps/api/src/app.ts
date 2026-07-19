@@ -1,5 +1,8 @@
-import express, { type Router } from 'express'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import express, { type Express, type Router } from 'express'
 import cookieParser from 'cookie-parser'
+import { env, isProd } from './lib/env.js'
 import { authenticate } from './middleware/authenticate.js'
 import { errorHandler, notFoundHandler, requestId } from './middleware/error-handler.js'
 import { requestLog } from './middleware/request-log.js'
@@ -12,6 +15,7 @@ import { clientRouter } from './routes/client-routes.js'
 import { dashboardRouter } from './routes/dashboard-routes.js'
 import { mediaRouter } from './routes/media-routes.js'
 import { meRouter } from './routes/me-routes.js'
+import { notificationRouter } from './routes/notification-routes.js'
 import { profileRouter } from './routes/profile-routes.js'
 import { propertyRouter } from './routes/property-routes.js'
 import { settingsRouter } from './routes/settings-routes.js'
@@ -45,6 +49,7 @@ export const ROUTE_MOUNTS: ReadonlyArray<{
   { path: '/api/amenities', router: amenityRouter, requiresAuth: true },
   { path: '/api/agents', router: agentRouter, requiresAuth: true },
   { path: '/api/dashboard', router: dashboardRouter, requiresAuth: true },
+  { path: '/api/notifications', router: notificationRouter, requiresAuth: true },
   { path: '/api/media', router: mediaRouter, requiresAuth: true },
   { path: '/api/activity-logs', router: activityRouter, requiresAuth: true },
   { path: '/api/search', router: searchRouter, requiresAuth: true },
@@ -77,10 +82,49 @@ export function createApp() {
     else app.use(mount.path, mount.router)
   }
 
+  // In production the same process serves the built SPA, so the whole app is one
+  // origin. Registered AFTER the /api routes and BEFORE the 404 handler, so API
+  // misses still return the JSON error envelope while browser navigations fall
+  // back to index.html.
+  if (env.SERVE_WEB ?? isProd) serveWebApp(app)
+
   // Express 5 / path-to-regexp v8: no bare '*' wildcard. Omitting the path
   // entirely is the catch-all now.
   app.use(notFoundHandler)
   app.use(errorHandler)
 
   return app
+}
+
+/**
+ * Serve the compiled SPA (apps/web/dist) and fall back to index.html for client
+ * routes. Uses a plain middleware for the fallback rather than a wildcard route
+ * to sidestep path-to-regexp v8 entirely. Assets are content-hashed by Vite, so
+ * they cache hard; index.html is never cached, so a deploy is picked up at once.
+ */
+function serveWebApp(app: Express): void {
+  const here = path.dirname(fileURLToPath(import.meta.url)) // apps/api/src
+  const webDist = env.WEB_DIST_DIR
+    ? path.resolve(env.WEB_DIST_DIR)
+    : path.resolve(here, '../../web/dist')
+  const indexHtml = path.join(webDist, 'index.html')
+
+  app.use(
+    express.static(webDist, {
+      index: false,
+      maxAge: '1y',
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('index.html')) res.setHeader('Cache-Control', 'no-cache')
+      },
+    }),
+  )
+
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next()
+    if (req.path.startsWith('/api/')) return next()
+    res.sendFile(indexHtml, (err) => {
+      // Missing build output → let the JSON 404 handler answer rather than 500.
+      if (err) next()
+    })
+  })
 }

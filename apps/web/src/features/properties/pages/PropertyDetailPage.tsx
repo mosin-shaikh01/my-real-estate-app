@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Select } from '@/components/ui/Select'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { InfoHint } from '@/components/ui/Tooltip'
 import { PropertyGallery } from '@/features/properties/components/PropertyGallery'
 import { usePermissions } from '@/features/auth/api/use-auth'
 import { useAssignableAgents } from '@/features/agents/api/use-assignable-agents'
@@ -288,7 +289,12 @@ export default function PropertyDetailPage() {
             <Card.Body>
               <dl className="flex flex-col gap-3">
                 <div>
-                  <dt className="text-xs text-text-muted">Assigned agent</dt>
+                  <dt className="flex items-center gap-1 text-xs text-text-muted">
+                    Assigned agent
+                    <Can permission="property.assignAgent">
+                      <InfoHint content="The agent responsible for this property. Reassigning also changes who can see it." />
+                    </Can>
+                  </dt>
                   <dd className="mt-1">
                     {/* Editable for anyone with property.assignAgent; a plain
                         read-out for everyone else. Reassigning changes who can

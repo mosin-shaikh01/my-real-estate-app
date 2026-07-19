@@ -10,6 +10,7 @@ import { clientRouter } from '../src/routes/client-routes.js'
 import { dashboardRouter } from '../src/routes/dashboard-routes.js'
 import { mediaRouter } from '../src/routes/media-routes.js'
 import { meRouter } from '../src/routes/me-routes.js'
+import { notificationRouter } from '../src/routes/notification-routes.js'
 import { profileRouter } from '../src/routes/profile-routes.js'
 import { propertyRouter } from '../src/routes/property-routes.js'
 import { settingsRouter } from '../src/routes/settings-routes.js'
@@ -80,6 +81,7 @@ const ALL_ROUTES: RouteInfo[] = [
   ...routesOf(agentRouter, '/api/agents'),
   ...routesOf(amenityRouter, '/api/amenities'),
   ...routesOf(dashboardRouter, '/api/dashboard'),
+  ...routesOf(notificationRouter, '/api/notifications'),
   ...routesOf(mediaRouter, '/api/media'),
   ...routesOf(activityRouter, '/api/activity-logs'),
   ...routesOf(searchRouter, '/api/search'),
@@ -105,6 +107,7 @@ describe('route manifest', () => {
       '/api/dashboard',
       '/api/me',
       '/api/media',
+      '/api/notifications',
       '/api/profile',
       '/api/properties',
       '/api/rbac',
@@ -162,10 +165,15 @@ describe('route manifest', () => {
       'GET /api/settings/logo',
       'PATCH /api/me/preferences',
       'PATCH /api/profile',
+      // Password reset — all pre-auth (they run before a session exists) and all
+      // rate limited. forgot never reveals whether an email exists.
+      'POST /api/auth/forgot-password',
       'POST /api/auth/login',
       'POST /api/auth/logout',
       'POST /api/auth/logout-all',
       'POST /api/auth/refresh',
+      'POST /api/auth/reset-password',
+      'POST /api/auth/reset-password/verify',
       'POST /api/profile/change-password',
     ])
   })

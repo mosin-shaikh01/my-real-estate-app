@@ -120,6 +120,17 @@
   --surface-hover: var(--color-neutral-100);
   --surface-selected: var(--color-brand-50);
 
+  /* BRAND colours — the two configurable-per-CRM colours. These are the DEFAULTS;
+     app/branding.tsx overrides --brand-primary / --brand-secondary at runtime from
+     Settings (live, no refresh), and clears them back to these when unset. Exposed
+     to Tailwind as --color-brand-primary / --color-brand-secondary below, so every
+     component — and any future email/PDF/report template — consumes the SAME
+     source via `bg-brand-primary`, `text-brand-secondary`, `border-brand-secondary`,
+     `ring-brand-secondary`, etc. Primary defaults to the indigo brand ramp;
+     secondary to the warm accent. */
+  --brand-primary: var(--color-brand-600);
+  --brand-secondary: var(--color-accent-500);
+
   --border-subtle: var(--color-neutral-200);
   --border-default: var(--color-neutral-300);
   --border-strong: var(--color-neutral-400);
@@ -226,6 +237,10 @@
   --color-text-muted: var(--text-muted);
   --color-text-inverted: var(--text-inverted);
   --color-text-brand: var(--text-brand);
+  /* Configurable brand colours, available app-wide as bg-/text-/border-/ring-
+     brand-primary and -secondary. Driven live from Settings via branding.tsx. */
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-secondary: var(--brand-secondary);
   --color-text-danger: var(--text-danger);
   --color-text-success: var(--text-success);
   --color-text-warning: var(--text-warning);

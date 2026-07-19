@@ -14,10 +14,17 @@ export type LoginInput = z.infer<typeof loginSchema>
 export const forgotPasswordSchema = z.object({
   email: z.string().email('Enter a valid email'),
 })
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>
 
 export const resetPasswordSchema = z.object({
   token: z.string().min(1),
   password: z.string().min(10, 'Use at least 10 characters'),
+})
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>
+
+/** Just the token — used to check a reset link's validity before showing the form. */
+export const resetTokenSchema = z.object({
+  token: z.string().min(1),
 })
 
 export const changePasswordSchema = z

@@ -1,5 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { LoginInput, MeResponse, PermissionKey, Theme, UserPreferencesDTO } from '@app/shared'
+import type {
+  LoginInput,
+  MeResponse,
+  PermissionKey,
+  ResetPasswordInput,
+  Theme,
+  UserPreferencesDTO,
+} from '@app/shared'
 import { api, ApiClientError } from '@/lib/api'
 import { clearActiveUser } from '@/lib/theme'
 
@@ -107,6 +114,36 @@ export function useUpdateThemePreference() {
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: ME_KEY })
     },
+  })
+}
+
+/**
+ * Request a password-reset link. Deliberately not tied to ['me'] — the caller is
+ * signed out. The server always resolves 200 (no account enumeration), so a
+ * fulfilled mutation means "we've done what we can", not "the email exists".
+ */
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: (email: string) => api.post<{ ok: true }>('/auth/forgot-password', { email }),
+  })
+}
+
+/** Check whether a reset link is still valid, so the reset page can show state. */
+export function useVerifyResetToken(token: string) {
+  return useQuery({
+    queryKey: ['reset-token', token],
+    queryFn: () => api.post<{ valid: boolean }>('/auth/reset-password/verify', { token }),
+    enabled: token.length > 0,
+    retry: false,
+    staleTime: Infinity,
+  })
+}
+
+/** Complete a reset with a token + new password. On success the user signs in fresh. */
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (input: ResetPasswordInput) =>
+      api.post<{ ok: true }>('/auth/reset-password', input),
   })
 }
 

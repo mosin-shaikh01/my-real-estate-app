@@ -1,0 +1,50 @@
+# One command to run the whole stack locally the way it deploys: a Postgres
+# instance and the single-origin app container.
+#
+#   JWT_ACCESS_SECRET=... JWT_REFRESH_SECRET=... docker compose up --build
+#
+# Then open http://localhost:4000. Seed demo data once it's up with:
+#   docker compose exec api npm run db:seed -w @app/api
+
+services:
+  db:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: crm_app
+      POSTGRES_PASSWORD: crm_app_password
+      POSTGRES_DB: real_estate_crm
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U crm_app -d real_estate_crm']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      SERVE_WEB: 'true'
+      PORT: '4000'
+      DATABASE_URL: postgresql://crm_app:crm_app_password@db:5432/real_estate_crm?schema=public
+      WEB_ORIGIN: http://localhost:4000
+      UPLOAD_DIR: /data/uploads
+      # Provide real values in the shell / a .env file next to this compose file.
+      # These fallbacks satisfy the >=32-char check for a quick local spin-up
+      # ONLY — never deploy with them.
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev_only_access_secret_change_me_0123456789}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_only_refresh_secret_change_me_0123456789}
+    ports:
+      - '4000:4000'
+    volumes:
+      - uploads:/data/uploads
+
+volumes:
+  pgdata:
+  uploads:

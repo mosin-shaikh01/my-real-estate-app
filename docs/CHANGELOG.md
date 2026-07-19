@@ -7,6 +7,139 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Fixed — secondary brand colour was applied nowhere
+
+Root cause: the colour was saved, returned by the API, and received by the client
+correctly, but `app/branding.tsx` only read `primaryColor` (→ `--brand-mark`) and
+never read `secondaryColor` into any CSS variable — so nothing could consume it.
+
+- **Both colours now flow through one mechanism**: `branding.tsx` sets
+  `--brand-primary` and `--brand-secondary` on `<html>` from Settings (live, no
+  refresh; cleared → falls back to the token default). `tokens.css` exposes them as
+  `--color-brand-primary` / `--color-brand-secondary`, so **every component and any
+  future email/PDF/report template** can use `bg-/text-/border-/ring-brand-primary`
+  and `-brand-secondary`.
+- **Secondary is now visibly used**: the brand mark (sidebar + all auth screens) is
+  a live `primary → secondary` gradient, and the notification email layout gained a
+  secondary accent stripe. Both update the instant Settings are saved.
+- Semantic status colours (success/warning/danger/info) are untouched.
+
+### Added — Notification Service (centralized communication layer)
+
+A single, extensible service every feature sends through — **nothing in the CRM
+talks to SMTP directly anymore**. Email is fully implemented; SMS/WhatsApp/Push/
+In-App/Webhook are wired as honest stubs so new channels are additive.
+
+- **`src/notification/`** — a Prisma-free module (clean DI): orchestrator, channel
+  provider interface, a `Dispatcher` queue seam (inline today, BullMQ/Redis-ready),
+  `{{placeholder}}` rendering with HTML escaping, a branded email layout, and
+  default templates. The Prisma-backed `NotificationStore` lives in `services/` and
+  is injected at the composition root — honouring "Prisma only in services/**".
+- **Email provider** — real SMTP via `nodemailer` with retry on transient
+  failures, connection/socket timeouts, and a console fallback when unconfigured
+  (so dev/demo and forgot-password keep working with zero setup).
+- **`NotificationService.send({ channel, template, recipient, data })`** — resolves
+  template → injects branding (from CRM Settings) → renders → dispatches → logs.
+  Never throws on delivery failure; returns a `SendResult`. **forgot-password now
+  sends through it** (the old `lib/mailer` is removed).
+- **Prisma**: `NotificationProviderConfig` (encrypted secrets), `NotificationTemplate`,
+  `NotificationLog` + migration; 11 default templates seeded (create-only).
+- **Security**: SMTP credentials **encrypted at rest** (AES-256-GCM, key derived
+  from `APP_ENCRYPTION_KEY` or `JWT_REFRESH_SECRET` — no new required config);
+  passwords never returned by the API; all routes Super-Admin gated
+  (`notifications.view` / `notifications.manage`); test-sends rate limited.
+- **Settings → Notifications** (admin) — tabs for Email (provider presets for
+  Gmail/Outlook/365/Zoho/Hostinger/GoDaddy/cPanel/SendGrid/Brevo/SES/Mailgun/Custom,
+  auto-filling defaults), a **Send Test Email** card (real send, Ethereal preview
+  link), a **Template Manager** (subject + HTML editor + live sandboxed preview +
+  placeholder chips), a **Logs** table, and "Coming soon" tabs for the other
+  channels.
+- Verified end-to-end: real SMTP delivery through an Ethereal account, encryption
+  round-trip + tamper-fail-closed, template rendering/branding, channel routing,
+  and logging. Docs: [NOTIFICATION_SERVICE.md](./NOTIFICATION_SERVICE.md).
+
+### Added — Forgot / Reset Password
+
+A complete self-service password-reset flow, built on the auth primitives the
+schema already anticipated (`PasswordResetToken`, the `MAILER` setting, and the
+`RATE_LIMITED` error code all pre-existed).
+
+- **Two public pages** (`/forgot-password`, `/reset-password`) plus a "Forgot
+  password?" link under the login password field. A new shared `AuthLayout`
+  frames all three auth screens (login included) so they stay identical; the
+  reset page shows a live password-strength meter, confirm-match validation,
+  loading states, and success/invalid-link states. Fully responsive, design-token
+  styled, keyboard- and screen-reader-accessible.
+- **Backend** (`POST /api/auth/forgot-password`, `/reset-password`,
+  `/reset-password/verify`) — all public (pre-session) and rate limited:
+  - Tokens are 256-bit random, stored **sha256-hashed** (never raw), single-use,
+    30-minute expiry. One live link per user (a new request invalidates the old).
+  - `forgot-password` **always returns 200** whether or not the email exists — no
+    account enumeration — and a per-account 60s cooldown blunts email-bombing.
+  - A completed reset **revokes every session** and re-hashes the password with
+    argon2 in one transaction; the token is consumed with a guarded update so a
+    concurrent replay can't double-spend it.
+- **Mailer seam** (`lib/mailer.ts`) — a transport-agnostic `Mailer` with a
+  production-safe **console** transport that logs the reset link as one JSON line
+  (what you copy when no SMTP is configured); `smtp`/`ethereal` degrade to console
+  with a warning until a real transport is wired. New optional `APP_URL` builds
+  the absolute link (derived from the request in prod, `WEB_ORIGIN` in dev).
+- **Rate limiter** (`middleware/rate-limit.ts`) — dependency-free, in-memory,
+  per-IP fixed window (per-instance; documented Redis path for multi-instance).
+- Tests: rate-limiter (budget, per-key isolation, custom key) and mailer console
+  transport; the public-route manifest snapshot updated to include the three new
+  endpoints. Full reset flow verified end-to-end against the live database.
+
+### Added — production deployment: single-origin serving + container/build config
+
+Made the app deployable on any standard Node host from a clean clone, without
+platform-specific hacks. The model is **one origin**: the API process serves the
+built SPA and the JSON API together, so the httpOnly auth cookies keep working
+without CORS.
+
+- **API serves the SPA in production** (`apps/api/src/app.ts`) — `express.static`
+  for hashed assets plus an `index.html` fallback for client routes, registered
+  after `/api` (so API misses still return the JSON 404) and before the 404
+  handler. Toggled by `SERVE_WEB` (defaults on when `NODE_ENV=production`);
+  `WEB_DIST_DIR` overrides the bundle location. Verified end-to-end.
+- **Fresh-clone build fixed** — the generated Prisma client is gitignored, so
+  `apps/api` now runs `prisma generate` on `postinstall`; the root `build` also
+  generates it before building web. Without this a clean clone had no Prisma
+  client and the API could not start.
+- **`tsx` moved to production dependencies** — it's the runtime for `start`, so a
+  `--omit=dev` production install no longer breaks. Added `db:deploy`
+  (`prisma migrate deploy`) as the release migration step, and root `start` /
+  `build` / `db:deploy` scripts.
+- **`Dockerfile` (multi-stage) + `.dockerignore` + `docker-compose.yml`** — builds
+  the SPA + Prisma client and runs the single-origin process with a Postgres
+  service, persistent `uploads`/`pgdata` volumes, and a `/api/health` healthcheck.
+- **Committed `package-lock.json`** for reproducible `npm ci`, added `.nvmrc` (22),
+  documented every env var and the serverless/disk caveat in
+  [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+### Added — reusable Tooltip + contextual help (ⓘ) on non-obvious controls
+
+A single, accessible Tooltip primitive and a curated set of hints — enough to
+teach a first-time user, not enough to clutter the UI.
+
+- **`components/ui/Tooltip`** — one tooltip, built on Radix (hover + keyboard
+  focus, Esc/blur close, `role="tooltip"` + `aria-describedby`, collision-aware
+  placement) with a subtle Framer Motion fade/scale that honours
+  `prefers-reduced-motion`. Content is a `ReactNode`, so it takes a string today
+  and rich content / a docs link later. `InfoHint` is the ⓘ affordance — a real,
+  tab-reachable button (taps focus it on mobile → opens). One global
+  `Tooltip.Provider` (delay) already lives in `app/providers`.
+- **`FormField` gained a `help` prop** — renders an ⓘ next to the label, so any
+  field can carry contextual help without permanent inline text.
+- **Applied only where meaning is non-obvious** (self-explanatory controls left
+  alone): property **Status**, **Visibility**, **Featured**, and **Assigned
+  agent** (reassigning changes who can see it); client **Priority** and
+  **Budget** (matching + who can see it); agents' **Commission** column, the
+  **Access** action ("choose what this agent can view and manage"), and
+  **Deactivate** ("signs the agent out of every device immediately"); and the
+  property detail **Assigned agent** (admin only).
+- `Button` now forwards its `ref`, so it can anchor a tooltip via Radix `asChild`.
+
 ### Changed — dashboard "Recent Properties" widget: search, filters, shared components
 
 Aligned the dashboard's recent-inventory widget with the Property Management

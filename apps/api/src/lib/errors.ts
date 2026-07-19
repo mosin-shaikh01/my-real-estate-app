@@ -29,5 +29,11 @@ export const notFound = (m = 'Not found') => new AppError('NOT_FOUND', 404, m)
 
 export const conflict = (m: string) => new AppError('CONFLICT', 409, m)
 
+export const rateLimited = (m = 'Too many requests — please try again later') =>
+  new AppError('RATE_LIMITED', 429, m)
+
 export const validationFailed = (details: Record<string, string[]>) =>
   new AppError('VALIDATION_FAILED', 400, 'Check the highlighted fields', details)
+
+/** A 400 with a single human message and no field details (shown at form root). */
+export const badRequest = (m: string) => new AppError('VALIDATION_FAILED', 400, m)

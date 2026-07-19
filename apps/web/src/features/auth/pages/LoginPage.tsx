@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Building2, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
-import { Navigate, useLocation, useNavigate } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { loginSchema, type LoginInput } from '@app/shared'
 import { Button } from '@/components/ui/Button'
 import { FormField, Input } from '@/components/ui/Input'
+import { AuthLayout } from '@/features/auth/components/AuthLayout'
 import { useLogin, useMe } from '@/features/auth/api/use-auth'
 import { useSettings } from '@/features/settings/api/use-settings'
 import { ApiClientError } from '@/lib/api'
@@ -50,29 +51,15 @@ export default function LoginPage() {
   })
 
   return (
-    <main className="grid min-h-dvh place-items-center bg-surface-sunken px-6 py-12">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex items-center gap-2">
-          {settings?.logoUrl ? (
-            <img src={settings.logoUrl} alt="" className="size-7 shrink-0 rounded object-contain" />
-          ) : (
-            <div
-              className="grid size-7 shrink-0 place-items-center rounded text-white"
-              style={{ backgroundColor: 'var(--brand-mark, var(--color-brand-600))' }}
-            >
-              <Building2 className="size-4" aria-hidden="true" />
-            </div>
-          )}
-          <span className="text-md font-semibold text-text-primary">{settings?.crmName ?? 'Estate'}</span>
-        </div>
-
-        <h1 className="text-xl font-semibold text-text-primary">Sign in</h1>
-        <p className="mt-1 text-base text-text-secondary">
-          {settings?.showTagline && settings.tagline
-            ? settings.tagline
-            : 'Use your work account to continue.'}
-        </p>
-
+    <AuthLayout
+      title="Sign in"
+      subtitle={
+        settings?.showTagline && settings.tagline
+          ? settings.tagline
+          : 'Use your work account to continue.'
+      }
+    >
+      <>
         <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4" noValidate>
           <FormField label="Email" error={form.formState.errors.email?.message} required>
             {(p) => (
@@ -97,6 +84,15 @@ export default function LoginPage() {
               />
             )}
           </FormField>
+
+          <div className="-mt-1 flex justify-end">
+            <Link
+              to="/forgot-password"
+              className="text-xs font-medium text-text-brand underline-offset-2 hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
 
           {form.formState.errors.root ? (
             <p
@@ -156,7 +152,7 @@ export default function LoginPage() {
             </li>
           </ul>
         </div>
-      </div>
-    </main>
+      </>
+    </AuthLayout>
   )
 }

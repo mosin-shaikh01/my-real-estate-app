@@ -195,6 +195,20 @@ export const PERMISSIONS = [
     description: 'Manage CRM branding, company info and configuration',
   },
 
+  // --- Notifications -------------------------------------------------------
+  {
+    key: 'notifications.view',
+    resource: 'notifications',
+    action: 'view',
+    description: 'View notification settings, templates and logs',
+  },
+  {
+    key: 'notifications.manage',
+    resource: 'notifications',
+    action: 'manage',
+    description: 'Configure notification providers, edit templates and send tests',
+  },
+
   // --- Activity / Reports / Deals ------------------------------------------
   { key: 'activity.list', resource: 'activity', action: 'list', description: 'View the activity log' },
   { key: 'report.view', resource: 'report', action: 'view', description: 'View reports' },

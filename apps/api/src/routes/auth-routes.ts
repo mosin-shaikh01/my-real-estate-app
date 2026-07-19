@@ -1,10 +1,17 @@
 import { Router } from 'express'
-import { loginSchema, type MeResponse } from '@app/shared'
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  resetPasswordSchema,
+  resetTokenSchema,
+  type MeResponse,
+} from '@app/shared'
 import { clearAuthCookies, REFRESH_COOKIE, setAuthCookies } from '../auth/cookies.js'
 import { signAccessToken, verifyAccessToken, verifyPassword } from '../auth/tokens.js'
 import { authenticate } from '../middleware/authenticate.js'
+import { rateLimit } from '../middleware/rate-limit.js'
 import { publicRoute } from '../middleware/route-registry.js'
-import { unauthenticated } from '../lib/errors.js'
+import { badRequest, unauthenticated } from '../lib/errors.js'
 import { idParamSchema } from '../lib/params.js'
 import {
   findOwnSession,
@@ -12,6 +19,12 @@ import {
   findUserWithRoles,
   logAuthEvent,
 } from '../services/auth-service.js'
+import {
+  requestPasswordReset,
+  ResetTokenError,
+  resetPassword,
+  verifyResetToken,
+} from '../services/password-reset-service.js'
 import { getUserPreferences } from '../services/preference-service.js'
 import {
   createSession,
@@ -54,6 +67,52 @@ authRouter.post('/login', publicRoute('Login is how you obtain a session'), asyn
 
   res.status(204).end()
 })
+
+// ---------------------------------------------------------------------------
+// Password reset — all public (they run before a session exists) and all rate
+// limited per IP, because they're unauthenticated and take an email/token.
+// ---------------------------------------------------------------------------
+const forgotLimiter = rateLimit({ windowMs: 15 * 60_000, max: 5 })
+const resetLimiter = rateLimit({ windowMs: 15 * 60_000, max: 10 })
+
+authRouter.post(
+  '/forgot-password',
+  forgotLimiter,
+  publicRoute('Anyone may request a reset link for their own email'),
+  async (req, res) => {
+    const { email } = forgotPasswordSchema.parse(req.body)
+    await requestPasswordReset(email, req)
+    // ALWAYS 200, whether or not the email exists — no account enumeration.
+    res.json({ ok: true })
+  },
+)
+
+authRouter.post(
+  '/reset-password/verify',
+  resetLimiter,
+  publicRoute('Lets the reset page show whether a link is still valid'),
+  async (req, res) => {
+    const { token } = resetTokenSchema.parse(req.body)
+    res.json({ valid: await verifyResetToken(token) })
+  },
+)
+
+authRouter.post(
+  '/reset-password',
+  resetLimiter,
+  publicRoute('Completing a reset happens before a session exists'),
+  async (req, res) => {
+    const { token, password } = resetPasswordSchema.parse(req.body)
+    try {
+      await resetPassword(token, password, req)
+    } catch (err) {
+      // Invalid/expired/used all surface as one message, shown at the form root.
+      if (err instanceof ResetTokenError) throw badRequest(err.message)
+      throw err
+    }
+    res.json({ ok: true })
+  },
+)
 
 authRouter.post(
   '/refresh',
