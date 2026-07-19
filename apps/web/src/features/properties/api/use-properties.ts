@@ -45,6 +45,15 @@ export interface PropertyDTO {
   propertyNumber: string | null
   ownerId: string | null
   owner: { id: string; code: string; fullName: string; mobile: string } | null
+  condition: string | null
+  sellerType: string | null
+  landmark: string | null
+  pricePerSqft: string | null
+  governmentValue: string | null
+  plotArea: string | null
+  builtUpArea: string | null
+  carpetArea: string | null
+  areaUnit: string | null
   createdAt: string
   archivedAt: string | null
   assignedAgent: { id: string; fullName: string } | null

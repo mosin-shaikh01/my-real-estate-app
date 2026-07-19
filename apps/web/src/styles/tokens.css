@@ -158,9 +158,12 @@
   --border-danger-soft: var(--color-danger-100);
 
   --status-available: var(--color-success-500);
+  --status-reserved: var(--color-accent-500);
   --status-under-offer: var(--color-warning-500);
+  --status-on-hold: var(--color-neutral-400);
   --status-rented: var(--color-info-500);
   --status-sold: var(--color-neutral-500);
+  --status-cancelled: var(--color-danger-500);
   --status-archived: var(--color-neutral-400);
 
   /* Elevation is SEMANTIC, not raw shadow utilities at call sites. In dark
@@ -251,9 +254,12 @@
   --color-border-danger-soft: var(--border-danger-soft);
 
   --color-status-available: var(--status-available);
+  --color-status-reserved: var(--status-reserved);
   --color-status-under-offer: var(--status-under-offer);
+  --color-status-on-hold: var(--status-on-hold);
   --color-status-rented: var(--status-rented);
   --color-status-sold: var(--status-sold);
+  --color-status-cancelled: var(--status-cancelled);
   --color-status-archived: var(--status-archived);
 
   --shadow-e1: var(--elevation-1);

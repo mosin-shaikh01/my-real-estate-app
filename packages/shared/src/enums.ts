@@ -36,8 +36,25 @@ export type PropertyType = z.infer<typeof propertyTypeSchema>
 export const listingTypeSchema = z.enum(['SALE', 'RENT', 'BOTH'])
 export type ListingType = z.infer<typeof listingTypeSchema>
 
-export const propertyStatusSchema = z.enum(['AVAILABLE', 'UNDER_OFFER', 'SOLD', 'RENTED'])
+export const propertyStatusSchema = z.enum([
+  'AVAILABLE',
+  'RESERVED',
+  'UNDER_OFFER',
+  'ON_HOLD',
+  'SOLD',
+  'RENTED',
+  'CANCELLED',
+])
 export type PropertyStatus = z.infer<typeof propertyStatusSchema>
+
+export const propertyConditionSchema = z.enum(['NEW', 'RESALE'])
+export type PropertyCondition = z.infer<typeof propertyConditionSchema>
+
+export const sellerTypeSchema = z.enum(['OWNER', 'FARMER', 'BUILDER', 'BROKER', 'OTHER'])
+export type SellerType = z.infer<typeof sellerTypeSchema>
+
+export const areaUnitSchema = z.enum(['SQFT', 'SQM', 'SQYD', 'ACRE', 'GUNTHA', 'HECTARE'])
+export type AreaUnit = z.infer<typeof areaUnitSchema>
 
 export const visibilitySchema = z.enum(['PUBLIC', 'INTERNAL', 'PRIVATE'])
 export type Visibility = z.infer<typeof visibilitySchema>
@@ -107,9 +124,34 @@ export type DealType = z.infer<typeof dealTypeSchema>
 
 export const PROPERTY_STATUS_LABELS: Record<PropertyStatus, string> = {
   AVAILABLE: 'Available',
+  RESERVED: 'Reserved',
   UNDER_OFFER: 'Under offer',
+  ON_HOLD: 'On hold',
   SOLD: 'Sold',
   RENTED: 'Rented',
+  CANCELLED: 'Cancelled',
+}
+
+export const PROPERTY_CONDITION_LABELS: Record<PropertyCondition, string> = {
+  NEW: 'New',
+  RESALE: 'Resale',
+}
+
+export const SELLER_TYPE_LABELS: Record<SellerType, string> = {
+  OWNER: 'Owner',
+  FARMER: 'Farmer',
+  BUILDER: 'Builder',
+  BROKER: 'Broker',
+  OTHER: 'Other',
+}
+
+export const AREA_UNIT_LABELS: Record<AreaUnit, string> = {
+  SQFT: 'Sq ft',
+  SQM: 'Sq m',
+  SQYD: 'Sq yd',
+  ACRE: 'Acre',
+  GUNTHA: 'Guntha',
+  HECTARE: 'Hectare',
 }
 
 export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {

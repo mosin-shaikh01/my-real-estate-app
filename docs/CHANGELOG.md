@@ -30,6 +30,18 @@ non-breaking — every existing flow is untouched.
 - Migration applied; 149 tests green; typecheck, lint (0 errors) and build clean.
   Verified end-to-end against the database (create/dupe/search/FK/delete-guard).
 
+**Phase 1b — property detail fields** (additive, all nullable):
+- **Statuses extended**: `RESERVED`, `ON_HOLD`, `CANCELLED` added to `PropertyStatus`
+  (with new `status-reserved/on-hold/cancelled` colour tokens + StatusBadge dots +
+  labels; the status filter/select pick them up automatically).
+- **New enums**: `PropertyCondition` (New/Resale), `SellerType` (Owner/Farmer/
+  Builder/Broker/Other — the seller's role for this listing), `AreaUnit`
+  (SqFt/SqM/SqYd/Acre/Guntha/Hectare) — all mirrored in shared + enum-parity test.
+- **New columns**: condition, sellerType, landmark, pricePerSqft, governmentValue,
+  plotArea, builtUpArea, carpetArea, areaUnit — wired through the shared schema,
+  write-service, serializer/DTO, and the property form (new selects + money/area
+  inputs, prefilled on edit). 152 tests green; verified round-trip against the DB.
+
 ### Fixed — secondary brand colour was applied nowhere
 
 Root cause: the colour was saved, returned by the API, and received by the client

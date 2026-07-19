@@ -4,12 +4,15 @@ import { useState } from 'react'
 import { useForm, type UseFormRegisterReturn } from 'react-hook-form'
 import { useNavigate } from 'react-router'
 import {
+  AREA_UNIT_LABELS,
   constructionStatusSchema,
   facingSchema,
   furnishedStatusSchema,
+  PROPERTY_CONDITION_LABELS,
   PROPERTY_STATUS_LABELS,
   PROPERTY_TYPE_LABELS,
   propertyCreateSchema,
+  SELLER_TYPE_LABELS,
   visibilitySchema,
   type PropertyCreateInput,
 } from '@app/shared'
@@ -75,6 +78,26 @@ const nullableField = <K extends keyof PropertyCreateInput>(
   name: K,
 ) => register(name, { setValueAs: (v: string) => (v === '' || v == null ? null : v) })
 
+// Optional money/area STRING fields (moneyString rejects ""). Empty -> undefined
+// so the field is genuinely omitted rather than failing the numeric-string rule.
+const moneyField = <K extends keyof PropertyCreateInput>(
+  register: (name: K, opts: object) => UseFormRegisterReturn,
+  name: K,
+) => register(name, { setValueAs: (v: string) => (v === '' || v == null ? undefined : v) })
+
+const CONDITION_OPTIONS = [
+  { value: '', label: '— Not set —' },
+  ...Object.entries(PROPERTY_CONDITION_LABELS).map(([value, label]) => ({ value, label })),
+]
+const SELLER_TYPE_OPTIONS = [
+  { value: '', label: '— Not set —' },
+  ...Object.entries(SELLER_TYPE_LABELS).map(([value, label]) => ({ value, label })),
+]
+const AREA_UNIT_OPTIONS = [
+  { value: '', label: '— Not set —' },
+  ...Object.entries(AREA_UNIT_LABELS).map(([value, label]) => ({ value, label })),
+]
+
 /** Build form values from an existing property (edit mode). */
 function toFormValues(p: PropertyDTO): PropertyCreateInput {
   return {
@@ -83,6 +106,15 @@ function toFormValues(p: PropertyDTO): PropertyCreateInput {
     surveyNumber: p.surveyNumber ?? '',
     propertyNumber: p.propertyNumber ?? '',
     ownerId: p.ownerId ?? '',
+    condition: (p.condition ?? undefined) as PropertyCreateInput['condition'],
+    sellerType: (p.sellerType ?? undefined) as PropertyCreateInput['sellerType'],
+    landmark: p.landmark ?? '',
+    pricePerSqft: p.pricePerSqft ?? undefined,
+    governmentValue: p.governmentValue ?? undefined,
+    plotArea: p.plotArea ?? undefined,
+    builtUpArea: p.builtUpArea ?? undefined,
+    carpetArea: p.carpetArea ?? undefined,
+    areaUnit: (p.areaUnit ?? undefined) as PropertyCreateInput['areaUnit'],
     propertyType: p.propertyType as PropertyCreateInput['propertyType'],
     listingType: p.listingType as PropertyCreateInput['listingType'],
     status: p.status as PropertyCreateInput['status'],
@@ -277,6 +309,16 @@ export function PropertyForm({ mode, property }: Props) {
               )}
             </FormField>
           </div>
+          <FormField label="Condition" error={errors.condition?.message}>
+            {(p) => (
+              <Select {...p} options={CONDITION_OPTIONS} {...nullableField(reg, 'condition')} value={form.watch('condition') ?? ''} />
+            )}
+          </FormField>
+          <FormField label="Seller type" error={errors.sellerType?.message}>
+            {(p) => (
+              <Select {...p} options={SELLER_TYPE_OPTIONS} {...nullableField(reg, 'sellerType')} value={form.watch('sellerType') ?? ''} />
+            )}
+          </FormField>
           <FormField label="Property type" error={errors.propertyType?.message} required>
             {(p) => <Select {...p} options={TYPE_OPTIONS} {...reg('propertyType')} value={form.watch('propertyType')} />}
           </FormField>
@@ -292,6 +334,20 @@ export function PropertyForm({ mode, property }: Props) {
           </FormField>
           <FormField label="Area (sq ft)" error={errors.areaSqft?.message} required>
             {(p) => <Input {...p} {...reg('areaSqft')} inputMode="numeric" placeholder="1200" />}
+          </FormField>
+          <FormField label="Measurement unit" error={errors.areaUnit?.message}>
+            {(p) => (
+              <Select {...p} options={AREA_UNIT_OPTIONS} {...nullableField(reg, 'areaUnit')} value={form.watch('areaUnit') ?? ''} />
+            )}
+          </FormField>
+          <FormField label="Plot area" error={errors.plotArea?.message}>
+            {(p) => <Input {...p} {...moneyField(reg, 'plotArea')} inputMode="decimal" placeholder="2400" />}
+          </FormField>
+          <FormField label="Built-up area" error={errors.builtUpArea?.message}>
+            {(p) => <Input {...p} {...moneyField(reg, 'builtUpArea')} inputMode="decimal" placeholder="1500" />}
+          </FormField>
+          <FormField label="Carpet area" error={errors.carpetArea?.message}>
+            {(p) => <Input {...p} {...moneyField(reg, 'carpetArea')} inputMode="decimal" placeholder="1200" />}
           </FormField>
           <FormField label="Bedrooms" error={errors.bedrooms?.message}>
             {(p) => <Input {...p} type="number" min={0} {...numberField(reg, 'bedrooms')} />}
@@ -375,6 +431,12 @@ export function PropertyForm({ mode, property }: Props) {
               <FormField label="Maintenance / month (₹)" error={errors.maintenanceCharges?.message}>
                 {(p) => <Input {...p} {...reg('maintenanceCharges')} inputMode="numeric" placeholder="5000" />}
               </FormField>
+              <FormField label="Price / sq ft (₹)" error={errors.pricePerSqft?.message}>
+                {(p) => <Input {...p} {...moneyField(reg, 'pricePerSqft')} inputMode="numeric" placeholder="6250" />}
+              </FormField>
+              <FormField label="Government value (₹)" error={errors.governmentValue?.message}>
+                {(p) => <Input {...p} {...moneyField(reg, 'governmentValue')} inputMode="numeric" placeholder="6500000" />}
+              </FormField>
             </>
           ) : null}
           <label className="flex items-center gap-2 text-sm text-text-secondary sm:col-span-2">
@@ -431,6 +493,9 @@ export function PropertyForm({ mode, property }: Props) {
           </div>
           <FormField label="Locality" error={errors.locality?.message}>
             {(p) => <Input {...p} {...reg('locality')} placeholder="Bandra West" />}
+          </FormField>
+          <FormField label="Landmark" error={errors.landmark?.message}>
+            {(p) => <Input {...p} {...reg('landmark')} placeholder="Near National College" />}
           </FormField>
           <FormField label="City" error={errors.city?.message} required>
             {(p) => <Input {...p} {...reg('city')} placeholder="Mumbai" />}

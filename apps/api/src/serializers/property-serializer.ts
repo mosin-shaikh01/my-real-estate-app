@@ -47,6 +47,15 @@ export interface PropertyRow {
   surveyNumber: string | null
   propertyNumber: string | null
   ownerId: string | null
+  condition: string | null
+  sellerType: string | null
+  landmark: string | null
+  pricePerSqft: Decimalish
+  governmentValue: Decimalish
+  plotArea: Decimalish
+  builtUpArea: Decimalish
+  carpetArea: Decimalish
+  areaUnit: string | null
   assignedAgentId: string | null
   createdAt: Date
   updatedAt: Date
@@ -93,6 +102,15 @@ export interface PropertyDTO {
   propertyNumber: string | null
   ownerId: string | null
   owner: { id: string; code: string; fullName: string; mobile: string } | null
+  condition: string | null
+  sellerType: string | null
+  landmark: string | null
+  pricePerSqft: string | null
+  governmentValue: string | null
+  plotArea: string | null
+  builtUpArea: string | null
+  carpetArea: string | null
+  areaUnit: string | null
   createdAt: string
   archivedAt: string | null
   assignedAgent: { id: string; fullName: string } | null
@@ -154,6 +172,15 @@ export function toPropertyDTO(row: PropertyRow, actor: Actor): PropertyDTO {
     propertyNumber: row.propertyNumber,
     ownerId: row.ownerId,
     owner: row.owner ?? null,
+    condition: row.condition,
+    sellerType: row.sellerType,
+    landmark: row.landmark,
+    pricePerSqft: money(row.pricePerSqft),
+    governmentValue: money(row.governmentValue),
+    plotArea: money(row.plotArea),
+    builtUpArea: money(row.builtUpArea),
+    carpetArea: money(row.carpetArea),
+    areaUnit: row.areaUnit,
     createdAt: row.createdAt.toISOString(),
     archivedAt: row.archivedAt?.toISOString() ?? null,
     assignedAgent: row.assignedAgent ?? null,

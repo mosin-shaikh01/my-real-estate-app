@@ -450,6 +450,8 @@ model Property {
   listingType        ListingType        @map("listing_type")
   status             PropertyStatus     @default(AVAILABLE)
   constructionStatus ConstructionStatus @default(READY_TO_MOVE) @map("construction_status")
+  condition          PropertyCondition?
+  sellerType         SellerType?        @map("seller_type")
   visibility         Visibility         @default(INTERNAL)
   featured           Boolean            @default(false)
 
@@ -459,9 +461,17 @@ model Property {
   rentPricePerMonth  Decimal? @map("rent_price_per_month") @db.Decimal(14, 2)
   securityDeposit    Decimal? @map("security_deposit") @db.Decimal(14, 2)
   maintenanceCharges Decimal? @map("maintenance_charges") @db.Decimal(14, 2)
+  pricePerSqft       Decimal? @map("price_per_sqft") @db.Decimal(14, 2)
+  governmentValue    Decimal? @map("government_value") @db.Decimal(14, 2)
   negotiable         Boolean  @default(false)
 
-  areaSqft   Decimal         @map("area_sqft") @db.Decimal(10, 2)
+  // areaSqft stays the primary/required area (used by search & matching). These
+  // are the optional detailed breakdown; areaUnit labels plot/built-up/carpet.
+  areaSqft    Decimal   @map("area_sqft") @db.Decimal(10, 2)
+  plotArea    Decimal?  @map("plot_area") @db.Decimal(12, 2)
+  builtUpArea Decimal?  @map("built_up_area") @db.Decimal(12, 2)
+  carpetArea  Decimal?  @map("carpet_area") @db.Decimal(12, 2)
+  areaUnit    AreaUnit? @map("area_unit")
   bedrooms   Int?
   bathrooms  Int?
   parking    Int             @default(0)
@@ -475,6 +485,7 @@ model Property {
 
   address  String
   locality String? @db.VarChar(120)
+  landmark String? @db.VarChar(160)
   city     String  @db.VarChar(120)
   state    String  @db.VarChar(120)
   country  String  @default("India") @db.VarChar(80)
@@ -847,9 +858,39 @@ enum ListingType {
 
 enum PropertyStatus {
   AVAILABLE
+  RESERVED
   UNDER_OFFER
+  ON_HOLD
   SOLD
   RENTED
+  CANCELLED
+}
+
+enum PropertyCondition {
+  NEW
+  RESALE
+}
+
+// The seller's ROLE for this listing — contextual, so it lives on the property,
+// not the owner (the same person can be an owner for one listing and a broker
+// for another).
+enum SellerType {
+  OWNER
+  FARMER
+  BUILDER
+  BROKER
+  OTHER
+}
+
+// Area measurement units common in Indian real estate (guntha/acre for land,
+// sqft/sqm/sqyd for built area).
+enum AreaUnit {
+  SQFT
+  SQM
+  SQYD
+  ACRE
+  GUNTHA
+  HECTARE
 }
 
 enum Visibility {

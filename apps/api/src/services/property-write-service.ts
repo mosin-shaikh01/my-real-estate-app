@@ -63,6 +63,7 @@ const NULLABLE_STRINGS = [
   'surveyNumber',
   'propertyNumber',
   'ownerId',
+  'landmark',
 ] as const
 
 function normaliseEmptyToNull(data: Record<string, unknown>) {

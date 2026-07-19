@@ -16,9 +16,12 @@ import { cn } from '@/lib/cn'
 
 const DOT: Record<PropertyStatus, string> = {
   AVAILABLE: 'bg-status-available',
+  RESERVED: 'bg-status-reserved',
   UNDER_OFFER: 'bg-status-under-offer',
+  ON_HOLD: 'bg-status-on-hold',
   RENTED: 'bg-status-rented',
   SOLD: 'bg-status-sold',
+  CANCELLED: 'bg-status-cancelled',
 }
 
 export function StatusBadge({

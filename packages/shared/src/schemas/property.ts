@@ -1,11 +1,14 @@
 import { z } from 'zod'
 import {
+  areaUnitSchema,
   constructionStatusSchema,
   facingSchema,
   furnishedStatusSchema,
   listingTypeSchema,
+  propertyConditionSchema,
   propertyStatusSchema,
   propertyTypeSchema,
+  sellerTypeSchema,
   visibilitySchema,
 } from '../enums.js'
 
@@ -103,6 +106,8 @@ const propertyBaseSchema = z.object({
     listingType: listingTypeSchema,
     status: propertyStatusSchema.optional(),
     constructionStatus: constructionStatusSchema.optional(),
+    condition: propertyConditionSchema.nullish(),
+    sellerType: sellerTypeSchema.nullish(),
     visibility: visibilitySchema.optional(),
     featured: z.boolean().optional(),
 
@@ -110,9 +115,15 @@ const propertyBaseSchema = z.object({
     rentPricePerMonth: moneyString.nullish(),
     securityDeposit: moneyString.nullish(),
     maintenanceCharges: moneyString.nullish(),
+    pricePerSqft: moneyString.nullish(),
+    governmentValue: moneyString.nullish(),
     negotiable: z.boolean().optional(),
 
     areaSqft: moneyString,
+    plotArea: moneyString.nullish(),
+    builtUpArea: moneyString.nullish(),
+    carpetArea: moneyString.nullish(),
+    areaUnit: areaUnitSchema.nullish(),
     bedrooms: z.number().int().min(0).nullish(),
     bathrooms: z.number().int().min(0).nullish(),
     parking: z.number().int().min(0).optional(),
@@ -129,6 +140,7 @@ const propertyBaseSchema = z.object({
 
     address: z.string().trim().min(5, 'Add an address'),
     locality: z.string().trim().max(120).nullish(),
+    landmark: z.string().trim().max(160).nullish(),
     city: z.string().trim().min(1, 'City is required').max(120),
     state: z.string().trim().min(1, 'State is required').max(120),
     country: z.string().trim().optional(),
