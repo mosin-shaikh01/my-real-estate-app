@@ -1,4 +1,4 @@
-import { ArrowLeft, Mail, MessageCircle, Phone, Wand2 } from 'lucide-react'
+import { ArrowLeft, Mail, MessageCircle, Pencil, Phone, Wand2, X } from 'lucide-react'
 import { Link, useParams } from 'react-router'
 import {
   ASSIGNMENT_STATUS_LABELS,
@@ -12,8 +12,9 @@ import { PageHeader } from '@/components/layout/AppShell'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { useToast } from '@/components/ui/use-toast'
 import { InteractionForm } from '@/features/clients/components/InteractionForm'
-import { useClient } from '@/features/clients/api/use-client'
+import { useClient, useRemoveAssignment } from '@/features/clients/api/use-client'
 import { cn } from '@/lib/cn'
 import { formatDate, formatMoneyShort, formatRelative } from '@/lib/format'
 
@@ -26,6 +27,20 @@ const PRIORITY_TONE: Record<string, string> = {
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { data: c, isLoading, isError, error } = useClient(id)
+  const { toast } = useToast()
+  // Called unconditionally (before the early returns) to respect the rules of
+  // hooks; it's a no-op until a remove is triggered.
+  const removeAssignment = useRemoveAssignment(id ?? '')
+
+  const onRemove = async (propertyId: string, label: string) => {
+    if (!window.confirm(`Remove "${label}" from this client's shared properties?`)) return
+    try {
+      await removeAssignment.mutateAsync(propertyId)
+      toast({ variant: 'success', title: 'Property removed' })
+    } catch (err) {
+      toast({ variant: 'error', title: 'Could not remove property', description: err instanceof Error ? err.message : undefined })
+    }
+  }
 
   if (isLoading) {
     return (
@@ -67,6 +82,14 @@ export default function ClientDetailPage() {
             <span className={cn('rounded px-2 py-1 text-xs font-medium', PRIORITY_TONE[c.priority])}>
               {c.priority} priority
             </span>
+            <Can permission="client.update">
+              <Button variant="secondary" size="sm" asChild>
+                <Link to={`/clients/${c.id}/edit`}>
+                  <Pencil aria-hidden="true" />
+                  Edit
+                </Link>
+              </Button>
+            </Can>
             <Can permission="client.assignProperty">
               <Button variant="primary" size="sm" asChild>
                 <Link to={`/requirements?clientId=${c.id}`}>
@@ -152,6 +175,18 @@ export default function ClientDetailPage() {
                         {ASSIGNMENT_STATUS_LABELS[p.assignmentStatus as AssignmentStatus] ?? p.assignmentStatus}
                       </span>
                       <StatusBadge status={p.status as PropertyStatus} />
+                      <Can permission="client.assignProperty">
+                        <button
+                          type="button"
+                          onClick={() => void onRemove(p.propertyId, p.title)}
+                          disabled={removeAssignment.isPending}
+                          aria-label={`Remove ${p.title}`}
+                          title="Remove from client"
+                          className="shrink-0 rounded p-1 text-text-muted hover:bg-surface-danger-soft/50 hover:text-text-danger disabled:opacity-50"
+                        >
+                          <X className="size-3.5" aria-hidden="true" />
+                        </button>
+                      </Can>
                     </li>
                   ))}
                 </ul>

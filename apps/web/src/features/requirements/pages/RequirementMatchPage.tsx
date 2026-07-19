@@ -1,8 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowRight, Check, Loader2, Wand2 } from 'lucide-react'
+import { ArrowRight, Check, Loader2, Wand2, X } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate, useSearchParams } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import {
   clientCreateSchema,
   PROPERTY_TYPE_LABELS,
@@ -16,7 +16,8 @@ import { FormField, Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Table, TableEmpty, TableWrapper, TD, TH, THead, TR } from '@/components/ui/Table'
-import { useClient, useBulkAssign, useCreateClient } from '@/features/clients/api/use-client'
+import { useToast } from '@/components/ui/use-toast'
+import { useClient, useBulkAssign, useCreateClient, useRemoveAssignment } from '@/features/clients/api/use-client'
 import {
   useProperties,
   type PropertyFilters,
@@ -66,13 +67,26 @@ export default function RequirementMatchPage() {
   const isExisting = Boolean(clientId)
 
   const navigate = useNavigate()
+  const { toast } = useToast()
   const { data: existingClient } = useClient(clientId)
   const createClient = useCreateClient()
   const bulkAssign = useBulkAssign(clientId ?? '')
+  const removeAssignment = useRemoveAssignment(clientId ?? '')
 
   const [filters, setFilters] = useState<PropertyFilters>({ status: 'AVAILABLE' })
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  // Seed the match filters from the saved requirement the first time an existing
+  // client loads, so the "matching properties" list reflects the requirement
+  // immediately (and refreshes when the requirement was just edited). Adjusted
+  // DURING render — React's documented "derive state from props" pattern, the
+  // same one AppShell uses — not in an effect.
+  const [seededFor, setSeededFor] = useState<string | null>(null)
+  if (isExisting && existingClient && seededFor !== clientId) {
+    setSeededFor(clientId ?? null)
+    setFilters(requirementToFilters(mapRequirement(existingClient.requirement)))
+  }
 
   // `values` (not defaultValues) so the form re-syncs once the existing client
   // loads — RHF's idiomatic external-data binding, and it avoids a setState in
@@ -118,6 +132,7 @@ export default function RequirementMatchPage() {
           return
         }
         await bulkAssign.mutateAsync(propertyIds)
+        toast({ variant: 'success', title: `Assigned ${propertyIds.length} ${propertyIds.length === 1 ? 'property' : 'properties'}` })
         void navigate(`/clients/${clientId}`)
       } else {
         // Drop an all-empty requirement so we don't persist a blank row. If any
@@ -129,6 +144,7 @@ export default function RequirementMatchPage() {
           requirement: hasReq ? req : undefined,
           propertyIds,
         })
+        toast({ variant: 'success', title: 'Client created' })
         void navigate(`/clients/${res.data.id}`)
       }
     } catch (err) {
@@ -142,6 +158,18 @@ export default function RequirementMatchPage() {
     }
   })
 
+  const onRemove = async (propertyId: string, label: string) => {
+    if (!clientId) return
+    if (!window.confirm(`Remove "${label}" from this client's shared properties?`)) return
+    try {
+      await removeAssignment.mutateAsync(propertyId)
+      toast({ variant: 'success', title: 'Property removed' })
+    } catch (err) {
+      toast({ variant: 'error', title: 'Could not remove property', description: err instanceof Error ? err.message : undefined })
+    }
+  }
+
+  const currentlyShared = isExisting ? (existingClient?.assignedProperties ?? []) : []
   const submitting = form.formState.isSubmitting
 
   return (
@@ -153,7 +181,7 @@ export default function RequirementMatchPage() {
 
       <div className="grid gap-6 p-6 lg:grid-cols-5">
         {/* ---- Requirement form (a real <form>) ---- */}
-        <div className="lg:col-span-2">
+        <div className="flex flex-col gap-6 lg:col-span-2">
           <Card>
             <Card.Header>
               <Card.Title>{isExisting ? 'Requirement' : 'Client & requirement'}</Card.Title>
@@ -209,6 +237,47 @@ export default function RequirementMatchPage() {
               </form>
             </Card.Body>
           </Card>
+
+          {/* ---- Currently shared: the properties already assigned, each
+                 removable. This is the "remove previously assigned" half of
+                 managing a client's shortlist. ---- */}
+          {isExisting ? (
+            <Card>
+              <Card.Header>
+                <Card.Title>Currently shared</Card.Title>
+                <Card.Description>{currentlyShared.length} already assigned to this client.</Card.Description>
+              </Card.Header>
+              <Card.Body>
+                {currentlyShared.length === 0 ? (
+                  <p className="py-1 text-sm text-text-muted">Nothing shared yet — tick matches on the right to assign.</p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {currentlyShared.map((p) => (
+                      <li key={p.id} className="flex items-center justify-between gap-2">
+                        <Link
+                          to={`/properties/${p.propertyId}`}
+                          className="min-w-0 flex-1 truncate text-sm text-text-primary hover:text-text-brand hover:underline"
+                        >
+                          <span className="font-mono text-xs text-text-muted">{p.code}</span> {p.title}
+                        </Link>
+                        <StatusBadge status={p.status as PropertyStatus} />
+                        <button
+                          type="button"
+                          onClick={() => void onRemove(p.propertyId, p.title)}
+                          disabled={removeAssignment.isPending}
+                          aria-label={`Remove ${p.title}`}
+                          title="Remove from client"
+                          className="shrink-0 rounded p-1 text-text-muted hover:bg-surface-danger-soft/50 hover:text-text-danger disabled:opacity-50"
+                        >
+                          <X className="size-3.5" aria-hidden="true" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card.Body>
+            </Card>
+          ) : null}
         </div>
 
         {/* ---- Search + results (siblings of the form, NOT nested) ---- */}

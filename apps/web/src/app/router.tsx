@@ -8,6 +8,7 @@ const Dashboard = lazy(() => import('@/features/dashboard/pages/DashboardPage'))
 const Clients = lazy(() => import('@/features/clients/pages/ClientsPage'))
 const ClientDetail = lazy(() => import('@/features/clients/pages/ClientDetailPage'))
 const ClientCreate = lazy(() => import('@/features/clients/pages/ClientCreatePage'))
+const ClientEdit = lazy(() => import('@/features/clients/pages/ClientEditPage'))
 const Properties = lazy(() => import('@/features/properties/pages/PropertiesPage'))
 const PropertyDetail = lazy(() => import('@/features/properties/pages/PropertyDetailPage'))
 const PropertyCreate = lazy(() => import('@/features/properties/pages/PropertyCreatePage'))
@@ -64,6 +65,18 @@ export const router = createBrowserRouter([
         element: lazyRoute(
           <RequirePermission permission="client.create">
             <ClientCreate />
+          </RequirePermission>,
+        ),
+      },
+      // 'edit' before ':id' so the detail route doesn't swallow it. Gated by
+      // client.update — an agent reaching it by URL for a client that isn't
+      // theirs is denied by the guard (and the API's scope) rather than shown a
+      // form whose save would 404.
+      {
+        path: 'clients/:id/edit',
+        element: lazyRoute(
+          <RequirePermission permission="client.update">
+            <ClientEdit />
           </RequirePermission>,
         ),
       },

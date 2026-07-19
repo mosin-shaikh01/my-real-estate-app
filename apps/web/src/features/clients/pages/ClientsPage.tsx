@@ -1,4 +1,4 @@
-import { Plus, Search, Star } from 'lucide-react'
+import { Pencil, Plus, Search, Star } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router'
 import { FOLLOW_UP_STATUS_LABELS, type FollowUpStatus } from '@app/shared'
 import { Can, Locked } from '@/components/auth/Can'
@@ -129,18 +129,19 @@ export default function ClientsPage() {
                   <TH numeric className="w-40">Budget</TH>
                   <TH className="w-32">Agent</TH>
                   <TH className="w-28">Last contact</TH>
+                  <TH className="w-16"><span className="sr-only">Actions</span></TH>
                 </tr>
               </THead>
               <tbody>
                 {isLoading ? (
-                  <TableEmpty colSpan={7} title="Loading…" />
+                  <TableEmpty colSpan={8} title="Loading…" />
                 ) : data?.data.length ? (
                   data.data.map((c) => (
                     <ClientRow key={c.id} client={c} canSeeBudget={canSeeBudget} canSeePhone={canSeePhone} />
                   ))
                 ) : (
                   <TableEmpty
-                    colSpan={7}
+                    colSpan={8}
                     title={q ? 'No clients match that search' : 'No clients assigned to you yet'}
                     hint={
                       q
@@ -254,6 +255,21 @@ function ClientRow({
 
       <TD className="truncate text-text-secondary">{client.assignedAgent?.fullName ?? '—'}</TD>
       <TD className="text-text-muted">{formatRelative(client.lastContactAt)}</TD>
+
+      {/* Edit is a UX affordance; the API re-checks client.update AND scope, so a
+          missing button is not the security boundary — the server is. */}
+      <TD>
+        <Can permission="client.update">
+          <Link
+            to={`/clients/${client.id}/edit`}
+            aria-label={`Edit ${client.fullName}`}
+            title="Edit client"
+            className="inline-flex size-7 items-center justify-center rounded-md text-text-muted hover:bg-surface-hover hover:text-text-brand"
+          >
+            <Pencil className="size-3.5" aria-hidden="true" />
+          </Link>
+        </Can>
+      </TD>
     </TR>
   )
 }

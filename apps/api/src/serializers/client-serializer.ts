@@ -48,7 +48,10 @@ export interface ClientRow {
     id: string
     budgetMin: Decimalish
     budgetMax: Decimalish
+    areaMin: Decimalish
+    areaMax: Decimalish
     propertyType: string | null
+    listingType: string | null
     bedrooms: number | null
     city: string | null
     locality: string | null
@@ -80,9 +83,13 @@ export interface ClientDTO {
   requirement?: {
     id: string
     propertyType: string | null
+    listingType: string | null
     bedrooms: number | null
     city: string | null
     locality: string | null
+    // Area is a size, not a price — not gated by budget. Always present.
+    areaMin: string | null
+    areaMax: string | null
     budgetMin?: string | null
     budgetMax?: string | null
   }
@@ -136,9 +143,12 @@ export function toClientDTO(row: ClientRow, actor: Actor): ClientDTO {
     dto.requirement = {
       id: req.id,
       propertyType: req.propertyType,
+      listingType: req.listingType,
       bedrooms: req.bedrooms,
       city: req.city,
       locality: req.locality,
+      areaMin: money(req.areaMin),
+      areaMax: money(req.areaMax),
     }
     if (actor.has('client.budget.view')) {
       dto.requirement.budgetMin = money(req.budgetMin)

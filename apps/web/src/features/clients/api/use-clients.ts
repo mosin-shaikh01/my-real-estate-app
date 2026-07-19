@@ -34,9 +34,12 @@ export interface ClientDTO {
   requirement?: {
     id: string
     propertyType: string | null
+    listingType: string | null
     bedrooms: number | null
     city: string | null
     locality: string | null
+    areaMin: string | null
+    areaMax: string | null
     budgetMin?: string | null
     budgetMax?: string | null
   }

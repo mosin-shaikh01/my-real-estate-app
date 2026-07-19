@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import type { ReactNode } from 'react'
+import { ToastProvider } from '@/components/ui/Toast'
 import { BrandingEffects } from './branding'
 import { ThemeProvider } from './theme-provider'
 
@@ -31,7 +32,9 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <BrandingEffects />
-        <Tooltip.Provider delayDuration={300}>{children}</Tooltip.Provider>
+        <ToastProvider>
+          <Tooltip.Provider delayDuration={300}>{children}</Tooltip.Provider>
+        </ToastProvider>
       </ThemeProvider>
     </QueryClientProvider>
   )
