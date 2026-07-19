@@ -13,6 +13,8 @@ import { NOTIFICATION_TEMPLATE_KEYS, TEMPLATE_LABELS } from '@app/shared'
 import { decryptSecret, encryptSecret } from '../lib/crypto.js'
 import { env } from '../lib/env.js'
 import { prisma } from '../lib/prisma.js'
+import { emailProvider } from '../notification/providers/email-provider.js'
+import type { OutboundMessage } from '../notification/notification-types.js'
 import { DEFAULT_TEMPLATES } from '../notification/templates/default-templates.js'
 import { wrapWithBranding } from '../notification/templates/layout.js'
 import type {
@@ -58,6 +60,30 @@ async function resolveBranding(): Promise<ResolvedBranding> {
   }
 }
 
+/** Build a transport from a config row, IGNORING the enabled flag. Returns null
+ *  only when it's genuinely unusable (no host or no sender). */
+function rowToTransport(row: {
+  provider: string
+  settings: unknown
+  secret: string | null
+}): EmailTransportConfig | null {
+  const s = (row.settings ?? {}) as Record<string, unknown>
+  const host = String(s.host ?? '')
+  const senderEmail = String(s.senderEmail ?? '')
+  if (!host || !senderEmail) return null
+  return {
+    provider: row.provider,
+    host,
+    port: Number(s.port ?? 587),
+    encryption: (s.encryption as SmtpEncryption) ?? 'tls',
+    username: String(s.username ?? ''),
+    password: decryptSecret(row.secret) ?? '',
+    senderName: String(s.senderName ?? ''),
+    senderEmail,
+    replyTo: String(s.replyTo ?? ''),
+  }
+}
+
 // ---------------------------------------------------------------------------
 // The injected store the NotificationService depends on.
 // ---------------------------------------------------------------------------
@@ -84,26 +110,14 @@ export const prismaNotificationStore: NotificationStore = {
 
   getBranding: resolveBranding,
 
+  // The normal path gates on `enabled`: a disabled provider means "log to console"
+  // (the dev/unconfigured behaviour), never a hard failure of a business flow.
   async getEmailTransport(): Promise<EmailTransportConfig | null> {
     const row = await prisma.notificationProviderConfig.findUnique({
       where: { channel: EMAIL_CHANNEL },
     })
     if (!row || !row.enabled) return null
-    const s = (row.settings ?? {}) as Record<string, unknown>
-    const host = String(s.host ?? '')
-    const senderEmail = String(s.senderEmail ?? '')
-    if (!host || !senderEmail) return null
-    return {
-      provider: row.provider,
-      host,
-      port: Number(s.port ?? 587),
-      encryption: (s.encryption as SmtpEncryption) ?? 'tls',
-      username: String(s.username ?? ''),
-      password: decryptSecret(row.secret) ?? '',
-      senderName: String(s.senderName ?? ''),
-      senderEmail,
-      replyTo: String(s.replyTo ?? ''),
-    }
+    return rowToTransport(row)
   },
 
   async writeLog(entry: NotificationLogEntry): Promise<string> {
@@ -251,6 +265,68 @@ export async function previewTemplate(
   return {
     subject: renderTemplate(subject, vars),
     html: wrapWithBranding(renderTemplate(bodyHtml, vars), branding),
+  }
+}
+
+export interface TestEmailOutcome {
+  status: string
+  provider: string | null
+  error: string | null
+  previewUrl: string | null
+}
+
+/**
+ * Send a REAL test email using the saved SMTP settings — deliberately IGNORING
+ * the `enabled` flag so an admin can verify credentials before turning email on.
+ * Reports the true SMTP result (auth failures, sender rejections, …) instead of
+ * the silent console fallback, and logs the attempt.
+ */
+export async function sendTestEmail(to: string): Promise<TestEmailOutcome> {
+  const row = await prisma.notificationProviderConfig.findUnique({ where: { channel: EMAIL_CHANNEL } })
+  const transport = row ? rowToTransport(row) : null
+
+  if (!transport) {
+    return {
+      status: 'failed',
+      provider: null,
+      error: 'Email is not configured. Enter the SMTP host, sender email and password, then Save.',
+      previewUrl: null,
+    }
+  }
+
+  const branding = await resolveBranding()
+  const inner =
+    '<h1 style="margin:0 0 16px;font-size:20px;">Test email</h1>' +
+    '<p>This is a test email from your CRM Notification Service. If you can read this, your SMTP configuration is working.</p>'
+  const html = wrapWithBranding(inner, branding)
+  const message: OutboundMessage = {
+    channel: 'email',
+    to,
+    recipientName: '',
+    subject: `Test email from ${branding.companyName}`,
+    html,
+    text: htmlToText(html),
+  }
+
+  const result = await emailProvider.send(message, transport)
+
+  await prismaNotificationStore.writeLog({
+    channel: 'email',
+    templateKey: null,
+    provider: result.provider,
+    recipient: to,
+    subject: message.subject,
+    status: result.status,
+    error: result.error,
+    retryCount: result.retryCount,
+    sentAt: result.status === 'sent' ? new Date() : null,
+  })
+
+  return {
+    status: result.status,
+    provider: result.provider,
+    error: result.error,
+    previewUrl: result.previewUrl ?? null,
   }
 }
 

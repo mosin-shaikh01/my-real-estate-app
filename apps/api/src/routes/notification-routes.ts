@@ -9,13 +9,13 @@ import {
 import { requirePermission } from '../middleware/authenticate.js'
 import { rateLimit } from '../middleware/rate-limit.js'
 import { notFound, validationFailed } from '../lib/errors.js'
-import { notificationService } from '../notification/index.js'
 import {
   getEmailConfigDTO,
   getTemplateDTO,
   listLogs,
   listTemplateDTOs,
   previewTemplate,
+  sendTestEmail,
   updateEmailConfig,
   updateTemplate,
 } from '../services/notification-data-service.js'
@@ -45,23 +45,9 @@ notificationRouter.post(
   requirePermission('notifications.manage'),
   async (req, res) => {
     const { to } = testEmailSchema.parse(req.body)
-    const result = await notificationService.send({
-      channel: 'email',
-      template: 'general-notification',
-      recipient: { email: to, name: 'there' },
-      data: {
-        message:
-          'This is a test email from your CRM Notification Service. If you can read this, email delivery is working.',
-      },
-    })
-    res.json({
-      data: {
-        status: result.status,
-        provider: result.provider,
-        error: result.error,
-        previewUrl: result.previewUrl ?? null,
-      },
-    })
+    // Tests the SAVED SMTP settings via real SMTP even if the provider is
+    // currently disabled, and reports the true result.
+    res.json({ data: await sendTestEmail(to) })
   },
 )
 

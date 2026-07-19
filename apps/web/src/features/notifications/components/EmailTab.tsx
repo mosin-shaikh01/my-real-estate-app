@@ -108,6 +108,14 @@ export function EmailTab() {
 
   return (
     <div className="flex flex-col gap-5">
+      {config && config.host && config.hasPassword && !config.enabled ? (
+        <div className="rounded-md border border-border-subtle bg-surface-warning-soft/40 px-3 py-2 text-xs text-text-warning">
+          Email is configured but <strong>turned off</strong>. Tick <strong>Enabled</strong> and save to send
+          real notifications (password resets, etc.). You can still use “Send test email” below to verify your
+          settings while it's off.
+        </div>
+      ) : null}
+
       <form onSubmit={onSubmit} noValidate>
         <Card>
           <Card.Header action={
@@ -184,8 +192,13 @@ export function EmailTab() {
               <FormField label="Sender name" error={formState.errors.senderName?.message} required>
                 {(p) => <Input {...p} {...register('senderName')} placeholder="Estate CRM" />}
               </FormField>
-              <FormField label="Sender email" error={formState.errors.senderEmail?.message} required>
-                {(p) => <Input {...p} type="email" {...register('senderEmail')} placeholder="no-reply@example.com" />}
+              <FormField
+                label="Sender email"
+                error={formState.errors.senderEmail?.message}
+                help="Most SMTP hosts (Hostinger, GoDaddy, cPanel, Zoho…) only allow sending from an address on the SAME domain as your SMTP account. A mismatched address (e.g. a Gmail address on a Hostinger account) is commonly rejected."
+                required
+              >
+                {(p) => <Input {...p} type="email" {...register('senderEmail')} placeholder="no-reply@yourdomain.com" />}
               </FormField>
             </div>
 
