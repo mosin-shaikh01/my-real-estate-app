@@ -4,18 +4,27 @@ import { siteVisitStatusSchema } from '../enums.js'
 // A scheduled property visit for a client. Shape/format only; the server checks
 // that the property/client/agent exist and are in the actor's scope.
 
+// Accept anything Date can parse — both a browser <input type="datetime-local">
+// value ("2026-07-19T19:37", no timezone) AND a full ISO string. The client
+// normalises to ISO before sending; the server parses with new Date(). Using
+// z.string().datetime() here rejected the datetime-local value and blocked the
+// form before it could convert.
+const dateTimeString = z
+  .string()
+  .refine((v) => v.length > 0 && !Number.isNaN(Date.parse(v)), 'Pick a date and time')
+
 export const siteVisitCreateSchema = z.object({
   propertyId: z.string().min(1, 'Select a property'),
   clientId: z.string().min(1, 'Select a client'),
   agentId: z.string().nullish(),
-  scheduledAt: z.string().datetime('Pick a date and time'),
+  scheduledAt: dateTimeString,
   remarks: z.string().trim().max(2000).nullish().or(z.literal('')),
 })
 export type SiteVisitCreateInput = z.infer<typeof siteVisitCreateSchema>
 
 export const siteVisitUpdateSchema = z.object({
   status: siteVisitStatusSchema.optional(),
-  scheduledAt: z.string().datetime().optional(),
+  scheduledAt: dateTimeString.optional(),
   agentId: z.string().nullish(),
   feedback: z.string().trim().max(2000).nullish().or(z.literal('')),
   remarks: z.string().trim().max(2000).nullish().or(z.literal('')),
