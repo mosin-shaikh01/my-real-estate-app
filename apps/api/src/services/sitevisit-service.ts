@@ -11,7 +11,7 @@ import { logActivityTx } from './activity-service.js'
 // they're on, or one for a client OR property assigned to them. Same "which
 // rows" mechanism as clients/properties — never a permission, always a WHERE.
 
-function scopeForSiteVisit(actor: Actor): Prisma.SiteVisitWhereInput {
+export function scopeForSiteVisit(actor: Actor): Prisma.SiteVisitWhereInput {
   if (actor.has('property.list.all') || actor.has('client.list.all')) return {}
   return {
     OR: [

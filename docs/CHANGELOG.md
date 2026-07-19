@@ -28,6 +28,10 @@ phase adds the genuinely-new Site Visits module.)
   sidebar entry. Consistent with the design system, RBAC-gated.
 - Migration applied; 155 tests green; typecheck/lint/build clean; CRUD + scoping +
   status filter verified end-to-end against the DB.
+- **Dashboard** gained tiles for **Important leads**, **Reserved** properties, and
+  **Today's / Upcoming site visits** — all scope-aware (site-visit tiles are null,
+  not zero, for an actor without `sitevisit.list`), reusing the same resolvers as
+  the list endpoints.
 
 ### Added — Client fields: buyer type, buyer city, important lead (CRM expansion Phase 3)
 

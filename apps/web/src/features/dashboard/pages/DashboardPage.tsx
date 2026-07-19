@@ -1,8 +1,11 @@
 import {
+  Bookmark,
   Building2,
+  CalendarCheck,
   CalendarClock,
   CheckCircle2,
   IndianRupee,
+  Star,
   UserSquare2,
   Users,
 } from 'lucide-react'
@@ -102,6 +105,39 @@ export default function DashboardPage() {
               loading={isLoading}
             />
           )}
+
+          <Tile
+            label="Important leads"
+            value={data?.importantLeads}
+            hint="Hot clients to prioritise"
+            icon={Star}
+            loading={isLoading}
+          />
+          <Tile
+            label="Reserved"
+            value={data?.reservedProperties}
+            hint="Properties on hold"
+            icon={Bookmark}
+            loading={isLoading}
+          />
+          {data?.todaySiteVisits != null ? (
+            <Tile
+              label="Today's visits"
+              value={data.todaySiteVisits}
+              hint="Site visits scheduled today"
+              icon={CalendarClock}
+              loading={false}
+            />
+          ) : null}
+          {data?.upcomingSiteVisits != null ? (
+            <Tile
+              label="Upcoming visits"
+              value={data.upcomingSiteVisits}
+              hint="Site visits scheduled ahead"
+              icon={CalendarCheck}
+              loading={false}
+            />
+          ) : null}
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-3">

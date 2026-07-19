@@ -1,6 +1,7 @@
 import type { Actor } from '../auth/permissions.js'
 import { scopeForClient, scopeForProperty } from '../auth/scope.js'
 import { prisma } from '../lib/prisma.js'
+import { scopeForSiteVisit } from './sitevisit-service.js'
 
 // ============================================================================
 // Dashboard
@@ -14,11 +15,15 @@ import { prisma } from '../lib/prisma.js'
 export interface DashboardSummary {
   activeProperties: number
   totalProperties: number
+  reservedProperties: number
   soldProperties: number
   rentedProperties: number
   totalClients: number
+  importantLeads: number
   totalAgents: number | null
   followUpsDue: number
+  todaySiteVisits: number | null
+  upcomingSiteVisits: number | null
   commissionEarned: string | null
   recentActivity: Array<{
     id: string
@@ -37,22 +42,35 @@ export async function getDashboard(actor: Actor): Promise<DashboardSummary> {
   // The definition lives in CLAUDE.md because the tile was ambiguous otherwise.
   const activeWhere = { ...propertyScope, status: 'AVAILABLE' as const, archivedAt: null }
 
+  // Today's window for site-visit tiles (local server day).
+  const now = new Date()
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const endOfDay = new Date(startOfDay.getTime() + 86_400_000)
+  const visitScope = scopeForSiteVisit(actor)
+  const canSeeVisits = actor.has('sitevisit.list')
+
   const [
     activeProperties,
     totalProperties,
+    reservedProperties,
     soldProperties,
     rentedProperties,
     totalClients,
+    importantLeads,
     totalAgents,
     followUpsDue,
+    todaySiteVisits,
+    upcomingSiteVisits,
     deals,
     recent,
   ] = await Promise.all([
     prisma.property.count({ where: activeWhere }),
     prisma.property.count({ where: { ...propertyScope, archivedAt: null } }),
+    prisma.property.count({ where: { ...propertyScope, status: 'RESERVED' } }),
     prisma.property.count({ where: { ...propertyScope, status: 'SOLD' } }),
     prisma.property.count({ where: { ...propertyScope, status: 'RENTED' } }),
     prisma.client.count({ where: clientScope }),
+    prisma.client.count({ where: { ...clientScope, importantLead: true } }),
 
     // Agent headcount is admin-only information. An agent has no agent.list
     // permission, and a tile is not an exemption — null means "not for you",
@@ -69,6 +87,19 @@ export async function getDashboard(actor: Actor): Promise<DashboardSummary> {
         followUpStatus: { notIn: ['CONVERTED', 'LOST'] },
       },
     }),
+
+    // Site-visit tiles are omitted (null) for an actor without sitevisit.list —
+    // a zero would read as "no visits" rather than "not your information".
+    canSeeVisits
+      ? prisma.siteVisit.count({
+          where: { ...visitScope, scheduledAt: { gte: startOfDay, lt: endOfDay } },
+        })
+      : Promise.resolve(null),
+    canSeeVisits
+      ? prisma.siteVisit.count({
+          where: { ...visitScope, status: 'SCHEDULED', scheduledAt: { gte: endOfDay } },
+        })
+      : Promise.resolve(null),
 
     // Commission is gated by agent.commission.view. Aggregating it for someone
     // who cannot see the rate would leak it in totalled form.
@@ -94,11 +125,15 @@ export async function getDashboard(actor: Actor): Promise<DashboardSummary> {
   return {
     activeProperties,
     totalProperties,
+    reservedProperties,
     soldProperties,
     rentedProperties,
     totalClients,
+    importantLeads,
     totalAgents,
     followUpsDue,
+    todaySiteVisits,
+    upcomingSiteVisits,
     // Decimal -> string. Never a number: this is money.
     commissionEarned: deals?._sum.commissionAmount?.toFixed(2) ?? null,
     recentActivity: recent.map((r) => ({
