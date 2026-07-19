@@ -113,7 +113,10 @@ export function Sidebar({ className }: { className?: string }) {
         ) : (
           <div
             className="grid size-6 shrink-0 place-items-center rounded text-white"
-            style={{ backgroundColor: 'var(--brand-mark, var(--color-brand-600))' }}
+            style={{
+              backgroundImage:
+                'linear-gradient(135deg, var(--color-brand-primary), var(--color-brand-secondary))',
+            }}
           >
             <Building2 className="size-3.5" aria-hidden="true" />
           </div>

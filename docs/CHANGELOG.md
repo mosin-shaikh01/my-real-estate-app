@@ -7,6 +7,23 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Fixed — secondary brand colour was applied nowhere
+
+Root cause: the colour was saved, returned by the API, and received by the client
+correctly, but `app/branding.tsx` only read `primaryColor` (→ `--brand-mark`) and
+never read `secondaryColor` into any CSS variable — so nothing could consume it.
+
+- **Both colours now flow through one mechanism**: `branding.tsx` sets
+  `--brand-primary` and `--brand-secondary` on `<html>` from Settings (live, no
+  refresh; cleared → falls back to the token default). `tokens.css` exposes them as
+  `--color-brand-primary` / `--color-brand-secondary`, so **every component and any
+  future email/PDF/report template** can use `bg-/text-/border-/ring-brand-primary`
+  and `-brand-secondary`.
+- **Secondary is now visibly used**: the brand mark (sidebar + all auth screens) is
+  a live `primary → secondary` gradient, and the notification email layout gained a
+  secondary accent stripe. Both update the instant Settings are saved.
+- Semantic status colours (success/warning/danger/info) are untouched.
+
 ### Added — Notification Service (centralized communication layer)
 
 A single, extensible service every feature sends through — **nothing in the CRM
