@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, unlink } from 'node:fs/promises'
 import path from 'node:path'
 import type { Request } from 'express'
+import type { DocumentType } from '@app/shared'
 import type { Actor } from '../auth/permissions.js'
 import { scopeForProperty } from '../auth/scope.js'
 import { env } from '../lib/env.js'
@@ -91,11 +92,17 @@ export interface UploadedFile {
  * get the same 404 as a genuine absence, not a permission error that confirms
  * the property exists.
  */
+export interface SaveMediaOptions {
+  markAsFloorPlan?: boolean
+  /** Applied to DOCUMENT-category files only (Sale Deed, 7/12…). */
+  documentType?: DocumentType | null
+}
+
 export async function saveMedia(
   actor: Actor,
   propertyId: string,
   files: UploadedFile[],
-  markAsFloorPlan: boolean,
+  opts: SaveMediaOptions,
   req: Request,
 ) {
   const property = await prisma.property.findFirst({
@@ -134,12 +141,15 @@ export async function saveMedia(
     const storageKey = path.posix.join('properties', propertyId, `${randomUUID()}${spec.ext}`)
     await writeFile(resolveStorageKey(storageKey), f.buffer)
 
-    const category = markAsFloorPlan && spec.category === 'IMAGE' ? 'FLOOR_PLAN' : spec.category
+    const category =
+      opts.markAsFloorPlan && spec.category === 'IMAGE' ? 'FLOOR_PLAN' : spec.category
 
     const media = await prisma.propertyMedia.create({
       data: {
         propertyId,
         type: category,
+        // Categorise documents (Sale Deed, 7/12…); ignored for non-documents.
+        documentType: category === 'DOCUMENT' ? (opts.documentType ?? null) : null,
         storageKey,
         originalName: f.originalname.slice(0, 255),
         mimeType: f.mimetype,

@@ -28,6 +28,7 @@ const PAIRS: ReadonlyArray<[string, readonly string[], Record<string, string>]> 
   ['Facing', shared.facingSchema.options, prismaEnums.Facing],
   ['ConstructionStatus', shared.constructionStatusSchema.options, prismaEnums.ConstructionStatus],
   ['MediaType', shared.mediaTypeSchema.options, prismaEnums.MediaType],
+  ['DocumentType', shared.documentTypeSchema.options, prismaEnums.DocumentType],
   ['ClientPriority', shared.clientPrioritySchema.options, prismaEnums.ClientPriority],
   ['FollowUpStatus', shared.followUpStatusSchema.options, prismaEnums.FollowUpStatus],
   ['InteractionType', shared.interactionTypeSchema.options, prismaEnums.InteractionType],

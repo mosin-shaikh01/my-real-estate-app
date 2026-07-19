@@ -80,6 +80,17 @@ export type ConstructionStatus = z.infer<typeof constructionStatusSchema>
 export const mediaTypeSchema = z.enum(['IMAGE', 'VIDEO', 'DOCUMENT', 'FLOOR_PLAN'])
 export type MediaType = z.infer<typeof mediaTypeSchema>
 
+export const documentTypeSchema = z.enum([
+  'SALE_DEED',
+  'EXTRACT_7_12',
+  'NA_ORDER',
+  'LAYOUT_PLAN',
+  'TITLE_DOCUMENT',
+  'TAX_RECEIPT',
+  'OTHER',
+])
+export type DocumentType = z.infer<typeof documentTypeSchema>
+
 export const clientPrioritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH'])
 export type ClientPriority = z.infer<typeof clientPrioritySchema>
 
@@ -152,6 +163,16 @@ export const AREA_UNIT_LABELS: Record<AreaUnit, string> = {
   ACRE: 'Acre',
   GUNTHA: 'Guntha',
   HECTARE: 'Hectare',
+}
+
+export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+  SALE_DEED: 'Sale Deed',
+  EXTRACT_7_12: '7/12 Extract',
+  NA_ORDER: 'NA Order',
+  LAYOUT_PLAN: 'Layout Plan',
+  TITLE_DOCUMENT: 'Title Document',
+  TAX_RECEIPT: 'Tax Receipt',
+  OTHER: 'Other Document',
 }
 
 export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {

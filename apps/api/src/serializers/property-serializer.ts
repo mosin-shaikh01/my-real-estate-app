@@ -63,7 +63,18 @@ export interface PropertyRow {
   assignedAgent?: { id: string; fullName: string } | null
   owner?: { id: string; code: string; fullName: string; mobile: string } | null
   amenities?: Array<{ amenity: { id: string; name: string; slug: string; category: string | null } }>
-  media?: Array<{ id: string; type: string; storageKey: string; isCover: boolean; sortOrder: number }>
+  media?: Array<{
+    id: string
+    type: string
+    documentType: string | null
+    originalName: string
+    mimeType: string
+    sizeBytes: number
+    storageKey: string
+    isCover: boolean
+    sortOrder: number
+    createdAt: Date
+  }>
   _count?: { assignments: number }
 }
 
@@ -120,6 +131,14 @@ export interface PropertyDTO {
   // and fetches bytes through the authorized /api/media/:id route, never by a
   // path it could construct itself.
   media: Array<{ id: string; type: string; isCover: boolean }>
+  documents: Array<{
+    id: string
+    documentType: string | null
+    originalName: string
+    mimeType: string
+    sizeBytes: number
+    createdAt: string
+  }>
   assignedClientCount: number
 
   // Absent = redacted. Null = empty. The UI must tell them apart.
@@ -187,6 +206,18 @@ export function toPropertyDTO(row: PropertyRow, actor: Actor): PropertyDTO {
     amenities: row.amenities?.map((a) => a.amenity) ?? [],
     coverMediaId: row.media?.find((m) => m.isCover)?.id ?? row.media?.[0]?.id ?? null,
     media: row.media?.map((m) => ({ id: m.id, type: m.type, isCover: m.isCover })) ?? [],
+    // Documents are a separate, richer list (name/type/size for the file manager).
+    documents:
+      row.media
+        ?.filter((m) => m.type === 'DOCUMENT')
+        .map((m) => ({
+          id: m.id,
+          documentType: m.documentType,
+          originalName: m.originalName,
+          mimeType: m.mimeType,
+          sizeBytes: m.sizeBytes,
+          createdAt: m.createdAt.toISOString(),
+        })) ?? [],
     assignedClientCount: row._count?.assignments ?? 0,
     _redacted: redacted,
   }

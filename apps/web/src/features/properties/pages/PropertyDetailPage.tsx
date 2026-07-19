@@ -13,6 +13,7 @@ import { Card } from '@/components/ui/Card'
 import { Select } from '@/components/ui/Select'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { InfoHint } from '@/components/ui/Tooltip'
+import { PropertyDocuments } from '@/features/properties/components/PropertyDocuments'
 import { PropertyGallery } from '@/features/properties/components/PropertyGallery'
 import { usePermissions } from '@/features/auth/api/use-auth'
 import { useAssignableAgents } from '@/features/agents/api/use-assignable-agents'
@@ -149,6 +150,14 @@ export default function PropertyDetailPage() {
             canDownload={has('property.media.download')}
             videoLinks={p.videoUrls}
           />
+
+          {has('property.media.download') ? (
+            <PropertyDocuments
+              propertyId={p.id}
+              documents={p.documents}
+              canManage={has('property.media.upload')}
+            />
+          ) : null}
 
           <Card>
             <Card.Header>

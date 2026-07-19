@@ -40,10 +40,10 @@ mediaRouter.get('/:id', requirePermission('property.media.download'), async (req
   // inline for playable/viewable media, attachment for documents — a PDF
   // shouldn't hijack the tab. The filename is sanitised to a header-safe form.
   const safeName = media.originalName.replace(/[^\w.\- ]/g, '_')
-  res.setHeader(
-    'Content-Disposition',
-    `${isImage || isVideo ? 'inline' : 'attachment'}; filename="${safeName}"`,
-  )
+  // Images/videos are always inline; documents default to attachment (download)
+  // but honour ?disposition=inline so a PDF can be PREVIEWED in a browser tab.
+  const inline = isImage || isVideo || req.query.disposition === 'inline'
+  res.setHeader('Content-Disposition', `${inline ? 'inline' : 'attachment'}; filename="${safeName}"`)
 
   const total = media.sizeBytes
   const range = req.headers.range

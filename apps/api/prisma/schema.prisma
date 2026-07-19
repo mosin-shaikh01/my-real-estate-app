@@ -551,6 +551,10 @@ model PropertyMedia {
   propertyId String    @map("property_id")
   type       MediaType
 
+  // For DOCUMENT-type media, which legal document it is (Sale Deed, 7/12…). Null
+  // for images/videos/floor plans, and for uncategorised documents.
+  documentType DocumentType? @map("document_type")
+
   // RELATIVE path. Never absolute, never a URL — swapping local disk for S3
   // later becomes a serializer change instead of a data migration.
   storageKey   String  @map("storage_key")
@@ -919,6 +923,16 @@ enum Facing {
 enum ConstructionStatus {
   READY_TO_MOVE
   UNDER_CONSTRUCTION
+}
+
+enum DocumentType {
+  SALE_DEED
+  EXTRACT_7_12
+  NA_ORDER
+  LAYOUT_PLAN
+  TITLE_DOCUMENT
+  TAX_RECEIPT
+  OTHER
 }
 
 enum MediaType {

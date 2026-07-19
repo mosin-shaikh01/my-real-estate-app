@@ -7,6 +7,25 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — Property Documents (CRM expansion Phase 2)
+
+Categorised legal documents per property, on top of the existing authorized media
+pipeline (no new storage/streaming code).
+
+- **`DocumentType` enum** (Sale Deed, 7/12 Extract, NA Order, Layout Plan, Title
+  Document, Tax Receipt, Other) + `PropertyMedia.documentType` column. Mirrored in
+  shared + the enum-parity test.
+- **Upload** tags a document with its type (the shared media endpoint now accepts
+  `documentType`); the property DTO exposes a dedicated **`documents`** array
+  (name, type, MIME, size). The authorized media stream gained `?disposition=inline`
+  so a PDF can be **previewed** in a tab as well as downloaded.
+- **Documents manager** on the property detail page: categorised upload, a list
+  with preview / download / delete, human-readable sizes and type badges. Viewing
+  needs `property.media.download`; managing needs `property.media.upload` (agents
+  can view/download, not upload/delete). Consistent with the design system.
+- Migration applied; 153 tests green; typecheck/lint/build clean; document
+  storage + serialization verified against the DB.
+
 ### Added — Property Owner master + property identification (CRM expansion Phase 1)
 
 The reusable seller/owner backbone the wider CRM build hangs off. Additive and

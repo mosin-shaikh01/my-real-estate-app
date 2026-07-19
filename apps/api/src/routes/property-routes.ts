@@ -2,10 +2,12 @@ import { Router } from 'express'
 import { z } from 'zod'
 import {
   assignAgentSchema,
+  documentTypeSchema,
   propertyCreateSchema,
   propertyListQuerySchema,
   propertyStatusUpdateSchema,
   propertyUpdateSchema,
+  type DocumentType,
   type Paginated,
 } from '@app/shared'
 import { requirePermission } from '../middleware/authenticate.js'
@@ -124,7 +126,10 @@ propertyRouter.post(
       return
     }
     const markAsFloorPlan = req.body?.type === 'FLOOR_PLAN'
-    const created = await saveMedia(req.actor!, id, files, markAsFloorPlan, req)
+    // Optional document category (Sale Deed, 7/12…); validated, ignored if absent.
+    const dt = req.body?.documentType
+    const documentType = documentTypeSchema.safeParse(dt).success ? (dt as DocumentType) : null
+    const created = await saveMedia(req.actor!, id, files, { markAsFloorPlan, documentType }, req)
     res.status(201).json({ data: created })
   },
 )

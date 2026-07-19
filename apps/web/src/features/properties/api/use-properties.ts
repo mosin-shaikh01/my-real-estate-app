@@ -58,6 +58,14 @@ export interface PropertyDTO {
   archivedAt: string | null
   assignedAgent: { id: string; fullName: string } | null
   amenities: Array<{ id: string; name: string; slug: string; category: string | null }>
+  documents: Array<{
+    id: string
+    documentType: string | null
+    originalName: string
+    mimeType: string
+    sizeBytes: number
+    createdAt: string
+  }>
   coverMediaId: string | null
   // Bytes come from /api/media/:id (authorized), never a path the client builds.
   media: Array<{ id: string; type: string; isCover: boolean }>

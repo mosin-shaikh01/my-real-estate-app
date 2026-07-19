@@ -65,7 +65,18 @@ const DETAIL_SELECT = {
     select: { amenity: { select: { id: true, name: true, slug: true, category: true } } },
   },
   media: {
-    select: { id: true, type: true, storageKey: true, isCover: true, sortOrder: true },
+    select: {
+      id: true,
+      type: true,
+      documentType: true,
+      originalName: true,
+      mimeType: true,
+      sizeBytes: true,
+      storageKey: true,
+      isCover: true,
+      sortOrder: true,
+      createdAt: true,
+    },
     // Cover first, then explicit order. No `as const` on this object: it would
     // make this nested array readonly, which Prisma's Select type rejects.
     orderBy: [{ isCover: 'desc' }, { sortOrder: 'asc' }],
