@@ -119,10 +119,28 @@ export function EmailTab() {
       <form onSubmit={onSubmit} noValidate>
         <Card>
           <Card.Header action={
-            <label className="flex items-center gap-2 text-xs font-medium text-text-secondary">
-              <input type="checkbox" {...register('enabled')} className="size-4 accent-[var(--color-brand-600)]" />
-              {enabled ? 'Enabled' : 'Disabled'}
-            </label>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={enabled}
+              onClick={() => setValue('enabled', !enabled, { shouldDirty: true })}
+              className="flex items-center gap-2 text-xs font-medium text-text-secondary"
+            >
+              <span
+                className={cn(
+                  'relative h-5 w-9 shrink-0 rounded-full transition-colors',
+                  enabled ? 'bg-brand-600' : 'bg-surface-hover',
+                )}
+              >
+                <span
+                  className={cn(
+                    'absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform',
+                    enabled ? 'translate-x-4' : 'translate-x-0.5',
+                  )}
+                />
+              </span>
+              {enabled ? 'Email sending ON' : 'Email sending OFF'}
+            </button>
           }>
             <Card.Title>Email (SMTP)</Card.Title>
             <Card.Description>
@@ -283,7 +301,19 @@ function TestEmailCard() {
               {result.status === 'sent' ? (
                 <p>Test email sent via {result.provider ?? 'email'}.</p>
               ) : (
-                <p>Failed to send{result.error ? `: ${result.error}` : ''}.</p>
+                <>
+                  <p>Failed to send{result.error ? `: ${result.error}` : ''}.</p>
+                  {/timeout|ETIMEDOUT|ECONN|ESOCKET/i.test(result.error ?? '') ? (
+                    <p className="mt-1 text-text-muted">
+                      Couldn't reach the mail server. Check the host and port, and if port 465 is blocked on
+                      your network/host, try <strong>port 587</strong> with <strong>STARTTLS</strong> encryption.
+                    </p>
+                  ) : /sender address rejected|not owned/i.test(result.error ?? '') ? (
+                    <p className="mt-1 text-text-muted">
+                      The sender email must be an address on the same domain as your SMTP account.
+                    </p>
+                  ) : null}
+                </>
               )}
               {result.previewUrl ? (
                 <a href={result.previewUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2">

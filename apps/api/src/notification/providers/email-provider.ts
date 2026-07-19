@@ -55,9 +55,11 @@ export const emailProvider: NotificationProvider = {
       secure: cfg.encryption === 'ssl', // 465 = implicit TLS
       requireTLS: cfg.encryption === 'tls', // 587 = STARTTLS
       auth: cfg.username ? { user: cfg.username, pass: cfg.password } : undefined,
-      connectionTimeout: 10_000,
-      greetingTimeout: 10_000,
-      socketTimeout: 20_000,
+      // Generous timeouts: some hosts are slow to complete the TLS handshake on
+      // 465, and a too-tight limit reads as a false "connection timeout".
+      connectionTimeout: 25_000,
+      greetingTimeout: 25_000,
+      socketTimeout: 40_000,
     })
 
     const from = cfg.senderName
