@@ -57,6 +57,8 @@ model User {
   activityLogs       ActivityLog[]
   uploadedMedia      PropertyMedia[]
   assignmentsMade    PropertyAssignment[]
+  siteVisitsAsAgent  SiteVisit[]          @relation("SiteVisitAgent")
+  siteVisitsCreated  SiteVisit[]          @relation("SiteVisitCreatedBy")
   deals              Deal[]
   settingsUpdated    AppSetting[]
 
@@ -525,6 +527,7 @@ model Property {
   media         PropertyMedia[]
   amenities     PropertyAmenity[]
   assignments   PropertyAssignment[]
+  siteVisits    SiteVisit[]
   deals         Deal[]
 
   // No single composite serves budget × city × bedrooms × type × status — that
@@ -651,6 +654,7 @@ model Client {
   requirements  ClientRequirement[]
   interactions  ClientInteraction[]
   assignments   PropertyAssignment[]
+  siteVisits    SiteVisit[]
   deals         Deal[]
 
   @@index([assignedAgentId])
@@ -910,6 +914,43 @@ enum BuyerType {
   BUILDER
   FARMER
   OTHER
+}
+
+enum SiteVisitStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+}
+
+// A scheduled property visit for a client, optionally with an accompanying agent.
+// Cascade-deleted with its property or client (a visit has no meaning without
+// them); the agent/creator are SetNull so a departing agent doesn't erase history.
+model SiteVisit {
+  id          String          @id @default(cuid(2))
+  propertyId  String          @map("property_id")
+  clientId    String          @map("client_id")
+  agentId     String?         @map("agent_id")
+  scheduledAt DateTime        @map("scheduled_at")
+  status      SiteVisitStatus @default(SCHEDULED)
+  feedback    String?
+  remarks     String?
+  createdById String?         @map("created_by_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  property  Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  agent     User?    @relation("SiteVisitAgent", fields: [agentId], references: [id], onDelete: SetNull)
+  createdBy User?    @relation("SiteVisitCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([scheduledAt])
+  @@index([status])
+  @@index([agentId])
+  @@index([clientId])
+  @@index([propertyId])
+  @@map("site_visits")
 }
 
 enum Visibility {

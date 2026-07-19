@@ -216,6 +216,12 @@ export const PERMISSIONS = [
     description: 'Configure notification providers, edit templates and send tests',
   },
 
+  // --- Site visits ---------------------------------------------------------
+  { key: 'sitevisit.list', resource: 'sitevisit', action: 'list', description: 'List site visits' },
+  { key: 'sitevisit.create', resource: 'sitevisit', action: 'create', description: 'Schedule a site visit' },
+  { key: 'sitevisit.update', resource: 'sitevisit', action: 'update', description: 'Update a site visit (status, feedback)' },
+  { key: 'sitevisit.delete', resource: 'sitevisit', action: 'delete', description: 'Delete a site visit' },
+
   // --- Activity / Reports / Deals ------------------------------------------
   { key: 'activity.list', resource: 'activity', action: 'list', description: 'View the activity log' },
   { key: 'report.view', resource: 'report', action: 'view', description: 'View reports' },
@@ -285,6 +291,9 @@ export const AGENT_PERMISSIONS: readonly PermissionKey[] = [
   'client.email.view',
   'client.followUp.edit',
   'client.interaction.create',
+  'sitevisit.list',
+  'sitevisit.create',
+  'sitevisit.update',
 ]
 
 /** Anonymous public site: published listings only, no PII, no internal notes. */

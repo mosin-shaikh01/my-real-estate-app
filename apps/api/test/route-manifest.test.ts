@@ -13,6 +13,7 @@ import { meRouter } from '../src/routes/me-routes.js'
 import { notificationRouter } from '../src/routes/notification-routes.js'
 import { ownerRouter } from '../src/routes/owner-routes.js'
 import { profileRouter } from '../src/routes/profile-routes.js'
+import { siteVisitRouter } from '../src/routes/sitevisit-routes.js'
 import { propertyRouter } from '../src/routes/property-routes.js'
 import { settingsRouter } from '../src/routes/settings-routes.js'
 
@@ -80,6 +81,7 @@ const ALL_ROUTES: RouteInfo[] = [
   ...routesOf(clientRouter, '/api/clients'),
   ...routesOf(propertyRouter, '/api/properties'),
   ...routesOf(ownerRouter, '/api/owners'),
+  ...routesOf(siteVisitRouter, '/api/site-visits'),
   ...routesOf(agentRouter, '/api/agents'),
   ...routesOf(amenityRouter, '/api/amenities'),
   ...routesOf(dashboardRouter, '/api/dashboard'),
@@ -116,6 +118,7 @@ describe('route manifest', () => {
       '/api/rbac',
       '/api/search',
       '/api/settings',
+      '/api/site-visits',
     ])
   })
 

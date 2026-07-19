@@ -35,6 +35,7 @@ const PAIRS: ReadonlyArray<[string, readonly string[], Record<string, string>]> 
   ['InteractionType', shared.interactionTypeSchema.options, prismaEnums.InteractionType],
   ['AssignmentStatus', shared.assignmentStatusSchema.options, prismaEnums.AssignmentStatus],
   ['DealType', shared.dealTypeSchema.options, prismaEnums.DealType],
+  ['SiteVisitStatus', shared.siteVisitStatusSchema.options, prismaEnums.SiteVisitStatus],
 ]
 
 describe('shared enums match the Prisma schema', () => {

@@ -137,6 +137,16 @@ export type AssignmentStatus = z.infer<typeof assignmentStatusSchema>
 export const dealTypeSchema = z.enum(['SALE', 'RENT'])
 export type DealType = z.infer<typeof dealTypeSchema>
 
+export const siteVisitStatusSchema = z.enum(['SCHEDULED', 'COMPLETED', 'CANCELLED', 'RESCHEDULED'])
+export type SiteVisitStatus = z.infer<typeof siteVisitStatusSchema>
+
+export const SITE_VISIT_STATUS_LABELS: Record<SiteVisitStatus, string> = {
+  SCHEDULED: 'Scheduled',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+  RESCHEDULED: 'Rescheduled',
+}
+
 // ============================================================================
 // DISPLAY LABELS
 // ============================================================================

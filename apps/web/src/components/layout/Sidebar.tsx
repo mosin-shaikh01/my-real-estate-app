@@ -2,6 +2,7 @@ import {
   Bell,
   Building2,
   ClipboardList,
+  CalendarClock,
   Cog,
   Contact,
   LayoutDashboard,
@@ -64,6 +65,7 @@ const NAV: ReadonlyArray<{ heading?: string; items: readonly NavItem[] }> = [
       },
       { to: '/agents', label: 'Agents', icon: UserSquare2, permission: 'agent.list' },
       { to: '/owners', label: 'Owners', icon: Contact, permission: 'owner.list' },
+      { to: '/site-visits', label: 'Site visits', icon: CalendarClock, permission: 'sitevisit.list' },
     ],
   },
   {

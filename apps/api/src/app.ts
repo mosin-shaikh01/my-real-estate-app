@@ -19,6 +19,7 @@ import { notificationRouter } from './routes/notification-routes.js'
 import { ownerRouter } from './routes/owner-routes.js'
 import { profileRouter } from './routes/profile-routes.js'
 import { propertyRouter } from './routes/property-routes.js'
+import { siteVisitRouter } from './routes/sitevisit-routes.js'
 import { settingsRouter } from './routes/settings-routes.js'
 
 /**
@@ -48,6 +49,7 @@ export const ROUTE_MOUNTS: ReadonlyArray<{
   { path: '/api/clients', router: clientRouter, requiresAuth: true },
   { path: '/api/properties', router: propertyRouter, requiresAuth: true },
   { path: '/api/owners', router: ownerRouter, requiresAuth: true },
+  { path: '/api/site-visits', router: siteVisitRouter, requiresAuth: true },
   { path: '/api/amenities', router: amenityRouter, requiresAuth: true },
   { path: '/api/agents', router: agentRouter, requiresAuth: true },
   { path: '/api/dashboard', router: dashboardRouter, requiresAuth: true },

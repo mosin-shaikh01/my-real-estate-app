@@ -7,6 +7,28 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — Site Visit Management (CRM expansion Phase 4)
+
+Schedule and track property visits. (Follow-ups §5 and enquiry history §7 are
+already served by ClientInteraction — Call/Meeting/Site-visit/WhatsApp/Email with
+nextFollowUp — and the PropertyAssignment status timeline + ActivityLog, so this
+phase adds the genuinely-new Site Visits module.)
+
+- **`SiteVisit` model** (Property × Client × optional Agent, scheduledAt, status,
+  feedback, remarks) + **`SiteVisitStatus`** enum (Scheduled / Completed /
+  Cancelled / Rescheduled). Cascade-deleted with its property/client; agent &
+  creator SetNull. Mirrored in the enum-parity test.
+- **Scoped** like clients/properties: an admin sees every visit; an agent sees a
+  visit they're on, or one for a client OR property assigned to them — a WHERE,
+  never a permission. New `sitevisit.list/create/update/delete` permissions
+  (agents get list/create/update; delete is admin-only). Every write is
+  activity-logged.
+- **Site Visits page**: filterable list, a schedule dialog (property/client/agent
+  pickers + date-time + remarks), inline status changes, and delete — under a new
+  sidebar entry. Consistent with the design system, RBAC-gated.
+- Migration applied; 155 tests green; typecheck/lint/build clean; CRUD + scoping +
+  status filter verified end-to-end against the DB.
+
 ### Added — Client fields: buyer type, buyer city, important lead (CRM expansion Phase 3)
 
 Additive client attributes. Email was already optional and phone already required,
