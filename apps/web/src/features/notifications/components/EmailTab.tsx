@@ -118,37 +118,44 @@ export function EmailTab() {
 
       <form onSubmit={onSubmit} noValidate>
         <Card>
-          <Card.Header action={
-            <button
-              type="button"
-              role="switch"
-              aria-checked={enabled}
-              onClick={() => setValue('enabled', !enabled, { shouldDirty: true })}
-              className="flex items-center gap-2 text-xs font-medium text-text-secondary"
-            >
-              <span
-                className={cn(
-                  'relative h-5 w-9 shrink-0 rounded-full transition-colors',
-                  enabled ? 'bg-brand-600' : 'bg-surface-hover',
-                )}
+          <Card.Header>
+            <Card.Title>Email (SMTP)</Card.Title>
+            <Card.Description>Configure how the CRM sends email.</Card.Description>
+          </Card.Header>
+          <Card.Body className="flex flex-col gap-5">
+            {/* Dedicated on/off row so the switch can't be clipped by the header. */}
+            <div className="flex items-center justify-between gap-4 rounded-md border border-border-subtle bg-surface px-3.5 py-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-text-primary">Email sending</p>
+                <p className="mt-0.5 text-2xs text-text-muted">
+                  When off, messages are logged to the server console instead of being delivered.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={enabled}
+                aria-label="Toggle email sending"
+                onClick={() => setValue('enabled', !enabled, { shouldDirty: true })}
+                className="flex shrink-0 items-center gap-2 text-xs font-medium text-text-secondary"
               >
                 <span
                   className={cn(
-                    'absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform',
-                    enabled ? 'translate-x-4' : 'translate-x-0.5',
+                    'relative h-5 w-9 shrink-0 rounded-full transition-colors',
+                    enabled ? 'bg-brand-600' : 'bg-surface-hover',
                   )}
-                />
-              </span>
-              {enabled ? 'Email sending ON' : 'Email sending OFF'}
-            </button>
-          }>
-            <Card.Title>Email (SMTP)</Card.Title>
-            <Card.Description>
-              Configure how the CRM sends email. When disabled or unconfigured, messages are logged to
-              the server console instead of being delivered.
-            </Card.Description>
-          </Card.Header>
-          <Card.Body className="flex flex-col gap-5">
+                >
+                  <span
+                    className={cn(
+                      'absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform',
+                      enabled ? 'translate-x-4' : 'translate-x-0.5',
+                    )}
+                  />
+                </span>
+                {enabled ? 'On' : 'Off'}
+              </button>
+            </div>
+
             <div className="grid gap-5 sm:grid-cols-2">
               <FormField label="Provider">
                 {() => (
