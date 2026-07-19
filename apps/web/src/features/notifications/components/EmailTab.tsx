@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FormField, Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
+import { Switch } from '@/components/ui/Switch'
 import { ApiClientError } from '@/lib/api'
 import { cn } from '@/lib/cn'
 import {
@@ -125,36 +126,26 @@ export function EmailTab() {
           <Card.Body className="flex flex-col gap-5">
             {/* Dedicated on/off row so the switch can't be clipped by the header. */}
             <div className="flex items-center justify-between gap-4 rounded-md border border-border-subtle bg-surface px-3.5 py-3">
-              <div className="min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
                 <p className="text-sm font-medium text-text-primary">Email sending</p>
-                <p className="mt-0.5 text-2xs text-text-muted">
-                  When off, messages are logged to the server console instead of being delivered.
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={enabled}
-                aria-label="Toggle email sending"
-                onClick={() => setValue('enabled', !enabled, { shouldDirty: true })}
-                className="flex shrink-0 items-center gap-2 text-xs font-medium text-text-secondary"
-              >
                 <span
                   className={cn(
-                    'relative h-5 w-9 shrink-0 rounded-full transition-colors',
-                    enabled ? 'bg-brand-600' : 'bg-surface-hover',
+                    'rounded-full px-2 py-0.5 text-2xs font-medium',
+                    enabled ? 'bg-surface-success-soft text-text-success' : 'bg-surface-hover text-text-muted',
                   )}
                 >
-                  <span
-                    className={cn(
-                      'absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform',
-                      enabled ? 'translate-x-4' : 'translate-x-0.5',
-                    )}
-                  />
+                  {enabled ? 'Enabled' : 'Disabled'}
                 </span>
-                {enabled ? 'On' : 'Off'}
-              </button>
+              </div>
+              <Switch
+                {...register('enabled')}
+                aria-label="Toggle email sending"
+                aria-describedby="email-sending-hint"
+              />
             </div>
+            <p id="email-sending-hint" className="-mt-3 text-2xs text-text-muted">
+              When off, messages are logged to the server console instead of being delivered.
+            </p>
 
             <div className="grid gap-5 sm:grid-cols-2">
               <FormField label="Provider">

@@ -4,6 +4,7 @@ import { TEMPLATE_PLACEHOLDERS, type NotificationTemplateDTO } from '@app/shared
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FormField, Input } from '@/components/ui/Input'
+import { Switch } from '@/components/ui/Switch'
 import { cn } from '@/lib/cn'
 import {
   usePreviewTemplate,
@@ -78,15 +79,14 @@ function TemplateEditor({ template }: { template: NotificationTemplateDTO }) {
       <Card>
         <Card.Header
           action={
-            <label className="flex items-center gap-2 text-xs font-medium text-text-secondary">
-              <input
-                type="checkbox"
+            <span className="flex items-center gap-2 text-xs font-medium text-text-secondary">
+              <span>{enabled ? 'Enabled' : 'Disabled'}</span>
+              <Switch
                 checked={enabled}
                 onChange={(e) => setEnabled(e.target.checked)}
-                className="size-4 accent-[var(--color-brand-600)]"
+                aria-label="Template enabled"
               />
-              {enabled ? 'Enabled' : 'Disabled'}
-            </label>
+            </span>
           }
         >
           <Card.Title>{template.name}</Card.Title>

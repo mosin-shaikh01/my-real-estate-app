@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/layout/AppShell'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FormField, Input } from '@/components/ui/Input'
+import { Switch } from '@/components/ui/Switch'
 import { useSettings, useUpdateSettings } from '@/features/settings/api/use-settings'
 import { AssetUpload } from '@/features/settings/components/AssetUpload'
 import { ApiClientError } from '@/lib/api'
@@ -327,22 +328,13 @@ function FieldRow({ field, form }: { field: FieldDef; form: UseFormReturn<Settin
   if (field.kind === 'boolean') {
     return (
       <div className={span}>
-        <label className="flex cursor-pointer items-start gap-3">
-          <input
-            type="checkbox"
-            role="switch"
-            {...form.register(field.name)}
-            className="peer sr-only"
-          />
-          <span
-            aria-hidden="true"
-            className="relative mt-0.5 h-5 w-9 shrink-0 rounded-full bg-border-strong transition-colors peer-checked:bg-brand-600 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-500 after:absolute after:top-0.5 after:left-0.5 after:size-4 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-4"
-          />
+        <div className="flex items-start gap-3">
+          <Switch {...form.register(field.name)} className="mt-0.5" aria-label={field.label} />
           <span className="flex flex-col">
             <span className="text-xs font-medium text-text-secondary">{field.label}</span>
             {field.hint ? <span className="text-2xs text-text-muted">{field.hint}</span> : null}
           </span>
-        </label>
+        </div>
       </div>
     )
   }
