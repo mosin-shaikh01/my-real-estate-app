@@ -33,6 +33,14 @@ const envSchema = z.object({
   // invalidates stored secrets (re-enter them in Settings) — never the app.
   APP_ENCRYPTION_KEY: z.string().min(16).optional(),
 
+  // Set to true/1 to emit nodemailer's full SMTP wire log (DNS, TCP, STARTTLS,
+  // AUTH, DATA, QUIT). Structured per-stage logging + exact error codes are
+  // ALWAYS emitted; this adds the raw protocol transcript for deep diagnosis.
+  SMTP_DEBUG: z
+    .enum(['true', 'false', '1', '0'])
+    .optional()
+    .transform((v) => v === 'true' || v === '1'),
+
   // Deployment: in production the API process also serves the built SPA so the
   // whole app is one origin (which is what keeps the httpOnly auth cookies
   // working without CORS). Defaults to on in production; override to decouple

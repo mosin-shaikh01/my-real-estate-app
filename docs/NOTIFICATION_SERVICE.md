@@ -109,15 +109,50 @@ No business-logic module changes. That's the whole point.
 
 - **Real SMTP** through `nodemailer`. `ssl` → implicit TLS (465), `tls` →
   STARTTLS (587), `none` → plaintext.
-- **Retry**: transient failures retried (2×, backoff). Permanent failures
-  (`EAUTH`, `EENVELOPE`, `EMESSAGE`) are not retried.
-- **Timeouts**: connection/greeting 10s, socket 20s.
+- **Transport lifecycle**: a **fresh, non-pooled** transporter is created per send
+  and closed after. Deliberately **no pool, no keepAlive, no module-level cache** —
+  see below.
+- **Retry**: **one** retry for transient failures. Permanent ones (`EAUTH`,
+  `EENVELOPE`, `EMESSAGE`) are never retried.
+- **Timeouts**: connection 15s, greeting 10s, socket 20s, DNS 10s.
+- **Instrumentation**: every send logs its stages as structured JSON —
+  `dns.ok/fail` (with resolved IP), `send.start`, `transport.closed`, and
+  `send.ok`/`send.fail` carrying the exact Node `code`, SMTP `command` (the failing
+  stage: CONN/EHLO/STARTTLS/AUTH/MAIL FROM/DATA), `responseCode`, `response`,
+  `errno`, `syscall`, and timing. `SMTP_DEBUG=1` adds the full protocol transcript.
+- **`verifyEmailConnection(cfg)`** — an exported connect + greeting + STARTTLS +
+  AUTH check (no message), fully staged-logged, for isolating connectivity/auth
+  from message problems.
 - **Console fallback**: when no transport is configured (or it's disabled), the
   message — including any action link — is logged as one JSON line and reported
-  `sent` via provider `console`. This is the "email not set up yet" path and keeps
-  dev/demo (and forgot-password) working with zero config.
+  `sent` via provider `console`.
 - **Preview URL**: Ethereal test accounts return a preview link, surfaced in the
   test-send result.
+
+### Why no pooling / caching (production note)
+
+For a low-volume CRM (occasional resets/notifications), a pooled or kept-alive
+connection would sit **idle between sends, get reaped by the platform or mail
+host, and go stale** — producing the classic "first send works, every subsequent
+send times out" failure. Per-request non-pooled avoids that entirely: nothing is
+shared between sends, so stale-socket reuse is architecturally impossible. Pooling
+here would be a workaround that *reduces* reliability.
+
+### "Works locally but times out on the server" (Render, etc.)
+
+This is almost never the code — it's the **mail host rate-limiting/blocking SMTP
+from the server's datacenter IP**. Notably, `smtp.hostinger.com` resolves to a
+**Cloudflare** address, and Cloudflare/Hostinger throttle SMTP connections from
+cloud IPs: the first connects, the rest time out at the **TCP connect** stage
+(`code: ETIMEDOUT`, `command: CONN` in the logs). Residential/office IPs aren't
+throttled, so it works from a laptop.
+
+**Fix (not a workaround): use a transactional email provider on the server** —
+SendGrid, Brevo, Amazon SES, Mailgun (all are presets). They're built to accept
+connections from cloud IPs and don't throttle. Configure it in Settings →
+Notifications on the deployed instance; the CRM code is unchanged. Keep Hostinger
+SMTP for local/office use if you like. Turn on `SMTP_DEBUG=1` on the server to see
+the exact failing stage and error code in the logs.
 
 ---
 
