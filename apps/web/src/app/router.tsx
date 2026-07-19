@@ -13,6 +13,7 @@ const PropertyDetail = lazy(() => import('@/features/properties/pages/PropertyDe
 const PropertyCreate = lazy(() => import('@/features/properties/pages/PropertyCreatePage'))
 const PropertyEdit = lazy(() => import('@/features/properties/pages/PropertyEditPage'))
 const Agents = lazy(() => import('@/features/agents/pages/AgentsPage'))
+const Owners = lazy(() => import('@/features/owners/pages/OwnersPage'))
 const RequirementMatch = lazy(() => import('@/features/requirements/pages/RequirementMatchPage'))
 const Activity = lazy(() => import('@/features/activity/pages/ActivityPage'))
 const Roles = lazy(() => import('@/features/rbac/pages/RolesPage'))
@@ -94,6 +95,14 @@ export const router = createBrowserRouter([
         element: lazyRoute(
           <RequirePermission permission="agent.list">
             <Agents />
+          </RequirePermission>,
+        ),
+      },
+      {
+        path: 'owners',
+        element: lazyRoute(
+          <RequirePermission permission="owner.list">
+            <Owners />
           </RequirePermission>,
         ),
       },

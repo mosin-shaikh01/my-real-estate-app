@@ -149,6 +149,13 @@ export const PERMISSIONS = [
     description: 'Add notes, log calls, schedule meetings',
   },
 
+  // --- Property Owner (master) --------------------------------------------
+  { key: 'owner.list', resource: 'owner', action: 'list', description: 'List property owners' },
+  { key: 'owner.view', resource: 'owner', action: 'view', description: 'View a property owner (incl. PAN/Aadhaar)' },
+  { key: 'owner.create', resource: 'owner', action: 'create', description: 'Create a property owner' },
+  { key: 'owner.update', resource: 'owner', action: 'update', description: 'Edit a property owner' },
+  { key: 'owner.delete', resource: 'owner', action: 'delete', description: 'Delete a property owner' },
+
   // --- Agent ---------------------------------------------------------------
   { key: 'agent.list', resource: 'agent', action: 'list', description: 'List agents' },
   { key: 'agent.view', resource: 'agent', action: 'view', description: 'View an agent' },

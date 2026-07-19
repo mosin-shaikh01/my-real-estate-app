@@ -383,6 +383,43 @@ model NotificationLog {
 }
 
 // ============================================================================
+// PROPERTY OWNER (master)
+// ============================================================================
+// A reusable seller/owner record: one owner → many properties, so their details
+// live here once and Property references them via ownerId — never duplicated
+// across listings. `code` (OWN-00001) comes from a Postgres sequence created in
+// the migration SQL. `mobileNormalized` (digits only) powers duplicate detection
+// and phone search, mirroring the client phone pattern. PAN/Aadhaar are sensitive
+// PII — exposed only to owner.view holders; field-level redaction can be layered
+// later the same way client budget is.
+model PropertyOwner {
+  id   String @id @default(cuid(2))
+  code String @unique @default(dbgenerated("('OWN-' || lpad(nextval('owner_code_seq')::text, 5, '0'))")) @db.VarChar(16)
+
+  fullName         String  @map("full_name") @db.VarChar(160)
+  mobile           String  @db.VarChar(32)
+  mobileNormalized String  @map("mobile_normalized") @db.VarChar(32)
+  altMobile        String? @map("alt_mobile") @db.VarChar(32)
+  email            String? @db.VarChar(255)
+  address          String?
+  city             String? @db.VarChar(120)
+  pan              String? @db.VarChar(16)
+  aadhaar          String? @db.VarChar(20)
+  notes            String?
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  properties Property[]
+
+  @@index([mobileNormalized])
+  @@index([fullName])
+  @@index([deletedAt])
+  @@map("property_owners")
+}
+
+// ============================================================================
 // PROPERTY
 // ============================================================================
 
@@ -397,6 +434,17 @@ model Property {
 
   title       String @db.VarChar(200)
   description String
+
+  // Legal identifiers (common in Indian real estate). Searchable, sortable,
+  // filterable; duplicate-detected on write (warning only, never blocked).
+  surveyNumber   String? @map("survey_number") @db.VarChar(64)
+  propertyNumber String? @map("property_number") @db.VarChar(64)
+
+  // The seller/owner of record — a reference to the reusable master, never
+  // duplicated onto the listing. SetNull so deleting an owner doesn't cascade
+  // away their properties.
+  ownerId String?        @map("owner_id")
+  owner   PropertyOwner? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
   propertyType       PropertyType       @map("property_type")
   listingType        ListingType        @map("listing_type")
@@ -474,6 +522,9 @@ model Property {
   @@index([status, listingType, city])
   @@index([city, locality])
   @@index([assignedAgentId])
+  @@index([ownerId])
+  @@index([surveyNumber])
+  @@index([propertyNumber])
   @@index([visibility, featured])
   @@index([salePrice])
   @@index([rentPricePerMonth])

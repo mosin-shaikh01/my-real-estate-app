@@ -92,6 +92,13 @@ const propertyBaseSchema = z.object({
     title: z.string().trim().min(5, 'Give the listing a descriptive title').max(200),
     description: z.string().trim().min(10, 'Add a description'),
 
+    // Legal identifiers + owner (master) reference. All optional; the server
+    // normalises "" to null. Duplicate detection on survey/property number is a
+    // warning surfaced by the form, not a schema rule.
+    surveyNumber: z.string().trim().max(64).nullish().or(z.literal('')),
+    propertyNumber: z.string().trim().max(64).nullish().or(z.literal('')),
+    ownerId: z.string().trim().nullish().or(z.literal('')),
+
     propertyType: propertyTypeSchema,
     listingType: listingTypeSchema,
     status: propertyStatusSchema.optional(),

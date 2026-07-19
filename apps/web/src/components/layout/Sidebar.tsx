@@ -3,6 +3,7 @@ import {
   Building2,
   ClipboardList,
   Cog,
+  Contact,
   LayoutDashboard,
   ScrollText,
   Settings2,
@@ -62,6 +63,7 @@ const NAV: ReadonlyArray<{ heading?: string; items: readonly NavItem[] }> = [
         permission: 'client.assignProperty',
       },
       { to: '/agents', label: 'Agents', icon: UserSquare2, permission: 'agent.list' },
+      { to: '/owners', label: 'Owners', icon: Contact, permission: 'owner.list' },
     ],
   },
   {

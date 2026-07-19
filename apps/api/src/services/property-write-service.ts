@@ -38,6 +38,17 @@ async function assertAmenitiesExist(ids: string[]) {
   }
 }
 
+async function assertOwnerExists(ownerId: string | null | undefined) {
+  if (!ownerId) return
+  const owner = await prisma.propertyOwner.findFirst({
+    where: { id: ownerId, deletedAt: null },
+    select: { id: true },
+  })
+  // Needs a row — not expressible in shared Zod. A friendly 400 beats a raw FK
+  // constraint violation.
+  if (!owner) throw validationFailed({ ownerId: ['That owner no longer exists'] })
+}
+
 // Optional string fields that a cleared form sends as "". Store them as NULL,
 // not empty string, so "no maps link" is one value everywhere and downstream
 // `?? null` checks behave. Required fields (title, city…) are min-length
@@ -49,6 +60,9 @@ const NULLABLE_STRINGS = [
   'latitude',
   'longitude',
   'facing',
+  'surveyNumber',
+  'propertyNumber',
+  'ownerId',
 ] as const
 
 function normaliseEmptyToNull(data: Record<string, unknown>) {
@@ -76,6 +90,7 @@ function stripUnwritable(data: Record<string, unknown>, actor: Actor) {
 
 export async function createProperty(actor: Actor, input: PropertyCreateInput, req: Request) {
   await assertAssignableAgent(input.assignedAgentId)
+  await assertOwnerExists(input.ownerId)
   const amenityIds = input.amenityIds ?? []
   await assertAmenitiesExist(amenityIds)
 
@@ -127,6 +142,7 @@ export async function updateProperty(
   if (!before) throw notFound('Property not found')
 
   if ('assignedAgentId' in input) await assertAssignableAgent(input.assignedAgentId)
+  if ('ownerId' in input) await assertOwnerExists(input.ownerId)
   if (input.amenityIds) await assertAmenitiesExist(input.amenityIds)
 
   const { amenityIds, ...rest } = normaliseEmptyToNull(

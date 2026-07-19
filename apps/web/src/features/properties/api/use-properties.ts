@@ -41,6 +41,10 @@ export interface PropertyDTO {
   longitude: string | null
   googleMapUrl: string | null
   videoUrls: string[]
+  surveyNumber: string | null
+  propertyNumber: string | null
+  ownerId: string | null
+  owner: { id: string; code: string; fullName: string; mobile: string } | null
   createdAt: string
   archivedAt: string | null
   assignedAgent: { id: string; fullName: string } | null

@@ -377,6 +377,7 @@ npm run db:studio    # prisma studio
 | 9 · Settings (branding + company config) | ✅ done — `AppSetting` singleton, `settings.view/update` perms, public branding (name/logo/favicon/colour read pre-auth), admin tabbed form. `GET /api/settings\|logo\|favicon` are deliberately PUBLIC; all writes need `settings.update`. |
 | 10 · Auth self-service (forgot/reset password) | ✅ done — hashed single-use tokens (30 min), always-200 (no enumeration), reset revokes all sessions, per-IP rate limiting. |
 | 11 · Notification Service | ✅ done — centralized `notificationService.send()`; **nothing calls SMTP directly**. Real email (nodemailer, retry/timeout, console fallback), DB templates + encrypted provider config + logs, Settings → Notifications admin UI, `notifications.view/manage` perms. SMS/WhatsApp/Push/In-App/Webhook are stub providers. See `docs/NOTIFICATION_SERVICE.md`. |
+| 12 · CRM expansion — Phase 1 (Owner master) | ✅ done — `PropertyOwner` master (CRUD, `owner.*` perms, activity log, dupe detection, delete-guard), `Property.ownerId` FK + `surveyNumber`/`propertyNumber` (indexed, searchable), owner picker in the property form. Phase 1 of the larger multi-phase expansion (owners → property fields/enums → client+matching → follow-ups/site-visits → agent/admin → analytics/tables → platform). |
 
 **Phase 2 precedes properties deliberately.** Build properties first and you
 retrofit scoping into every query — the exact smear the design prevents. Prove

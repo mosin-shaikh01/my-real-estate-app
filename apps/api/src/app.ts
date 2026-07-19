@@ -16,6 +16,7 @@ import { dashboardRouter } from './routes/dashboard-routes.js'
 import { mediaRouter } from './routes/media-routes.js'
 import { meRouter } from './routes/me-routes.js'
 import { notificationRouter } from './routes/notification-routes.js'
+import { ownerRouter } from './routes/owner-routes.js'
 import { profileRouter } from './routes/profile-routes.js'
 import { propertyRouter } from './routes/property-routes.js'
 import { settingsRouter } from './routes/settings-routes.js'
@@ -46,6 +47,7 @@ export const ROUTE_MOUNTS: ReadonlyArray<{
   { path: '/api/profile', router: profileRouter, requiresAuth: true },
   { path: '/api/clients', router: clientRouter, requiresAuth: true },
   { path: '/api/properties', router: propertyRouter, requiresAuth: true },
+  { path: '/api/owners', router: ownerRouter, requiresAuth: true },
   { path: '/api/amenities', router: amenityRouter, requiresAuth: true },
   { path: '/api/agents', router: agentRouter, requiresAuth: true },
   { path: '/api/dashboard', router: dashboardRouter, requiresAuth: true },

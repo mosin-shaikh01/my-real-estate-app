@@ -44,11 +44,15 @@ export interface PropertyRow {
   googleMapUrl: string | null
   videoUrls: string[]
   internalNotes: string | null
+  surveyNumber: string | null
+  propertyNumber: string | null
+  ownerId: string | null
   assignedAgentId: string | null
   createdAt: Date
   updatedAt: Date
   archivedAt: Date | null
   assignedAgent?: { id: string; fullName: string } | null
+  owner?: { id: string; code: string; fullName: string; mobile: string } | null
   amenities?: Array<{ amenity: { id: string; name: string; slug: string; category: string | null } }>
   media?: Array<{ id: string; type: string; storageKey: string; isCover: boolean; sortOrder: number }>
   _count?: { assignments: number }
@@ -85,6 +89,10 @@ export interface PropertyDTO {
   longitude: string | null
   googleMapUrl: string | null
   videoUrls: string[]
+  surveyNumber: string | null
+  propertyNumber: string | null
+  ownerId: string | null
+  owner: { id: string; code: string; fullName: string; mobile: string } | null
   createdAt: string
   archivedAt: string | null
   assignedAgent: { id: string; fullName: string } | null
@@ -142,6 +150,10 @@ export function toPropertyDTO(row: PropertyRow, actor: Actor): PropertyDTO {
     longitude: money(row.longitude),
     googleMapUrl: row.googleMapUrl,
     videoUrls: row.videoUrls ?? [],
+    surveyNumber: row.surveyNumber,
+    propertyNumber: row.propertyNumber,
+    ownerId: row.ownerId,
+    owner: row.owner ?? null,
     createdAt: row.createdAt.toISOString(),
     archivedAt: row.archivedAt?.toISOString() ?? null,
     assignedAgent: row.assignedAgent ?? null,

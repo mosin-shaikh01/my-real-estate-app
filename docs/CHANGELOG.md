@@ -7,6 +7,29 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — Property Owner master + property identification (CRM expansion Phase 1)
+
+The reusable seller/owner backbone the wider CRM build hangs off. Additive and
+non-breaking — every existing flow is untouched.
+
+- **Owner master** (`PropertyOwner`): name, mobile (+ normalised for search/dupes),
+  alt mobile, email, address, city, PAN, Aadhaar, notes; `OWN-00001` human code
+  from a Postgres sequence. Full CRUD module — service, serializer, routes,
+  `owner.list/view/create/update/delete` permissions (Super-Admin only), activity
+  logging, soft-delete. Deletion is blocked while the owner still owns properties
+  (reassign first) rather than orphaning listings.
+- **Duplicate detection** (warning, never a block): a live check on the owner's
+  mobile (last-10-digits match, so a country code doesn't defeat it), surfaced in
+  the form and available for survey/property numbers via search.
+- **Property → Owner**: `Property.ownerId` FK (SetNull) so a listing references the
+  master instead of duplicating seller details. Plus **survey number** and
+  **property number** identification fields — indexed, included in property search.
+- **UI**: an Owners list (search + pagination + create/edit dialog + delete) under
+  a new sidebar entry, and an owner picker + survey/property-number fields in the
+  property form. Consistent with the existing design system, RBAC-gated.
+- Migration applied; 149 tests green; typecheck, lint (0 errors) and build clean.
+  Verified end-to-end against the database (create/dupe/search/FK/delete-guard).
+
 ### Fixed — secondary brand colour was applied nowhere
 
 Root cause: the colour was saved, returned by the API, and received by the client

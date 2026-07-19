@@ -11,6 +11,7 @@ import { dashboardRouter } from '../src/routes/dashboard-routes.js'
 import { mediaRouter } from '../src/routes/media-routes.js'
 import { meRouter } from '../src/routes/me-routes.js'
 import { notificationRouter } from '../src/routes/notification-routes.js'
+import { ownerRouter } from '../src/routes/owner-routes.js'
 import { profileRouter } from '../src/routes/profile-routes.js'
 import { propertyRouter } from '../src/routes/property-routes.js'
 import { settingsRouter } from '../src/routes/settings-routes.js'
@@ -78,6 +79,7 @@ const ALL_ROUTES: RouteInfo[] = [
   ...routesOf(profileRouter, '/api/profile'),
   ...routesOf(clientRouter, '/api/clients'),
   ...routesOf(propertyRouter, '/api/properties'),
+  ...routesOf(ownerRouter, '/api/owners'),
   ...routesOf(agentRouter, '/api/agents'),
   ...routesOf(amenityRouter, '/api/amenities'),
   ...routesOf(dashboardRouter, '/api/dashboard'),
@@ -108,6 +110,7 @@ describe('route manifest', () => {
       '/api/me',
       '/api/media',
       '/api/notifications',
+      '/api/owners',
       '/api/profile',
       '/api/properties',
       '/api/rbac',

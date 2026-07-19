@@ -20,6 +20,7 @@ import { Select } from '@/components/ui/Select'
 import { InfoHint } from '@/components/ui/Tooltip'
 import { useAssignableAgents } from '@/features/agents/api/use-assignable-agents'
 import { usePermissions } from '@/features/auth/api/use-auth'
+import { useOwnerOptions } from '@/features/owners/api/use-owners'
 import type { PropertyDTO } from '@/features/properties/api/use-properties'
 import {
   useCreateProperty,
@@ -79,6 +80,9 @@ function toFormValues(p: PropertyDTO): PropertyCreateInput {
   return {
     title: p.title,
     description: p.description,
+    surveyNumber: p.surveyNumber ?? '',
+    propertyNumber: p.propertyNumber ?? '',
+    ownerId: p.ownerId ?? '',
     propertyType: p.propertyType as PropertyCreateInput['propertyType'],
     listingType: p.listingType as PropertyCreateInput['listingType'],
     status: p.status as PropertyCreateInput['status'],
@@ -131,6 +135,7 @@ export function PropertyForm({ mode, property }: Props) {
   const create = useCreateProperty()
   const update = useUpdateProperty(property?.id ?? '')
   const { data: agents } = useAssignableAgents(canAssignAgent)
+  const { data: owners } = useOwnerOptions()
 
   const [stagedMedia, setStagedMedia] = useState<File[]>([])
   const [amenityIds, setAmenityIds] = useState<string[]>(
@@ -148,6 +153,9 @@ export function PropertyForm({ mode, property }: Props) {
         : {
             title: '',
             description: '',
+            surveyNumber: '',
+            propertyNumber: '',
+            ownerId: '',
             propertyType: 'APARTMENT',
             listingType: 'SALE',
             city: '',
@@ -240,6 +248,31 @@ export function PropertyForm({ mode, property }: Props) {
                   {...reg('description')}
                   rows={3}
                   className="w-full rounded-md border border-border-default bg-surface px-3 py-2 text-base placeholder:text-text-muted hover:border-border-strong focus-visible:border-brand-500 focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-brand-500"
+                />
+              )}
+            </FormField>
+          </div>
+          <FormField label="Survey number" error={errors.surveyNumber?.message}>
+            {(p) => <Input {...p} {...reg('surveyNumber')} placeholder="e.g. 42/1B" />}
+          </FormField>
+          <FormField label="Property number" error={errors.propertyNumber?.message}>
+            {(p) => <Input {...p} {...reg('propertyNumber')} placeholder="e.g. P-204" />}
+          </FormField>
+          <div className="sm:col-span-2">
+            <FormField
+              label="Owner / seller"
+              error={errors.ownerId?.message}
+              help="The reusable owner master record. Manage owners under Owners."
+            >
+              {(p) => (
+                <Select
+                  {...p}
+                  options={[
+                    { value: '', label: '— No owner —' },
+                    ...(owners ?? []).map((o) => ({ value: o.id, label: `${o.fullName} · ${o.mobile} (${o.code})` })),
+                  ]}
+                  {...reg('ownerId')}
+                  value={form.watch('ownerId') ?? ''}
                 />
               )}
             </FormField>
