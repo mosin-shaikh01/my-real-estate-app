@@ -5,8 +5,10 @@ import cookieParser from 'cookie-parser'
 import { env, isProd } from './lib/env.js'
 import { authenticate } from './middleware/authenticate.js'
 import { errorHandler, notFoundHandler, requestId } from './middleware/error-handler.js'
+import { rateLimit } from './middleware/rate-limit.js'
 import { requestLog } from './middleware/request-log.js'
 import { publicRoute } from './middleware/route-registry.js'
+import { securityHeaders } from './middleware/security-headers.js'
 import { activityRouter, rbacRouter, searchRouter } from './routes/admin-routes.js'
 import { agentRouter } from './routes/agent-routes.js'
 import { amenityRouter } from './routes/amenity-routes.js'
@@ -69,6 +71,9 @@ export function createApp() {
   app.disable('x-powered-by')
 
   app.use(requestId)
+  // Security headers on every response (API + served SPA). Early, so even error
+  // paths carry them.
+  app.use(securityHeaders)
   app.use(express.json({ limit: '1mb' }))
   app.use(cookieParser())
   app.use(requestLog)
@@ -79,6 +84,16 @@ export function createApp() {
 
   app.get('/api/health', publicRoute('Liveness probe'), (_req, res) => {
     res.json({ ok: true, ts: new Date().toISOString() })
+  })
+
+  // Global backstop on state-changing requests: a generous per-IP/minute ceiling
+  // that a human never approaches but a runaway script or credential-stuffing
+  // loop does. Reads are untouched. The auth and test-email endpoints keep their
+  // own tighter limits ON TOP of this. Per-instance, in-memory — see rate-limit.ts.
+  const mutationLimiter = rateLimit({ windowMs: 60_000, max: 120 })
+  app.use((req, res, next) => {
+    if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next()
+    mutationLimiter(req, res, next)
   })
 
   for (const mount of ROUTE_MOUNTS) {

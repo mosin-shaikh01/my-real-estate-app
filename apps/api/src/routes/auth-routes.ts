@@ -147,7 +147,10 @@ authRouter.post(
     const token = req.cookies?.['rec_at']
     if (typeof token === 'string' && token) {
       const claims = await verifyAccessToken(token)
-      if (claims) await revokeSession(claims.sid)
+      if (claims) {
+        await revokeSession(claims.sid)
+        await logAuthEvent({ userId: claims.sub, action: 'auth.logout', entityId: claims.sub, summary: 'Signed out', req })
+      }
     }
     clearAuthCookies(res)
     res.status(204).end()
@@ -160,6 +163,13 @@ authRouter.post(
   publicRoute('Any signed-in user may end their own sessions'),
   async (req, res) => {
     await revokeAllSessions(req.actor!.userId)
+    await logAuthEvent({
+      userId: req.actor!.userId,
+      action: 'auth.logout_all',
+      entityId: req.actor!.userId,
+      summary: 'Signed out of all devices',
+      req,
+    })
     clearAuthCookies(res)
     res.status(204).end()
   },
