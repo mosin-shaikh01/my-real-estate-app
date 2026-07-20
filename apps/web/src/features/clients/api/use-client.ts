@@ -79,6 +79,30 @@ export function useUpsertRequirement(clientId: string) {
   })
 }
 
+/** Archive (true) or restore (false) a client. Mirrors the property flow. */
+export function useArchiveClient(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (archived: boolean) => api.post(`/clients/${id}/archive`, { archived }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['clients'] })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
+/** Terminal soft-delete of a client (admin). Removes it from every list. */
+export function useDeleteClient(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.delete(`/clients/${id}`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['clients'] })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
 /** Soft-remove a shared property from a client. */
 export function useRemoveAssignment(clientId: string) {
   const qc = useQueryClient()

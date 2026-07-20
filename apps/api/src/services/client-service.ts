@@ -27,6 +27,8 @@ const LIST_SELECT = {
   nextFollowUp: true,
   assignedAgentId: true,
   createdAt: true,
+  archivedAt: true,
+  archivedBy: { select: { id: true, fullName: true } },
   assignedAgent: { select: { id: true, fullName: true } },
   requirements: {
     where: { isActive: true },
@@ -52,6 +54,11 @@ export async function listClients(actor: Actor, query: ClientListQuery) {
 
   const where: Record<string, unknown> = { ...scope }
   const and: unknown[] = []
+
+  // Archive is orthogonal to deletion (scope already excludes deletedAt):
+  //   unset -> active only   'only' -> archived only   'all' -> both
+  if (query.archived === 'only') and.push({ archivedAt: { not: null } })
+  else if (query.archived !== 'all') and.push({ archivedAt: null })
 
   if (query.q) {
     const digits = query.q.replace(/\D/g, '')

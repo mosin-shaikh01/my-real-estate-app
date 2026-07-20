@@ -7,7 +7,7 @@ import type {
 import type { Request } from 'express'
 import type { Actor } from '../auth/permissions.js'
 import { scopeForClient, scopeForProperty } from '../auth/scope.js'
-import { notFound, validationFailed } from '../lib/errors.js'
+import { conflict, notFound, validationFailed } from '../lib/errors.js'
 import { prisma } from '../lib/prisma.js'
 import type { Prisma } from '../generated/prisma/client.js'
 import { diffForLog, logActivityTx } from './activity-service.js'
@@ -283,6 +283,72 @@ export async function assignClientAgent(actor: Actor, clientId: string, agentId:
       entityType: 'client',
       entityId: clientId,
       summary: agentId ? `Assigned an agent to ${client.code}` : `Unassigned agent from ${client.code}`,
+      req,
+    })
+  })
+}
+
+/**
+ * Archive (or restore) a client — the reversible hide, mirroring properties.
+ * archivedAt is orthogonal to deletedAt: archiving does not delete, and restore
+ * only clears the flags, leaving requirements, interactions, assignments and
+ * history exactly as they were.
+ */
+export async function archiveClient(actor: Actor, id: string, archived: boolean, req: Request) {
+  const before = await prisma.client.findFirst({
+    where: { ...scopeForClient(actor), id },
+    select: { id: true, code: true, fullName: true, archivedAt: true },
+  })
+  if (!before) throw notFound('Client not found')
+  if (archived && before.archivedAt) throw conflict('Already archived')
+  if (!archived && !before.archivedAt) throw conflict('Not archived')
+
+  return prisma.$transaction(async (tx) => {
+    const client = await tx.client.update({
+      where: { id },
+      // archivedById set with archivedAt, cleared together on restore.
+      data: {
+        archivedAt: archived ? new Date() : null,
+        archivedById: archived ? actor.userId : null,
+      },
+      select: { id: true, code: true, archivedAt: true },
+    })
+
+    await logActivityTx(tx, {
+      actorUserId: actor.userId,
+      action: archived ? 'client.archived' : 'client.unarchived',
+      entityType: 'client',
+      entityId: id,
+      summary: `${archived ? 'Archived' : 'Restored'} ${before.code} — ${before.fullName}`,
+      metadata: { code: before.code, fullName: before.fullName },
+      req,
+    })
+
+    return client
+  })
+}
+
+/**
+ * Soft-delete a client (admin, terminal). deletedAt is filtered by
+ * scopeForClient, so the row vanishes from every read while its data and
+ * activity history are preserved (the log references it by id with no FK).
+ */
+export async function deleteClient(actor: Actor, id: string, req: Request) {
+  const before = await prisma.client.findFirst({
+    where: { ...scopeForClient(actor), id },
+    select: { id: true, code: true, fullName: true },
+  })
+  if (!before) throw notFound('Client not found')
+
+  return prisma.$transaction(async (tx) => {
+    await tx.client.update({ where: { id }, data: { deletedAt: new Date() } })
+    await logActivityTx(tx, {
+      actorUserId: actor.userId,
+      action: 'client.deleted',
+      entityType: 'client',
+      entityId: id,
+      summary: `Deleted ${before.code} — ${before.fullName}`,
+      metadata: { code: before.code, fullName: before.fullName },
       req,
     })
   })

@@ -24,6 +24,8 @@ export interface ClientDTO {
   lastContactAt: string | null
   nextFollowUp: string | null
   createdAt: string
+  archivedAt: string | null
+  archivedBy: { id: string; fullName: string } | null
   assignedAgent: { id: string; fullName: string } | null
   assignedPropertyCount: number
 
@@ -52,6 +54,8 @@ export interface ClientFilters {
   followUpStatus?: string
   importantLead?: string
   sort?: string
+  /** 'only' shows archived-only; 'all' shows both; unset = active only. */
+  archived?: string
 }
 
 export function useClients(filters: ClientFilters) {
@@ -66,6 +70,7 @@ export function useClients(filters: ClientFilters) {
           q: filters.q,
           followUpStatus: filters.followUpStatus,
           importantLead: filters.importantLead,
+          archived: filters.archived,
           sort: filters.sort,
         })}`,
         signal,

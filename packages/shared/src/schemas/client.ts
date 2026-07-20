@@ -10,6 +10,11 @@ export const clientListQuerySchema = z.object({
   assignedAgentId: z.string().optional(),
   /** Only hot leads when 'true'. */
   importantLead: z.enum(['true', 'false']).optional(),
+  /**
+   * Archive view selector: unset = active only (default), 'only' = archived
+   * only, 'all' = both. Mirrors the property list.
+   */
+  archived: z.enum(['only', 'all']).optional(),
   /** `-field` = descending. */
   sort: z.string().optional(),
 

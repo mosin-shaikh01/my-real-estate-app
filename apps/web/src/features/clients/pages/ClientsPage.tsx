@@ -1,9 +1,11 @@
-import { Pencil, Plus, Search, Star } from 'lucide-react'
+import { Archive, ArchiveRestore, Pencil, Plus, Search, Star, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { FOLLOW_UP_STATUS_LABELS, type FollowUpStatus } from '@app/shared'
 import { Can, Locked } from '@/components/auth/Can'
 import { PageHeader } from '@/components/layout/AppShell'
 import { Button } from '@/components/ui/Button'
+import { Dialog } from '@/components/ui/Dialog'
 import {
   Table,
   TableEmpty,
@@ -13,7 +15,9 @@ import {
   THead,
   TR,
 } from '@/components/ui/Table'
+import { useToast } from '@/components/ui/use-toast'
 import { usePermissions } from '@/features/auth/api/use-auth'
+import { useArchiveClient, useDeleteClient } from '@/features/clients/api/use-client'
 import { useClients, type ClientDTO } from '@/features/clients/api/use-clients'
 import { cn } from '@/lib/cn'
 import { formatMoneyShort, formatRelative } from '@/lib/format'
@@ -42,6 +46,7 @@ export default function ClientsPage() {
   const q = params.get('q') ?? ''
   const page = Number(params.get('page') ?? 1)
   const importantOnly = params.get('importantLead') === 'true'
+  const archivedOnly = params.get('archived') === 'only'
 
   const { has } = usePermissions()
   const canSeeBudget = has('client.budget.view')
@@ -51,6 +56,7 @@ export default function ClientsPage() {
     q: q || undefined,
     page,
     importantLead: importantOnly ? 'true' : undefined,
+    archived: archivedOnly ? 'only' : undefined,
   })
 
   const setParam = (key: string, value: string) => {
@@ -111,6 +117,20 @@ export default function ClientsPage() {
             <Star className={cn('size-3.5', importantOnly && 'fill-current')} aria-hidden="true" />
             Important leads
           </button>
+          <button
+            type="button"
+            onClick={() => setParam('archived', archivedOnly ? '' : 'only')}
+            aria-pressed={archivedOnly}
+            className={cn(
+              'flex h-9 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors',
+              archivedOnly
+                ? 'border-brand-500 bg-surface-brand-soft text-text-brand'
+                : 'border-border-default text-text-secondary hover:border-border-strong',
+            )}
+          >
+            <Archive className="size-3.5" aria-hidden="true" />
+            Archived
+          </button>
         </div>
 
         {isError ? (
@@ -142,11 +162,19 @@ export default function ClientsPage() {
                 ) : (
                   <TableEmpty
                     colSpan={8}
-                    title={q ? 'No clients match that search' : 'No clients assigned to you yet'}
+                    title={
+                      archivedOnly
+                        ? 'No archived clients'
+                        : q
+                          ? 'No clients match that search'
+                          : 'No clients assigned to you yet'
+                    }
                     hint={
-                      q
-                        ? 'Try a name, a client code like CLI-00001, or a phone number.'
-                        : 'An admin assigns clients to agents. Ask yours to assign you one.'
+                      archivedOnly
+                        ? 'Archived clients are hidden from the main list. Archive one from its row to see it here.'
+                        : q
+                          ? 'Try a name, a client code like CLI-00001, or a phone number.'
+                          : 'An admin assigns clients to agents. Ask yours to assign you one.'
                     }
                   />
                 )}
@@ -193,8 +221,9 @@ function ClientRow({
   canSeePhone: boolean
 }) {
   const budget = client.requirement
+  const archived = Boolean(client.archivedAt)
   return (
-    <TR>
+    <TR className={cn(archived && 'bg-surface-sunken/40')}>
       <TD className="font-mono text-xs text-text-muted">{client.code}</TD>
       <TD>
         <Link
@@ -215,6 +244,15 @@ function ClientRow({
           <span className="ml-1.5 inline-flex items-center gap-0.5 rounded bg-surface-brand-soft px-1.5 py-0.5 text-2xs font-medium text-text-brand" title="Important lead">
             <Star className="size-2.5 fill-current" aria-hidden="true" />
             Important
+          </span>
+        ) : null}
+        {archived ? (
+          <span
+            className="ml-1.5 inline-flex items-center gap-0.5 rounded border border-border-subtle bg-surface-sunken px-1.5 py-0.5 text-2xs font-medium text-text-muted"
+            title={`Archived${client.archivedBy ? ` by ${client.archivedBy.fullName}` : ''}${client.archivedAt ? ` ${formatRelative(client.archivedAt)}` : ''}`}
+          >
+            <Archive className="size-2.5" aria-hidden="true" />
+            Archived
           </span>
         ) : null}
       </TD>
@@ -256,20 +294,136 @@ function ClientRow({
       <TD className="truncate text-text-secondary">{client.assignedAgent?.fullName ?? '—'}</TD>
       <TD className="text-text-muted">{formatRelative(client.lastContactAt)}</TD>
 
-      {/* Edit is a UX affordance; the API re-checks client.update AND scope, so a
-          missing button is not the security boundary — the server is. */}
+      {/* Actions are UX affordances; the API re-checks the permission AND scope,
+          so a missing button is not the security boundary — the server is. */}
       <TD>
-        <Can permission="client.update">
-          <Link
-            to={`/clients/${client.id}/edit`}
-            aria-label={`Edit ${client.fullName}`}
-            title="Edit client"
-            className="inline-flex size-7 items-center justify-center rounded-md text-text-muted hover:bg-surface-hover hover:text-text-brand"
-          >
-            <Pencil className="size-3.5" aria-hidden="true" />
-          </Link>
-        </Can>
+        <ClientRowActions client={client} archived={archived} />
       </TD>
     </TR>
+  )
+}
+
+const ICON_BTN =
+  'inline-flex size-7 items-center justify-center rounded-md text-text-muted hover:bg-surface-hover hover:text-text-brand focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-500'
+
+function ClientRowActions({ client, archived }: { client: ClientDTO; archived: boolean }) {
+  const { toast } = useToast()
+  const archive = useArchiveClient(client.id)
+  const del = useDeleteClient(client.id)
+  const [dialog, setDialog] = useState<null | 'archive' | 'restore' | 'delete'>(null)
+  const close = () => setDialog(null)
+  const busy = archive.isPending || del.isPending
+  const msg = (err: unknown) => (err instanceof Error ? err.message : undefined)
+
+  const runArchive = async (flag: boolean) => {
+    try {
+      await archive.mutateAsync(flag)
+      toast({ variant: 'success', title: flag ? 'Client archived' : 'Client restored' })
+      close()
+    } catch (err) {
+      toast({ variant: 'error', title: flag ? 'Could not archive client' : 'Could not restore client', description: msg(err) })
+    }
+  }
+  const runDelete = async () => {
+    try {
+      await del.mutateAsync()
+      toast({ variant: 'success', title: 'Client deleted' })
+      close()
+    } catch (err) {
+      toast({ variant: 'error', title: 'Could not delete client', description: msg(err) })
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-end gap-0.5">
+      <Can permission="client.update">
+        <Link
+          to={`/clients/${client.id}/edit`}
+          aria-label={`Edit ${client.fullName}`}
+          title="Edit"
+          className={ICON_BTN}
+        >
+          <Pencil className="size-3.5" aria-hidden="true" />
+        </Link>
+      </Can>
+
+      {archived ? (
+        <>
+          <Can permission="client.archive">
+            <button type="button" onClick={() => setDialog('restore')} aria-label={`Restore ${client.fullName}`} title="Restore" className={ICON_BTN}>
+              <ArchiveRestore className="size-3.5" aria-hidden="true" />
+            </button>
+          </Can>
+          <Can permission="client.delete">
+            <button type="button" onClick={() => setDialog('delete')} aria-label={`Permanently delete ${client.fullName}`} title="Permanently delete" className={cn(ICON_BTN, 'hover:bg-surface-danger-soft/50 hover:text-text-danger')}>
+              <Trash2 className="size-3.5" aria-hidden="true" />
+            </button>
+          </Can>
+        </>
+      ) : (
+        <Can permission="client.archive">
+          <button type="button" onClick={() => setDialog('archive')} aria-label={`Archive ${client.fullName}`} title="Archive" className={ICON_BTN}>
+            <Archive className="size-3.5" aria-hidden="true" />
+          </button>
+        </Can>
+      )}
+
+      <Dialog
+        open={dialog === 'archive'}
+        onClose={close}
+        title="Archive client"
+        footer={
+          <>
+            <Button variant="secondary" onClick={close} disabled={busy}>Cancel</Button>
+            <Button variant="primary" onClick={() => void runArchive(true)} disabled={busy}>
+              {archive.isPending ? 'Archiving…' : 'Archive client'}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-secondary">
+          Are you sure you want to archive this client? Archived clients no longer appear in the main
+          list but can be restored later, with their requirement, activity and shared properties intact.
+        </p>
+      </Dialog>
+
+      <Dialog
+        open={dialog === 'restore'}
+        onClose={close}
+        title="Restore client"
+        footer={
+          <>
+            <Button variant="secondary" onClick={close} disabled={busy}>Cancel</Button>
+            <Button variant="primary" onClick={() => void runArchive(false)} disabled={busy}>
+              {archive.isPending ? 'Restoring…' : 'Restore client'}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-secondary">
+          Restore this client to the active list? All existing data, requirement, interactions and
+          shared properties are preserved exactly as before.
+        </p>
+      </Dialog>
+
+      <Dialog
+        open={dialog === 'delete'}
+        onClose={close}
+        title="Permanently delete client"
+        footer={
+          <>
+            <Button variant="secondary" onClick={close} disabled={busy}>Cancel</Button>
+            <Button variant="danger" onClick={() => void runDelete()} disabled={busy}>
+              {del.isPending ? 'Deleting…' : 'Delete'}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-secondary">
+          Permanently delete <span className="font-medium text-text-primary">{client.fullName}</span>?
+          They will be removed from every list across the app. This cannot be undone from here.
+        </p>
+      </Dialog>
+    </div>
   )
 }

@@ -15,8 +15,10 @@ import { idParamSchema } from '../lib/params.js'
 import { getClientDetail, listClients } from '../services/client-service.js'
 import {
   addInteraction,
+  archiveClient,
   assignClientAgent,
   createClient,
+  deleteClient,
   updateClient,
   upsertRequirement,
 } from '../services/client-write-service.js'
@@ -69,6 +71,22 @@ clientRouter.patch('/:id', requirePermission('client.update'), async (req, res) 
   const { id } = idParamSchema.parse(req.params)
   const input = clientUpdateSchema.parse(req.body)
   res.json({ data: await updateClient(req.actor!, id, input, req) })
+})
+
+// Archive/restore is one endpoint mirrored by archiveClient(archived) — the same
+// shape as the property archive route. Reversible; distinct from delete.
+clientRouter.post('/:id/archive', requirePermission('client.archive'), async (req, res) => {
+  const { id } = idParamSchema.parse(req.params)
+  const { archived } = z.object({ archived: z.boolean().default(true) }).parse(req.body ?? {})
+  res.json({ data: await archiveClient(req.actor!, id, archived, req) })
+})
+
+// Terminal soft-delete (deletedAt). Admin-only via client.delete; the row then
+// vanishes from every scoped read while its history survives.
+clientRouter.delete('/:id', requirePermission('client.delete'), async (req, res) => {
+  const { id } = idParamSchema.parse(req.params)
+  await deleteClient(req.actor!, id, req)
+  res.status(204).end()
 })
 
 // client.interaction.create gates BOTH logging an interaction and moving the

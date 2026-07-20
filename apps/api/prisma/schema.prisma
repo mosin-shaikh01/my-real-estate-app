@@ -52,6 +52,7 @@ model User {
   resetTokens  PasswordResetToken[]
 
   assignedClients    Client[]            @relation("ClientAssignedAgent")
+  archivedClients    Client[]            @relation("ClientArchivedBy")
   assignedProperties Property[]          @relation("PropertyAssignedAgent")
   archivedProperties Property[]          @relation("PropertyArchivedBy")
   interactions       ClientInteraction[]
@@ -653,9 +654,15 @@ model Client {
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
-  deletedAt DateTime? @map("deleted_at")
+  // Archive is reversible and orthogonal to deletion — same three-concept model
+  // as Property. archivedById is set with archivedAt and cleared together on
+  // restore. deletedAt is the terminal soft-delete (filtered by scopeForClient).
+  archivedAt   DateTime? @map("archived_at")
+  archivedById String?   @map("archived_by_id")
+  deletedAt    DateTime? @map("deleted_at")
 
   assignedAgent User?                @relation("ClientAssignedAgent", fields: [assignedAgentId], references: [id], onDelete: SetNull)
+  archivedBy    User?                @relation("ClientArchivedBy", fields: [archivedById], references: [id], onDelete: SetNull)
   requirements  ClientRequirement[]
   interactions  ClientInteraction[]
   assignments   PropertyAssignment[]

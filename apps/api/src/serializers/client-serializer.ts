@@ -43,6 +43,8 @@ export interface ClientRow {
   nextFollowUp: Date | null
   assignedAgentId: string | null
   createdAt: Date
+  archivedAt: Date | null
+  archivedBy?: { id: string; fullName: string } | null
   assignedAgent?: { id: string; fullName: string } | null
   requirements?: Array<{
     id: string
@@ -72,6 +74,8 @@ export interface ClientDTO {
   lastContactAt: string | null
   nextFollowUp: string | null
   createdAt: string
+  archivedAt: string | null
+  archivedBy: { id: string; fullName: string } | null
   assignedAgent: { id: string; fullName: string } | null
   assignedPropertyCount: number
 
@@ -114,6 +118,8 @@ export function toClientDTO(row: ClientRow, actor: Actor): ClientDTO {
     lastContactAt: row.lastContactAt?.toISOString() ?? null,
     nextFollowUp: row.nextFollowUp?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
+    archivedAt: row.archivedAt?.toISOString() ?? null,
+    archivedBy: row.archivedBy ?? null,
     assignedAgent: row.assignedAgent ?? null,
     assignedPropertyCount: row._count?.assignments ?? 0,
     _redacted: redacted,

@@ -90,6 +90,7 @@ export const PERMISSIONS = [
   { key: 'client.view', resource: 'client', action: 'view', description: 'View a client' },
   { key: 'client.create', resource: 'client', action: 'create', description: 'Create a client' },
   { key: 'client.update', resource: 'client', action: 'update', description: 'Edit a client' },
+  { key: 'client.archive', resource: 'client', action: 'archive', description: 'Archive or restore a client' },
   { key: 'client.delete', resource: 'client', action: 'delete', description: 'Delete a client' },
   {
     key: 'client.assignProperty',
