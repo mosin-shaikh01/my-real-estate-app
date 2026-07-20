@@ -131,30 +131,34 @@ export async function updateClient(actor: Actor, id: string, input: ClientUpdate
   if ('source' in input) data.source = orNull(input.source)
   if ('city' in input) data.city = orNull(input.city)
 
-  return prisma.$transaction(async (tx) => {
-    const client = await tx.client.update({
+  const { changed, values } = diffForLog(before as unknown as Record<string, unknown>, data)
+
+  // No real change → no write, no log, no updatedAt bump.
+  if (changed.length === 0) {
+    return { id: before.id, code: before.code, changed: false }
+  }
+
+  const client = await prisma.$transaction(async (tx) => {
+    const updated = await tx.client.update({
       where: { id },
-      data: data as Prisma.ClientUpdateInput,
+      // Only the changed columns.
+      data: Object.fromEntries(
+        Object.entries(data).filter(([k]) => changed.includes(k)),
+      ) as Prisma.ClientUpdateInput,
       select: { id: true, code: true },
     })
-
-    const { changed, values } = diffForLog(
-      before as unknown as Record<string, unknown>,
-      data,
-    )
-    if (changed.length) {
-      await logActivityTx(tx, {
-        actorUserId: actor.userId,
-        action: 'client.updated',
-        entityType: 'client',
-        entityId: id,
-        summary: `Updated ${client.code}: ${humanizeFields(changed)}`,
-        metadata: { changed, values },
-        req,
-      })
-    }
-    return client
+    await logActivityTx(tx, {
+      actorUserId: actor.userId,
+      action: 'client.updated',
+      entityType: 'client',
+      entityId: id,
+      summary: `Updated ${updated.code}: ${humanizeFields(changed)}`,
+      metadata: { changed, values },
+      req,
+    })
+    return updated
   })
+  return { ...client, changed: true }
 }
 
 /**

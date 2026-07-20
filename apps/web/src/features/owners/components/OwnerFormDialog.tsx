@@ -36,6 +36,12 @@ export function OwnerFormDialog({ owner, onClose }: { owner?: OwnerDTO; onClose:
   const { data: duplicate } = useOwnerDuplicate(mobile, owner?.id)
 
   const onSubmit = form.handleSubmit(async (values) => {
+    // Nothing touched → don't call the API (which would no-op anyway).
+    if (isEdit && !form.formState.isDirty) {
+      toast({ variant: 'info', title: 'No changes detected' })
+      onClose()
+      return
+    }
     try {
       if (isEdit) await update.mutateAsync(values)
       else await create.mutateAsync(values)

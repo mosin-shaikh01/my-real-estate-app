@@ -219,8 +219,12 @@ export function PropertyForm({ mode, property }: Props) {
     let propertyId: string
     try {
       if (mode === 'edit' && property) {
-        await update.mutateAsync(payload)
-        toast({ variant: 'success', title: 'Property updated' })
+        const res = await update.mutateAsync(payload)
+        toast(
+          res.data.changed
+            ? { variant: 'success', title: 'Property updated' }
+            : { variant: 'info', title: 'No changes detected' },
+        )
         void navigate(`/properties/${property.id}`)
         return
       }

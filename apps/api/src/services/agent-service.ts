@@ -11,7 +11,7 @@ import { resolvePermissions } from '../auth/permissions.js'
 import { hashPassword } from '../auth/tokens.js'
 import { conflict, notFound, validationFailed } from '../lib/errors.js'
 import { prisma } from '../lib/prisma.js'
-import { logActivityTx } from './activity-service.js'
+import { diffForLog, humanizeFields, logActivityTx } from './activity-service.js'
 import { revokeAllSessions } from './session-service.js'
 
 // Agents are Users with an AgentProfile. There is no scope resolver call here:
@@ -107,7 +107,7 @@ export async function createAgent(actorId: string, input: AgentCreateInput, req:
 }
 
 export async function updateAgent(actorId: string, id: string, input: AgentUpdateInput, req: Request) {
-  await getAgent(id) // 404 if not an agent
+  const existing = await getAgent(id) // 404 if not an agent
 
   // email lives on User; the rest on AgentProfile. Destructure explicitly so a
   // stray field can't spread into the wrong table.
@@ -124,6 +124,30 @@ export async function updateAgent(actorId: string, id: string, input: AgentUpdat
     })
     if (clash) throw conflict('Another account already uses that email')
   }
+
+  // Change detection spans both tables — flatten the profile so before/after
+  // compare like-for-like. Only the fields the caller actually sent are compared.
+  const before: Record<string, unknown> = {
+    fullName: existing.fullName,
+    email: existing.email,
+    phone: existing.phone,
+    address: existing.agentProfile?.address,
+    experienceYears: existing.agentProfile?.experienceYears,
+    specialization: existing.agentProfile?.specialization,
+    commissionRate: existing.agentProfile?.commissionRate,
+  }
+  const after: Record<string, unknown> = {}
+  if (fullName !== undefined) after.fullName = fullName
+  if (normalisedEmail !== undefined) after.email = normalisedEmail
+  if ('phone' in input) after.phone = orNull(phone)
+  if ('address' in input) after.address = orNull(address)
+  if ('experienceYears' in input) after.experienceYears = experienceYears ?? null
+  if ('specialization' in input) after.specialization = orNull(specialization)
+  if ('commissionRate' in input) after.commissionRate = orNull(commissionRate)
+
+  const { changed, values } = diffForLog(before, after)
+  // No real change → no write, no activity log, no updatedAt bump.
+  if (changed.length === 0) return existing
 
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.update({
@@ -149,9 +173,10 @@ export async function updateAgent(actorId: string, id: string, input: AgentUpdat
       action: 'agent.updated',
       entityType: 'user',
       entityId: id,
-      // Field names only — commissionRate is sensitive and diffForLog would
-      // have caught it, but the summary is hand-written here so say it plainly.
-      summary: `Updated agent ${user.fullName}`,
+      // Field names only — commissionRate is sensitive, so diffForLog keeps its
+      // value out of `values`; the summary names the fields that changed.
+      summary: `Updated agent ${user.fullName}: ${humanizeFields(changed)}`,
+      metadata: { changed, values },
       req,
     })
     return user

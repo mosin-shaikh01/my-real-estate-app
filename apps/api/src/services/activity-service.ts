@@ -39,6 +39,8 @@ const SENSITIVE_FIELDS = new Set([
   'phone',
   'whatsapp',
   'email',
+  'pan',
+  'aadhaar',
   'passwordHash',
 ])
 
@@ -178,14 +180,9 @@ export function diffForLog(before: Record<string, unknown>, after: Record<string
   const changed: string[] = []
   const values: FieldDiff['values'] = {}
 
-  const str = (v: unknown): string | null =>
-    v === null || v === undefined ? null : v instanceof Date ? v.toISOString() : String(v)
-
   for (const key of Object.keys(after)) {
-    const from = str(before[key])
-    const to = str(after[key])
-    // Compare stringified, so a Decimal and its string form don't read as a
-    // change on every single save.
+    const from = normalizeForDiff(before[key])
+    const to = normalizeForDiff(after[key])
     if (from === to) continue
 
     changed.push(key)
@@ -193,6 +190,44 @@ export function diffForLog(before: Record<string, unknown>, after: Record<string
   }
 
   return { changed, values }
+}
+
+/** True when `after` differs from `before` on any of `after`'s keys. */
+export function hasChanges(before: Record<string, unknown>, after: Record<string, unknown>): boolean {
+  return diffForLog(before, after).changed.length > 0
+}
+
+/**
+ * Canonical comparison form. This is the whole reason a no-op save used to log a
+ * change: the DB holds a Decimal (`45000`) while the form submits the string
+ * `"45000.00"`, and a naive `String()` made those look different. Normalising
+ * kills the false positives across every value kind:
+ *   - Decimal / number / numeric string → the same canonical number ("45000")
+ *   - boolean → 'true' / 'false' (a checkbox posting "true"/"false"/on all fold)
+ *   - Date → ISO
+ *   - array (amenities, video links, multi-selects) → order-independent
+ *   - string → trimmed, so a stray space is not a change
+ */
+export function normalizeForDiff(v: unknown): string | null {
+  if (v === null || v === undefined) return null
+  if (v instanceof Date) return v.toISOString()
+  if (typeof v === 'boolean') return v ? 'true' : 'false'
+  if (Array.isArray(v)) return JSON.stringify(v.map((x) => normalizeForDiff(x) ?? '').sort())
+  // Prisma Decimal (decimal.js) exposes toFixed — treat it as a number.
+  if (typeof v === 'object' && typeof (v as { toFixed?: unknown }).toFixed === 'function') {
+    return canonicalNumber(String(v))
+  }
+  return canonicalNumber(String(v).trim())
+}
+
+/** Collapse a purely-numeric string to its canonical number, so "45000.00" and
+ *  "45000" compare equal. Ids, codes and mixed strings pass through untouched. */
+function canonicalNumber(s: string): string {
+  if (s !== '' && /^-?\d+(\.\d+)?$/.test(s)) {
+    const n = Number(s)
+    if (Number.isFinite(n)) return String(n)
+  }
+  return s
 }
 
 export function isSensitiveField(field: string): boolean {

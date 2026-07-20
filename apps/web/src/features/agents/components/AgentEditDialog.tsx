@@ -27,6 +27,12 @@ export function AgentEditDialog({ agent, onClose }: { agent: AgentDTO; onClose: 
   })
 
   const onSubmit = form.handleSubmit(async (values) => {
+    // Nothing touched → don't call the API (which would no-op anyway).
+    if (!form.formState.isDirty) {
+      toast({ variant: 'info', title: 'No changes detected' })
+      onClose()
+      return
+    }
     try {
       await update.mutateAsync(values)
       toast({ variant: 'success', title: 'Agent updated' })

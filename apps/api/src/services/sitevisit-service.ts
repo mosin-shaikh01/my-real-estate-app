@@ -10,7 +10,7 @@ import type { Actor } from '../auth/permissions.js'
 import { scopeForClient, scopeForProperty } from '../auth/scope.js'
 import { notFound, validationFailed } from '../lib/errors.js'
 import { prisma } from '../lib/prisma.js'
-import { logActivityTx } from './activity-service.js'
+import { hasChanges, logActivityTx } from './activity-service.js'
 
 // Site visits are scoped: an admin (list.all) sees all; an agent sees a visit
 // they're on, or one for a client OR property assigned to them. Same "which
@@ -121,7 +121,7 @@ export async function createSiteVisit(actor: Actor, input: SiteVisitCreateInput,
 }
 
 export async function updateSiteVisit(actor: Actor, id: string, input: SiteVisitUpdateInput, req: Request) {
-  await getInScope(actor, id)
+  const current = await getInScope(actor, id)
   if ('agentId' in input) await assertAgent(input.agentId)
 
   const data: Prisma.SiteVisitUncheckedUpdateInput = {}
@@ -130,6 +130,15 @@ export async function updateSiteVisit(actor: Actor, id: string, input: SiteVisit
   if ('agentId' in input) data.agentId = input.agentId ?? null
   if ('feedback' in input) data.feedback = orNull(input.feedback)
   if ('remarks' in input) data.remarks = orNull(input.remarks)
+
+  // Nothing actually changed → no write, no activity log, no updatedAt bump.
+  const before = await prisma.siteVisit.findUniqueOrThrow({
+    where: { id },
+    select: { status: true, scheduledAt: true, agentId: true, feedback: true, remarks: true },
+  })
+  if (!hasChanges(before as unknown as Record<string, unknown>, data as Record<string, unknown>)) {
+    return current
+  }
 
   return prisma.$transaction(async (tx) => {
     const visit = await tx.siteVisit.update({ where: { id }, data, select: SELECT })

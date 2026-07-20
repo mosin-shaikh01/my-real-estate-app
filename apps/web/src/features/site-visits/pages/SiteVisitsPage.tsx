@@ -357,6 +357,12 @@ function EditVisitDialog({ visit, onClose }: { visit: SiteVisitDTO; onClose: () 
   })
 
   const onSubmit = form.handleSubmit(async (values) => {
+    // Nothing touched → don't call the API (which would no-op anyway).
+    if (!form.formState.isDirty) {
+      toast({ variant: 'info', title: 'No changes detected' })
+      onClose()
+      return
+    }
     try {
       await update.mutateAsync({
         status: values.status,

@@ -4,6 +4,7 @@ import type { Actor } from '../auth/permissions.js'
 import { scopeForProperty } from '../auth/scope.js'
 import { conflict, notFound, validationFailed } from '../lib/errors.js'
 import { prisma } from '../lib/prisma.js'
+import type { Prisma } from '../generated/prisma/client.js'
 import { diffForLog, humanizeFields, logActivityTx } from './activity-service.js'
 
 // ============================================================================
@@ -136,9 +137,12 @@ export async function updateProperty(
   req: Request,
 ) {
   // Scope first: an agent must not be able to edit a property they cannot see,
-  // and the 404 must be indistinguishable from a genuine absence.
+  // and the 404 must be indistinguishable from a genuine absence. Pull the
+  // current amenity ids too, so an unchanged amenity set is not mistaken for an
+  // edit.
   const before = await prisma.property.findFirst({
     where: { ...scopeForProperty(actor), id },
+    include: { amenities: { select: { amenityId: true } } },
   })
   if (!before) throw notFound('Property not found')
 
@@ -150,44 +154,58 @@ export async function updateProperty(
     stripUnwritable(input, actor),
   ) as PropertyUpdateInput
 
-  return prisma.$transaction(async (tx) => {
-    const property = await tx.property.update({
-      where: { id },
-      data: rest,
-      select: { id: true, code: true, title: true },
-    })
+  // Which SCALAR fields actually changed (normalised, so 45000 vs "45000.00" is
+  // not a change), and whether the amenity SET changed (order-independent).
+  const { changed, values } = diffForLog(
+    before as unknown as Record<string, unknown>,
+    rest as Record<string, unknown>,
+  )
+  let amenitiesChanged = false
+  if (amenityIds) {
+    const current = new Set(before.amenities.map((a) => a.amenityId))
+    amenitiesChanged = amenityIds.length !== current.size || amenityIds.some((a) => !current.has(a))
+  }
 
-    if (amenityIds) {
+  const result = { id: before.id, code: before.code, title: before.title }
+
+  // Nothing actually changed → no write, no activity log, no updatedAt bump.
+  if (changed.length === 0 && !amenitiesChanged) {
+    return { ...result, changed: false }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // Write ONLY the columns that changed — keeps updatedAt honest and the row
+    // untouched when just amenities moved.
+    if (changed.length) {
+      const data = Object.fromEntries(Object.entries(rest).filter(([k]) => changed.includes(k)))
+      await tx.property.update({ where: { id }, data: data as Prisma.PropertyUpdateInput })
+    }
+
+    if (amenitiesChanged) {
       // Replace wholesale. A diff would be more code for the same result at
       // this size, and a partial failure would leave a half-set of amenities.
       await tx.propertyAmenity.deleteMany({ where: { propertyId: id } })
       await tx.propertyAmenity.createMany({
-        data: amenityIds.map((amenityId) => ({ propertyId: id, amenityId })),
+        data: amenityIds!.map((amenityId) => ({ propertyId: id, amenityId })),
         skipDuplicates: true,
       })
     }
 
-    // Field NAMES for sensitive fields, values for the rest. Without this the
-    // audit trail becomes a second, unguarded copy of internalNotes.
-    const { changed, values } = diffForLog(
-      before as unknown as Record<string, unknown>,
-      rest as Record<string, unknown>,
-    )
-
-    if (changed.length || amenityIds) {
-      await logActivityTx(tx, {
-        actorUserId: actor.userId,
-        action: 'property.updated',
-        entityType: 'property',
-        entityId: id,
-        summary: `Updated ${property.code}: ${humanizeFields([...changed, ...(amenityIds ? ['amenities'] : [])])}`,
-        metadata: { changed, values },
-        req,
-      })
-    }
-
-    return property
+    // Field NAMES for sensitive fields, values for the rest, and ONLY the fields
+    // that changed — never unchanged ones. Without this the audit trail becomes a
+    // second, unguarded copy of internalNotes.
+    await logActivityTx(tx, {
+      actorUserId: actor.userId,
+      action: 'property.updated',
+      entityType: 'property',
+      entityId: id,
+      summary: `Updated ${before.code}: ${humanizeFields([...changed, ...(amenitiesChanged ? ['amenities'] : [])])}`,
+      metadata: { changed, values, amenitiesChanged },
+      req,
+    })
   })
+
+  return { ...result, changed: true }
 }
 
 export async function setPropertyStatus(

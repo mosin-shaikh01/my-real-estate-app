@@ -25,8 +25,10 @@ export function useCreateProperty() {
 export function useUpdateProperty(id: string) {
   const invalidate = useInvalidateProperties()
   return useMutation({
+    // `changed` is false when the submit was a genuine no-op — the UI shows
+    // "No changes detected" rather than a false "updated".
     mutationFn: (input: PropertyUpdateInput) =>
-      api.patch<{ data: { id: string; code: string } }>(`/properties/${id}`, input),
+      api.patch<{ data: { id: string; code: string; changed: boolean } }>(`/properties/${id}`, input),
     onSuccess: invalidate,
   })
 }

@@ -3,7 +3,7 @@ import type { OwnerCreateInput, OwnerUpdateInput } from '@app/shared'
 import { conflict, notFound } from '../lib/errors.js'
 import { prisma } from '../lib/prisma.js'
 import type { Prisma } from '../generated/prisma/client.js'
-import { logActivityTx } from './activity-service.js'
+import { diffForLog, humanizeFields, logActivityTx } from './activity-service.js'
 
 // Property Owner (master). Admin-only surface (owner.* permissions) — no scope
 // resolver, the route guard is the whole gate. Duplicate detection is a WARNING
@@ -139,24 +139,39 @@ export async function createOwner(actorId: string, input: OwnerCreateInput, req:
 }
 
 export async function updateOwner(actorId: string, id: string, input: OwnerUpdateInput, req: Request) {
-  await getOwner(id)
+  // Full row (incl. mobileNormalized) so the diff compares like-for-like.
+  const before = await prisma.propertyOwner.findFirst({ where: { id, deletedAt: null } })
+  if (!before) throw notFound('Owner not found')
+
+  const data: Prisma.PropertyOwnerUpdateInput = {
+    ...(input.fullName !== undefined && { fullName: input.fullName }),
+    ...(input.mobile !== undefined && {
+      mobile: input.mobile.trim(),
+      mobileNormalized: normalizeMobile(input.mobile),
+    }),
+    ...('altMobile' in input && { altMobile: orNull(input.altMobile) }),
+    ...('email' in input && { email: orNull(input.email) }),
+    ...('address' in input && { address: orNull(input.address) }),
+    ...('city' in input && { city: orNull(input.city) }),
+    ...('pan' in input && { pan: orNull(input.pan) }),
+    ...('aadhaar' in input && { aadhaar: orNull(input.aadhaar) }),
+    ...('notes' in input && { notes: orNull(input.notes) }),
+  }
+
+  const { changed, values } = diffForLog(
+    before as unknown as Record<string, unknown>,
+    data as Record<string, unknown>,
+  )
+  // No real change → no write, no activity log, no updatedAt bump.
+  if (changed.length === 0) return getOwner(id)
+
   return prisma.$transaction(async (tx) => {
     const owner = await tx.propertyOwner.update({
       where: { id },
-      data: {
-        ...(input.fullName !== undefined && { fullName: input.fullName }),
-        ...(input.mobile !== undefined && {
-          mobile: input.mobile.trim(),
-          mobileNormalized: normalizeMobile(input.mobile),
-        }),
-        ...('altMobile' in input && { altMobile: orNull(input.altMobile) }),
-        ...('email' in input && { email: orNull(input.email) }),
-        ...('address' in input && { address: orNull(input.address) }),
-        ...('city' in input && { city: orNull(input.city) }),
-        ...('pan' in input && { pan: orNull(input.pan) }),
-        ...('aadhaar' in input && { aadhaar: orNull(input.aadhaar) }),
-        ...('notes' in input && { notes: orNull(input.notes) }),
-      },
+      // Only the changed columns.
+      data: Object.fromEntries(
+        Object.entries(data).filter(([k]) => changed.includes(k)),
+      ) as Prisma.PropertyOwnerUpdateInput,
       select: OWNER_SELECT,
     })
     await logActivityTx(tx, {
@@ -164,7 +179,8 @@ export async function updateOwner(actorId: string, id: string, input: OwnerUpdat
       action: 'owner.updated',
       entityType: 'property_owner',
       entityId: id,
-      summary: `Updated owner ${owner.fullName}`,
+      summary: `Updated ${owner.code}: ${humanizeFields(changed)}`,
+      metadata: { changed, values },
       req,
     })
     return owner

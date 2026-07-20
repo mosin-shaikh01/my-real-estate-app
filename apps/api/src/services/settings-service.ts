@@ -6,7 +6,7 @@ import type { Request } from 'express'
 import type { Actor } from '../auth/permissions.js'
 import { validationFailed } from '../lib/errors.js'
 import { prisma } from '../lib/prisma.js'
-import { logActivityTx } from './activity-service.js'
+import { diffForLog, hasChanges, logActivityTx } from './activity-service.js'
 import { resolveStorageKey } from './media-service.js'
 
 // ============================================================================
@@ -42,6 +42,12 @@ function normaliseEmptyToNull(input: SettingsUpdateInput): Record<string, unknow
 
 export async function updateSettings(actor: Actor, input: SettingsUpdateInput, req: Request) {
   const data = normaliseEmptyToNull(input)
+  const current = await prisma.appSetting.findFirst({ where: SINGLETON })
+
+  // Nothing changed → no write, no activity log, no updatedAt bump.
+  if (current && !hasChanges(current as unknown as Record<string, unknown>, data)) {
+    return current
+  }
 
   const row = await prisma.$transaction(async (tx) => {
     const updated = await tx.appSetting.upsert({
@@ -49,13 +55,16 @@ export async function updateSettings(actor: Actor, input: SettingsUpdateInput, r
       create: { singleton: true, ...data },
       update: { ...data, updatedById: actor.userId },
     })
+    // Log only the fields that actually moved (falls back to the payload keys on
+    // first-ever create, where `current` is null).
+    const { changed } = diffForLog((current ?? {}) as Record<string, unknown>, data)
     await logActivityTx(tx, {
       actorUserId: actor.userId,
       action: 'settings.updated',
       entityType: 'settings',
       entityId: updated.id,
       summary: 'Updated CRM settings',
-      metadata: { changed: Object.keys(input) },
+      metadata: { changed: changed.length ? changed : Object.keys(input) },
       req,
     })
     return updated
