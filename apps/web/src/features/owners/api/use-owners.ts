@@ -15,11 +15,13 @@ import { api, qs } from '@/lib/api'
 
 const OWNERS_KEY = ['owners'] as const
 
-export function useOwners(params: { q?: string; page?: number }) {
+export function useOwners(params: { q?: string; page?: number; deleted?: boolean }) {
   return useQuery({
-    queryKey: [...OWNERS_KEY, 'list', params.q ?? '', params.page ?? 1],
+    queryKey: [...OWNERS_KEY, 'list', params.q ?? '', params.page ?? 1, params.deleted ? 'deleted' : 'active'],
     queryFn: () =>
-      api.get<Paginated<OwnerListItem>>(`/owners${qs({ q: params.q, page: params.page ?? 1, pageSize: 25 })}`),
+      api.get<Paginated<OwnerListItem>>(
+        `/owners${qs({ q: params.q, page: params.page ?? 1, pageSize: 25, deleted: params.deleted ? 'only' : undefined })}`,
+      ),
     placeholderData: (prev) => prev,
   })
 }
@@ -61,6 +63,15 @@ export function useDeleteOwner() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.delete<void>(`/owners/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: OWNERS_KEY }),
+  })
+}
+
+/** Restore a soft-deleted owner. */
+export function useRestoreOwner() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.post<{ data: OwnerDTO }>(`/owners/${id}/restore`).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: OWNERS_KEY }),
   })
 }

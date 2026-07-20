@@ -66,6 +66,8 @@ export interface OwnerListItem {
   city: string | null
   propertyCount: number
   createdAt: string
+  /** null on active owners; set when viewing the Deleted filter. */
+  deletedAt: string | null
 }
 
 /** Compact option for the property form's owner picker. */

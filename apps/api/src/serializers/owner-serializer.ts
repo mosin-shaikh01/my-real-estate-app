@@ -16,6 +16,7 @@ interface OwnerRow {
   notes: string | null
   createdAt: Date
   updatedAt: Date
+  deletedAt: Date | null
   _count: { properties: number }
 }
 
@@ -47,5 +48,6 @@ export function toOwnerListItem(row: OwnerRow): OwnerListItem {
     city: row.city,
     propertyCount: row._count.properties,
     createdAt: row.createdAt.toISOString(),
+    deletedAt: row.deletedAt?.toISOString() ?? null,
   }
 }

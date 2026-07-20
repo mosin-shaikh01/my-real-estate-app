@@ -9,6 +9,7 @@ import {
   getOwner,
   listOwnerOptions,
   listOwners,
+  restoreOwner,
   updateOwner,
 } from '../services/owner-service.js'
 import { toOwnerDTO, toOwnerListItem } from '../serializers/owner-serializer.js'
@@ -25,6 +26,7 @@ ownerRouter.get('/', requirePermission('owner.list'), async (req, res) => {
     q,
     page: Number.isFinite(page) ? page : 1,
     pageSize: Number.isFinite(pageSize) ? pageSize : 25,
+    deleted: req.query.deleted === 'only',
   })
   res.json({
     data: result.rows.map(toOwnerListItem),
@@ -76,4 +78,10 @@ ownerRouter.delete('/:id', requirePermission('owner.delete'), async (req, res) =
   const { id } = idParamSchema.parse(req.params)
   await deleteOwner(req.actor!.userId, id, req)
   res.status(204).end()
+})
+
+// Restore a soft-deleted owner — the reverse of delete, same permission.
+ownerRouter.post('/:id/restore', requirePermission('owner.delete'), async (req, res) => {
+  const { id } = idParamSchema.parse(req.params)
+  res.json({ data: toOwnerDTO(await restoreOwner(req.actor!.userId, id, req)) })
 })

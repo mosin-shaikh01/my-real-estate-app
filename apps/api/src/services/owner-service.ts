@@ -26,6 +26,7 @@ const OWNER_SELECT = {
   notes: true,
   createdAt: true,
   updatedAt: true,
+  deletedAt: true,
   _count: { select: { properties: { where: { deletedAt: null } } } },
 } satisfies Prisma.PropertyOwnerSelect
 
@@ -33,10 +34,14 @@ export interface OwnerListParams {
   q?: string
   page: number
   pageSize: number
+  /** true = the Deleted view (soft-deleted owners only). Default: active only. */
+  deleted?: boolean
 }
 
 export async function listOwners(params: OwnerListParams) {
-  const where: Prisma.PropertyOwnerWhereInput = { deletedAt: null }
+  const where: Prisma.PropertyOwnerWhereInput = params.deleted
+    ? { deletedAt: { not: null } }
+    : { deletedAt: null }
   const q = params.q?.trim()
   if (q) {
     const digits = q.replace(/\D/g, '')
@@ -185,5 +190,37 @@ export async function deleteOwner(actorId: string, id: string, req: Request) {
       summary: `Deleted owner ${owner.fullName}`,
       req,
     })
+  })
+}
+
+/**
+ * Restore a soft-deleted owner — the reverse of deleteOwner, gated by the same
+ * owner.delete permission (whoever can delete may undo it). Deleted owners have
+ * no properties (delete is guarded on that), so there's nothing to reconcile.
+ */
+export async function restoreOwner(actorId: string, id: string, req: Request) {
+  const existing = await prisma.propertyOwner.findFirst({
+    where: { id, deletedAt: { not: null } },
+    select: { id: true, fullName: true },
+  })
+  if (!existing) throw notFound('Deleted owner not found')
+
+  return prisma.$transaction(async (tx) => {
+    // Select within the tx so the returned row reflects the just-committed state
+    // (a non-tx read here would miss the uncommitted deletedAt: null).
+    const owner = await tx.propertyOwner.update({
+      where: { id },
+      data: { deletedAt: null },
+      select: OWNER_SELECT,
+    })
+    await logActivityTx(tx, {
+      actorUserId: actorId,
+      action: 'owner.restored',
+      entityType: 'property_owner',
+      entityId: id,
+      summary: `Restored owner ${existing.fullName}`,
+      req,
+    })
+    return owner
   })
 }
