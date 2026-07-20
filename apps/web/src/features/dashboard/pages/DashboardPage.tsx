@@ -1,4 +1,5 @@
 import {
+  Archive,
   Bookmark,
   Building2,
   CalendarCheck,
@@ -118,6 +119,13 @@ export default function DashboardPage() {
             value={data?.reservedProperties}
             hint="Properties on hold"
             icon={Bookmark}
+            loading={isLoading}
+          />
+          <Tile
+            label="Archived"
+            value={data?.archivedProperties}
+            hint="Hidden from active listings"
+            icon={Archive}
             loading={isLoading}
           />
           {data?.todaySiteVisits != null ? (

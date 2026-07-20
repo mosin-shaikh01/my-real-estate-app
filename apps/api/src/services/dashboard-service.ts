@@ -15,6 +15,7 @@ import { scopeForSiteVisit } from './sitevisit-service.js'
 export interface DashboardSummary {
   activeProperties: number
   totalProperties: number
+  archivedProperties: number
   reservedProperties: number
   soldProperties: number
   rentedProperties: number
@@ -52,6 +53,7 @@ export async function getDashboard(actor: Actor): Promise<DashboardSummary> {
   const [
     activeProperties,
     totalProperties,
+    archivedProperties,
     reservedProperties,
     soldProperties,
     rentedProperties,
@@ -66,6 +68,9 @@ export async function getDashboard(actor: Actor): Promise<DashboardSummary> {
   ] = await Promise.all([
     prisma.property.count({ where: activeWhere }),
     prisma.property.count({ where: { ...propertyScope, archivedAt: null } }),
+    // Archived (and not deleted — scope already excludes deletedAt). Lets an
+    // admin see at a glance how much inventory has been pulled from listings.
+    prisma.property.count({ where: { ...propertyScope, archivedAt: { not: null } } }),
     prisma.property.count({ where: { ...propertyScope, status: 'RESERVED' } }),
     prisma.property.count({ where: { ...propertyScope, status: 'SOLD' } }),
     prisma.property.count({ where: { ...propertyScope, status: 'RENTED' } }),
@@ -125,6 +130,7 @@ export async function getDashboard(actor: Actor): Promise<DashboardSummary> {
   return {
     activeProperties,
     totalProperties,
+    archivedProperties,
     reservedProperties,
     soldProperties,
     rentedProperties,

@@ -53,6 +53,7 @@ model User {
 
   assignedClients    Client[]            @relation("ClientAssignedAgent")
   assignedProperties Property[]          @relation("PropertyAssignedAgent")
+  archivedProperties Property[]          @relation("PropertyArchivedBy")
   interactions       ClientInteraction[]
   activityLogs       ActivityLog[]
   uploadedMedia      PropertyMedia[]
@@ -521,9 +522,13 @@ model Property {
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
   archivedAt DateTime? @map("archived_at")
-  deletedAt  DateTime? @map("deleted_at")
+  // Who archived it — set alongside archivedAt, cleared on restore. SetNull so
+  // deactivating that user later doesn't cascade-delete the property.
+  archivedById String? @map("archived_by_id")
+  deletedAt    DateTime? @map("deleted_at")
 
   assignedAgent User?                @relation("PropertyAssignedAgent", fields: [assignedAgentId], references: [id], onDelete: SetNull)
+  archivedBy    User?                @relation("PropertyArchivedBy", fields: [archivedById], references: [id], onDelete: SetNull)
   media         PropertyMedia[]
   amenities     PropertyAmenity[]
   assignments   PropertyAssignment[]

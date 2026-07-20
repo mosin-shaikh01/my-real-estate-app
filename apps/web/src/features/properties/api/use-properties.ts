@@ -56,6 +56,7 @@ export interface PropertyDTO {
   areaUnit: string | null
   createdAt: string
   archivedAt: string | null
+  archivedBy: { id: string; fullName: string } | null
   assignedAgent: { id: string; fullName: string } | null
   amenities: Array<{ id: string; name: string; slug: string; category: string | null }>
   documents: Array<{
@@ -91,6 +92,8 @@ export interface PropertyFilters {
   minPrice?: string
   maxPrice?: string
   sort?: string
+  /** 'only' shows archived-only; 'all' shows both; unset = active only. */
+  archived?: string
 }
 
 export function useProperties(filters: PropertyFilters) {

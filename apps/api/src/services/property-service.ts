@@ -59,6 +59,7 @@ const DETAIL_SELECT = {
   createdAt: true,
   updatedAt: true,
   archivedAt: true,
+  archivedBy: { select: { id: true, fullName: true } },
   assignedAgent: { select: { id: true, fullName: true } },
   owner: { select: { id: true, code: true, fullName: true, mobile: true } },
   amenities: {
@@ -89,8 +90,14 @@ export async function listProperties(actor: Actor, query: PropertyListQuery) {
   const and: unknown[] = []
 
   // Archived is orthogonal to status and to deletion — three concepts, three
-  // columns. Hidden by default rather than gone.
-  if (query.includeArchived !== 'true') and.push({ archivedAt: null })
+  // columns. Hidden by default rather than gone:
+  //   archived unset            -> active only (archivedAt IS NULL)  [default]
+  //   archived = 'only'         -> archived only (the Archived filter)
+  //   archived = 'all' OR the
+  //   legacy includeArchived    -> both, no archivedAt constraint
+  // Kept backward-compatible: includeArchived still means "show both".
+  if (query.archived === 'only') and.push({ archivedAt: { not: null } })
+  else if (query.archived !== 'all' && query.includeArchived !== 'true') and.push({ archivedAt: null })
 
   if (query.q) {
     const q = query.q
@@ -113,6 +120,9 @@ export async function listProperties(actor: Actor, query: PropertyListQuery) {
         // Agent (if assigned). A relation filter — an unassigned property has no
         // agent and simply won't match, which is the intended behaviour.
         { assignedAgent: { fullName: { contains: q, mode: 'insensitive' } } },
+        // Seller / owner of record, by name. Same relation-filter behaviour — a
+        // property with no owner set simply won't match.
+        { owner: { fullName: { contains: q, mode: 'insensitive' } } },
         ...(typeMatches.length ? [{ propertyType: { in: typeMatches } }] : []),
       ],
     })

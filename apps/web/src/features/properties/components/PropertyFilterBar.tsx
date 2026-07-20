@@ -13,10 +13,18 @@ import type { PropertyFilterControls } from '@/features/properties/lib/property-
 // controls (the useUrlFilters shape), so each host supplies its own state.
 // ============================================================================
 
-const STATUS_OPTIONS = (Object.keys(PROPERTY_STATUS_LABELS) as PropertyStatus[]).map((s) => ({
-  value: s,
-  label: PROPERTY_STATUS_LABELS[s],
-}))
+// Archived is NOT a status (it is orthogonal — a property keeps its SOLD/etc.
+// status while archived). But the spec asks for it in the same dropdown, so it
+// rides along as a sentinel that maps to the separate `archived` filter param
+// rather than to `status`.
+const ARCHIVED_VALUE = '__archived__'
+const STATUS_OPTIONS = [
+  ...(Object.keys(PROPERTY_STATUS_LABELS) as PropertyStatus[]).map((s) => ({
+    value: s as string,
+    label: PROPERTY_STATUS_LABELS[s],
+  })),
+  { value: ARCHIVED_VALUE, label: 'Archived' },
+]
 const TYPE_OPTIONS = Object.entries(PROPERTY_TYPE_LABELS).map(([value, label]) => ({ value, label }))
 const BEDROOM_OPTIONS = [1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: `${n} BHK` }))
 const LISTING_OPTIONS = [
@@ -69,9 +77,20 @@ export function PropertyFilterBar({
         <Select
           aria-label="Status"
           placeholder="Any status"
-          value={filters.status ?? ''}
+          // Archived-only view wins the display; otherwise show the status filter.
+          value={filters.archived === 'only' ? ARCHIVED_VALUE : (filters.status ?? '')}
           options={STATUS_OPTIONS}
-          onChange={(e) => setFilter('status', e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value
+            if (v === ARCHIVED_VALUE) {
+              // Archived and a status filter are mutually exclusive in the UI.
+              setFilter('status', undefined)
+              setFilter('archived', 'only')
+            } else {
+              setFilter('archived', undefined)
+              setFilter('status', v || undefined)
+            }
+          }}
         />
       </div>
       <div className="w-32">

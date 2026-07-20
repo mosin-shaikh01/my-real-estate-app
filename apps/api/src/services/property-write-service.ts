@@ -279,19 +279,26 @@ export async function assignPropertyAgent(
 export async function archiveProperty(actor: Actor, id: string, archived: boolean, req: Request) {
   const before = await prisma.property.findFirst({
     where: { ...scopeForProperty(actor), id },
-    select: { id: true, code: true, archivedAt: true },
+    select: { id: true, code: true, title: true, propertyNumber: true, archivedAt: true },
   })
   if (!before) throw notFound('Property not found')
 
   // archivedAt is orthogonal to status and to deletedAt — three concepts, three
-  // columns. Archiving does not make a property "not sold".
+  // columns. Archiving does not make a property "not sold". Restoring only
+  // clears the archive flags; status, assignments, media and history are
+  // untouched, so a restored property returns exactly as it was.
   if (archived && before.archivedAt) throw conflict('Already archived')
   if (!archived && !before.archivedAt) throw conflict('Not archived')
 
   return prisma.$transaction(async (tx) => {
     const property = await tx.property.update({
       where: { id },
-      data: { archivedAt: archived ? new Date() : null },
+      // archivedById is set with archivedAt and cleared together on restore, so
+      // the pair is always consistent (both set or both null).
+      data: {
+        archivedAt: archived ? new Date() : null,
+        archivedById: archived ? actor.userId : null,
+      },
       select: { id: true, code: true, archivedAt: true },
     })
 
@@ -300,7 +307,10 @@ export async function archiveProperty(actor: Actor, id: string, archived: boolea
       action: archived ? 'property.archived' : 'property.unarchived',
       entityType: 'property',
       entityId: id,
-      summary: `${archived ? 'Archived' : 'Restored'} ${property.code}`,
+      summary: `${archived ? 'Archived' : 'Restored'} ${before.code} — ${before.title}`,
+      // Name + number denormalised into the log so the entry stays legible even
+      // after the property is later deleted (the log has no FK to it).
+      metadata: { code: before.code, title: before.title, propertyNumber: before.propertyNumber },
       req,
     })
 
@@ -311,13 +321,15 @@ export async function archiveProperty(actor: Actor, id: string, archived: boolea
 export async function deleteProperty(actor: Actor, id: string, req: Request) {
   const before = await prisma.property.findFirst({
     where: { ...scopeForProperty(actor), id },
-    select: { id: true, code: true },
+    select: { id: true, code: true, title: true, propertyNumber: true },
   })
   if (!before) throw notFound('Property not found')
 
   return prisma.$transaction(async (tx) => {
     // SOFT delete. The activity log references this row by id with no FK, and
-    // a hard delete would strand every historical entry about it.
+    // a hard delete would strand every historical entry about it. deletedAt is
+    // filtered by scopeForProperty, so the row vanishes from every read (list,
+    // detail, dashboard) while the data — and its history — is preserved.
     await tx.property.update({ where: { id }, data: { deletedAt: new Date() } })
 
     await logActivityTx(tx, {
@@ -325,7 +337,8 @@ export async function deleteProperty(actor: Actor, id: string, req: Request) {
       action: 'property.deleted',
       entityType: 'property',
       entityId: id,
-      summary: `Deleted ${before.code}`,
+      summary: `Deleted ${before.code} — ${before.title}`,
+      metadata: { code: before.code, title: before.title, propertyNumber: before.propertyNumber },
       req,
     })
   })

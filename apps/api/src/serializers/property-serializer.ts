@@ -60,6 +60,7 @@ export interface PropertyRow {
   createdAt: Date
   updatedAt: Date
   archivedAt: Date | null
+  archivedBy?: { id: string; fullName: string } | null
   assignedAgent?: { id: string; fullName: string } | null
   owner?: { id: string; code: string; fullName: string; mobile: string } | null
   amenities?: Array<{ amenity: { id: string; name: string; slug: string; category: string | null } }>
@@ -124,6 +125,7 @@ export interface PropertyDTO {
   areaUnit: string | null
   createdAt: string
   archivedAt: string | null
+  archivedBy: { id: string; fullName: string } | null
   assignedAgent: { id: string; fullName: string } | null
   amenities: Array<{ id: string; name: string; slug: string; category: string | null }>
   coverMediaId: string | null
@@ -202,6 +204,7 @@ export function toPropertyDTO(row: PropertyRow, actor: Actor): PropertyDTO {
     areaUnit: row.areaUnit,
     createdAt: row.createdAt.toISOString(),
     archivedAt: row.archivedAt?.toISOString() ?? null,
+    archivedBy: row.archivedBy ?? null,
     assignedAgent: row.assignedAgent ?? null,
     amenities: row.amenities?.map((a) => a.amenity) ?? [],
     coverMediaId: row.media?.find((m) => m.isCover)?.id ?? row.media?.[0]?.id ?? null,

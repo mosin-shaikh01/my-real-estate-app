@@ -42,7 +42,23 @@ export function useSetPropertyStatus(id: string) {
 export function useArchiveProperty(id: string) {
   const invalidate = useInvalidateProperties()
   return useMutation({
+    // archived=true archives, archived=false restores — one endpoint, mirrored
+    // by the server's archiveProperty(archived) signature.
     mutationFn: (archived: boolean) => api.post(`/properties/${id}/archive`, { archived }),
+    onSuccess: invalidate,
+  })
+}
+
+/**
+ * Permanent-delete (admin, property.delete). SOFT at the database level — the
+ * server sets deletedAt, which scopeForProperty filters from every read, so the
+ * row vanishes from all listings while its data and activity history are
+ * preserved. Not reversible from the UI.
+ */
+export function useDeleteProperty(id: string) {
+  const invalidate = useInvalidateProperties()
+  return useMutation({
+    mutationFn: () => api.delete(`/properties/${id}`),
     onSuccess: invalidate,
   })
 }

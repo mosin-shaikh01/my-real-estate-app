@@ -12,6 +12,9 @@ export const PROPERTY_FILTER_KEYS = [
   'city',
   'sort',
   'page',
+  // Archive view: 'only' shows archived-only. Kept in the URL like every other
+  // filter, so an archived view is a shareable link.
+  'archived',
 ] as const
 
 export type PropertyFilterKey = (typeof PROPERTY_FILTER_KEYS)[number]

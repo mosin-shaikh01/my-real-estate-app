@@ -50,8 +50,13 @@ export const propertyListQuerySchema = z.object({
   furnished: furnishedStatusSchema.optional(),
   constructionStatus: constructionStatusSchema.optional(),
   featured: z.enum(['true', 'false']).optional(),
-  /** Excludes archived unless explicitly asked for. */
+  /** Legacy toggle: 'true' shows active + archived together. Kept for back-compat. */
   includeArchived: z.enum(['true', 'false']).optional(),
+  /**
+   * Archive view selector (supersedes includeArchived when set):
+   *   unset  -> active only (default)   'only' -> archived only   'all' -> both
+   */
+  archived: z.enum(['only', 'all']).optional(),
 
   minPrice: moneyString.optional(),
   maxPrice: moneyString.optional(),

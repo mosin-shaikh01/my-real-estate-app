@@ -4,6 +4,7 @@ import { api } from '@/lib/api'
 export interface DashboardSummary {
   activeProperties: number
   totalProperties: number
+  archivedProperties: number
   reservedProperties: number
   soldProperties: number
   rentedProperties: number
