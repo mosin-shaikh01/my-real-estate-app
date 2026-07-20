@@ -17,6 +17,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { FormField, Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Table, TableEmpty, TableWrapper, TD, TH, THead, TR } from '@/components/ui/Table'
+import { useToast } from '@/components/ui/use-toast'
 import { cn } from '@/lib/cn'
 import { ApiClientError } from '@/lib/api'
 import { usePermissions } from '@/features/auth/api/use-auth'
@@ -161,6 +162,7 @@ function VisitRow({ visit, canManage }: { visit: SiteVisitDTO; canManage: boolea
 
 function ScheduleDialog({ onClose }: { onClose: () => void }) {
   const create = useCreateSiteVisit()
+  const { toast } = useToast()
   const { has } = usePermissions()
   const canPickAgent = has('property.assignAgent') || has('client.assignAgent') || has('client.assignProperty')
   const { data: props } = useProperties({})
@@ -181,6 +183,7 @@ function ScheduleDialog({ onClose }: { onClose: () => void }) {
         scheduledAt: new Date(values.scheduledAt).toISOString(),
         remarks: values.remarks || null,
       })
+      toast({ variant: 'success', title: 'Site visit scheduled' })
       onClose()
     } catch (err) {
       if (err instanceof ApiClientError && err.details) {
@@ -190,6 +193,7 @@ function ScheduleDialog({ onClose }: { onClose: () => void }) {
         return
       }
       form.setError('root', { message: err instanceof Error ? err.message : 'Could not schedule the visit' })
+      toast({ variant: 'error', title: 'Could not schedule the visit', description: err instanceof Error ? err.message : undefined })
     }
   })
 

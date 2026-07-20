@@ -4,13 +4,15 @@ import { createContext, useContext } from 'react'
 // that file can export only components (react-refresh/only-export-components).
 // A module that exports just a hook and types is fine.
 
-export type ToastVariant = 'success' | 'error' | 'info'
+export type ToastVariant = 'success' | 'error' | 'warning' | 'info'
 
 export interface Toast {
   id: number
   title: string
   description?: string
   variant: ToastVariant
+  /** Per-toast override; falls back to the variant default in the component. */
+  duration?: number
 }
 
 export interface ToastOptions {

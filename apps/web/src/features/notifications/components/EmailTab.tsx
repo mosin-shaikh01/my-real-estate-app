@@ -14,6 +14,7 @@ import { Card } from '@/components/ui/Card'
 import { FormField, Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Switch } from '@/components/ui/Switch'
+import { useToast } from '@/components/ui/use-toast'
 import { ApiClientError } from '@/lib/api'
 import { cn } from '@/lib/cn'
 import {
@@ -31,6 +32,7 @@ const ENCRYPTION_OPTIONS = [
 const PROVIDER_OPTIONS = EMAIL_PROVIDER_PRESETS.map((p) => ({ value: p.id, label: p.label }))
 
 export function EmailTab() {
+  const { toast } = useToast()
   const { data: config, isLoading } = useEmailConfig()
   const update = useUpdateEmailConfig()
   const [saved, setSaved] = useState(false)
@@ -94,13 +96,16 @@ export function EmailTab() {
       await update.mutateAsync(values)
       setSaved(true)
       setValue('password', '') // clear the just-saved secret from the field
+      toast({ variant: 'success', title: 'SMTP configuration saved' })
     } catch (err) {
       if (err instanceof ApiClientError && err.details) {
         for (const [path, messages] of Object.entries(err.details)) {
           form.setError(path as keyof EmailProviderConfigInput, { message: messages[0] })
         }
+        toast({ variant: 'error', title: 'Check the highlighted fields' })
       } else if (err instanceof ApiClientError) {
         form.setError('root', { message: err.message })
+        toast({ variant: 'error', title: 'Could not save configuration', description: err.message })
       }
     }
   })
@@ -249,6 +254,7 @@ export function EmailTab() {
 
 function TestEmailCard() {
   const send = useSendTestEmail()
+  const { toast } = useToast()
   const form = useForm<{ to: string }>({
     resolver: zodResolver(testEmailSchema),
     defaultValues: { to: '' },
@@ -256,7 +262,9 @@ function TestEmailCard() {
 
   const onSubmit = form.handleSubmit(async ({ to }) => {
     send.reset()
-    await send.mutateAsync(to).catch(() => {})
+    const res = await send.mutateAsync(to).catch(() => null)
+    if (res?.status === 'sent') toast({ variant: 'success', title: 'Test email sent', description: `Delivered to ${to}` })
+    else toast({ variant: 'error', title: 'Test email failed', description: res?.error ?? 'Check the SMTP configuration.' })
   })
 
   const result = send.data

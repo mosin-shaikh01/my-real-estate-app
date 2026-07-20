@@ -5,6 +5,7 @@ import { ownerCreateSchema, type OwnerCreateInput, type OwnerDTO } from '@app/sh
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { FormField, Input } from '@/components/ui/Input'
+import { useToast } from '@/components/ui/use-toast'
 import { ApiClientError } from '@/lib/api'
 import { useCreateOwner, useOwnerDuplicate, useUpdateOwner } from '@/features/owners/api/use-owners'
 
@@ -14,6 +15,7 @@ export function OwnerFormDialog({ owner, onClose }: { owner?: OwnerDTO; onClose:
   const isEdit = Boolean(owner)
   const create = useCreateOwner()
   const update = useUpdateOwner(owner?.id ?? '')
+  const { toast } = useToast()
 
   const form = useForm<OwnerCreateInput>({
     resolver: zodResolver(ownerCreateSchema),
@@ -37,6 +39,7 @@ export function OwnerFormDialog({ owner, onClose }: { owner?: OwnerDTO; onClose:
     try {
       if (isEdit) await update.mutateAsync(values)
       else await create.mutateAsync(values)
+      toast({ variant: 'success', title: isEdit ? 'Owner updated' : 'Owner created' })
       onClose()
     } catch (err) {
       if (err instanceof ApiClientError && err.details) {

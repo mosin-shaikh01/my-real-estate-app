@@ -3,6 +3,7 @@ import { ChevronDown, LogOut, UserCircle2, UserCog } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
+import { useToast } from '@/components/ui/use-toast'
 import { useLogout, useMe } from '@/features/auth/api/use-auth'
 import { GlobalSearch } from '@/features/search/components/GlobalSearch'
 import { cn } from '@/lib/cn'
@@ -16,9 +17,11 @@ export function Topbar({
   const { data: me } = useMe()
   const logout = useLogout()
   const navigate = useNavigate()
+  const { toast } = useToast()
 
   const onSignOut = async () => {
     await logout.mutateAsync()
+    toast({ variant: 'success', title: 'Signed out' })
     void navigate('/login', { replace: true })
   }
 

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { FormField, Input } from '@/components/ui/Input'
 import { AuthLayout } from '@/features/auth/components/AuthLayout'
 import { useLogin, useMe } from '@/features/auth/api/use-auth'
+import { useToast } from '@/components/ui/use-toast'
 import { useSettings } from '@/features/settings/api/use-settings'
 import { ApiClientError } from '@/lib/api'
 
@@ -16,6 +17,7 @@ export default function LoginPage() {
   const { data: me, isLoading } = useMe()
   const { data: settings } = useSettings()
   const login = useLogin()
+  const { toast } = useToast()
 
   const form = useForm<LoginInput>({
     // The SAME schema the server parses. Shape/format only — the server adds
@@ -32,6 +34,7 @@ export default function LoginPage() {
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       await login.mutateAsync(values)
+      toast({ variant: 'success', title: 'Signed in' })
       void navigate(from, { replace: true })
     } catch (err) {
       if (err instanceof ApiClientError) {

@@ -21,6 +21,7 @@ import { Card } from '@/components/ui/Card'
 import { FormField, Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { InfoHint } from '@/components/ui/Tooltip'
+import { useToast } from '@/components/ui/use-toast'
 import { useAssignableAgents } from '@/features/agents/api/use-assignable-agents'
 import { usePermissions } from '@/features/auth/api/use-auth'
 import { useOwnerOptions } from '@/features/owners/api/use-owners'
@@ -160,6 +161,7 @@ interface Props {
 
 export function PropertyForm({ mode, property }: Props) {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const { has } = usePermissions()
   const canAssignAgent = has('property.assignAgent')
   const canSeeNotes = has('property.internalNotes.view')
@@ -218,6 +220,7 @@ export function PropertyForm({ mode, property }: Props) {
     try {
       if (mode === 'edit' && property) {
         await update.mutateAsync(payload)
+        toast({ variant: 'success', title: 'Property updated' })
         void navigate(`/properties/${property.id}`)
         return
       }
@@ -228,10 +231,16 @@ export function PropertyForm({ mode, property }: Props) {
         for (const [path, messages] of Object.entries(err.details)) {
           form.setError(path as keyof PropertyCreateInput, { message: messages[0] })
         }
+        toast({ variant: 'error', title: 'Check the highlighted fields' })
         return
       }
       form.setError('root', {
         message: err instanceof Error ? err.message : 'Could not save the property',
+      })
+      toast({
+        variant: 'error',
+        title: 'Could not save the property',
+        description: err instanceof Error ? err.message : undefined,
       })
       return
     }
@@ -253,6 +262,7 @@ export function PropertyForm({ mode, property }: Props) {
         // Swallow — the property is saved. The detail page shows what uploaded.
       }
     }
+    toast({ variant: 'success', title: 'Property created' })
     void navigate(`/properties/${propertyId}`)
   })
 

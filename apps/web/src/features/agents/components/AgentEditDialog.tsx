@@ -5,11 +5,13 @@ import { agentUpdateSchema, type AgentUpdateInput } from '@app/shared'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { FormField, Input } from '@/components/ui/Input'
+import { useToast } from '@/components/ui/use-toast'
 import { useUpdateAgent, type AgentDTO } from '@/features/agents/api/use-agents'
 import { ApiClientError } from '@/lib/api'
 
 export function AgentEditDialog({ agent, onClose }: { agent: AgentDTO; onClose: () => void }) {
   const update = useUpdateAgent(agent.id)
+  const { toast } = useToast()
   const form = useForm<AgentUpdateInput>({
     resolver: zodResolver(agentUpdateSchema),
     // Pre-fill from the current values; nulls become empty strings for inputs.
@@ -27,6 +29,7 @@ export function AgentEditDialog({ agent, onClose }: { agent: AgentDTO; onClose: 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       await update.mutateAsync(values)
+      toast({ variant: 'success', title: 'Agent updated' })
       onClose()
     } catch (err) {
       if (err instanceof ApiClientError) {

@@ -5,11 +5,13 @@ import { agentCreateSchema, type AgentCreateInput } from '@app/shared'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { FormField, Input } from '@/components/ui/Input'
+import { useToast } from '@/components/ui/use-toast'
 import { useCreateAgent } from '@/features/agents/api/use-agents'
 import { ApiClientError } from '@/lib/api'
 
 export function AgentCreateDialog({ onClose }: { onClose: () => void }) {
   const create = useCreateAgent()
+  const { toast } = useToast()
   const form = useForm<AgentCreateInput>({
     resolver: zodResolver(agentCreateSchema),
     defaultValues: { fullName: '', email: '', temporaryPassword: '' },
@@ -18,6 +20,7 @@ export function AgentCreateDialog({ onClose }: { onClose: () => void }) {
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       await create.mutateAsync(values)
+      toast({ variant: 'success', title: 'Agent created' })
       onClose()
     } catch (err) {
       if (err instanceof ApiClientError) {

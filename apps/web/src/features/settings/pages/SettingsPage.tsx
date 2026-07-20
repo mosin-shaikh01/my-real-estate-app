@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Check, Loader2, TriangleAlert } from 'lucide-react'
+import { Loader2, TriangleAlert } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useState } from 'react'
 import { useForm, type UseFormReturn } from 'react-hook-form'
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { FormField, Input } from '@/components/ui/Input'
 import { Switch } from '@/components/ui/Switch'
+import { useToast } from '@/components/ui/use-toast'
 import { useSettings, useUpdateSettings } from '@/features/settings/api/use-settings'
 import { AssetUpload } from '@/features/settings/components/AssetUpload'
 import { ApiClientError } from '@/lib/api'
@@ -156,8 +157,8 @@ export default function SettingsPage() {
 function SettingsForm({ settings }: { settings: SettingsDTO }) {
   const reduce = useReducedMotion()
   const update = useUpdateSettings()
+  const { toast } = useToast()
   const [tab, setTab] = useState('branding')
-  const [toast, setToast] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null)
 
   const form = useForm<SettingsUpdateInput>({
     resolver: zodResolver(settingsUpdateSchema),
@@ -167,10 +168,9 @@ function SettingsForm({ settings }: { settings: SettingsDTO }) {
 
   const onSubmit = form.handleSubmit(
     async (values) => {
-      setToast(null)
       try {
         await update.mutateAsync(values)
-        setToast({ kind: 'ok', msg: 'Settings saved' })
+        toast({ variant: 'success', title: 'Settings saved' })
       } catch (err) {
         if (err instanceof ApiClientError && err.details) {
           for (const [path, messages] of Object.entries(err.details)) {
@@ -178,17 +178,17 @@ function SettingsForm({ settings }: { settings: SettingsDTO }) {
           }
           const first = Object.keys(err.details)[0]
           if (first && FIELD_TAB.has(first)) setTab(FIELD_TAB.get(first)!)
-          setToast({ kind: 'err', msg: 'Check the highlighted fields' })
+          toast({ variant: 'error', title: 'Check the highlighted fields' })
           return
         }
-        setToast({ kind: 'err', msg: err instanceof Error ? err.message : 'Could not save' })
+        toast({ variant: 'error', title: 'Could not save settings', description: err instanceof Error ? err.message : undefined })
       }
     },
     (invalid) => {
       // Client-side validation failed — jump to the first errored field's tab.
       const first = Object.keys(invalid)[0]
       if (first && FIELD_TAB.has(first)) setTab(FIELD_TAB.get(first)!)
-      setToast({ kind: 'err', msg: 'Check the highlighted fields' })
+      toast({ variant: 'error', title: 'Check the highlighted fields' })
     },
   )
 
@@ -286,35 +286,6 @@ function SettingsForm({ settings }: { settings: SettingsDTO }) {
           </Button>
         </div>
       </form>
-
-      {/* Toast */}
-      <AnimatePresence>
-        {toast ? (
-          <motion.div
-            role="status"
-            initial={reduce ? false : { opacity: 0, y: 12 }}
-            animate={reduce ? undefined : { opacity: 1, y: 0 }}
-            exit={reduce ? undefined : { opacity: 0, y: 12 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            onAnimationComplete={() => {
-              if (toast.kind === 'ok') window.setTimeout(() => setToast(null), 2200)
-            }}
-            className={cn(
-              'fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-lg border px-4 py-2.5 text-sm shadow-e3',
-              toast.kind === 'ok'
-                ? 'border-border-subtle bg-surface-raised text-text-primary'
-                : 'border-border-danger-soft bg-surface-danger-soft text-text-danger',
-            )}
-          >
-            {toast.kind === 'ok' ? (
-              <Check className="size-4 text-text-success" aria-hidden="true" />
-            ) : (
-              <TriangleAlert className="size-4" aria-hidden="true" />
-            )}
-            {toast.msg}
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
     </>
   )
 }
