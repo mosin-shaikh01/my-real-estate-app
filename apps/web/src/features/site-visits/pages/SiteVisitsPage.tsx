@@ -356,9 +356,13 @@ function EditVisitDialog({ visit, onClose }: { visit: SiteVisitDTO; onClose: () 
     },
   })
 
+  // Read isDirty DURING RENDER so RHF's formState Proxy subscribes to it —
+  // reading it only inside the handler returns a stale `false`.
+  const { isDirty } = form.formState
+
   const onSubmit = form.handleSubmit(async (values) => {
     // Nothing touched → don't call the API (which would no-op anyway).
-    if (!form.formState.isDirty) {
+    if (!isDirty) {
       toast({ variant: 'info', title: 'No changes detected' })
       onClose()
       return

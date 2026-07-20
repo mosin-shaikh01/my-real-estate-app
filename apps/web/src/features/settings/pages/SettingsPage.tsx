@@ -164,12 +164,15 @@ function SettingsForm({ settings }: { settings: SettingsDTO }) {
     resolver: zodResolver(settingsUpdateSchema),
     defaultValues: toDefaults(settings),
   })
-  const { errors } = form.formState
+  // Read isDirty DURING RENDER so RHF's formState Proxy subscribes to it —
+  // reading it only inside the submit handler returns a stale `false`, which
+  // would make every save look like "no changes".
+  const { errors, isDirty } = form.formState
 
   const onSubmit = form.handleSubmit(
     async (values) => {
       // Nothing touched → don't call the API (which would no-op anyway).
-      if (!form.formState.isDirty) {
+      if (!isDirty) {
         toast({ variant: 'info', title: 'No changes detected' })
         return
       }

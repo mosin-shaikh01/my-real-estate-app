@@ -35,9 +35,13 @@ export function OwnerFormDialog({ owner, onClose }: { owner?: OwnerDTO; onClose:
   const mobile = useWatch({ control: form.control, name: 'mobile' }) ?? ''
   const { data: duplicate } = useOwnerDuplicate(mobile, owner?.id)
 
+  // Read isDirty DURING RENDER so RHF's formState Proxy subscribes to it —
+  // reading it only inside the handler returns a stale `false`.
+  const { isDirty } = form.formState
+
   const onSubmit = form.handleSubmit(async (values) => {
     // Nothing touched → don't call the API (which would no-op anyway).
-    if (isEdit && !form.formState.isDirty) {
+    if (isEdit && !isDirty) {
       toast({ variant: 'info', title: 'No changes detected' })
       onClose()
       return
