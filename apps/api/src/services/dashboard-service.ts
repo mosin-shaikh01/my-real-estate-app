@@ -71,7 +71,12 @@ export async function getDashboard(actor: Actor): Promise<DashboardSummary> {
     // Archived (and not deleted — scope already excludes deletedAt). Lets an
     // admin see at a glance how much inventory has been pulled from listings.
     prisma.property.count({ where: { ...propertyScope, archivedAt: { not: null } } }),
-    prisma.property.count({ where: { ...propertyScope, status: 'RESERVED' } }),
+    // "Reserved" is the held-off-the-market bucket: RESERVED or ON_HOLD, and
+    // only among active (non-archived) listings — same basis as the Active tile,
+    // so putting a property on hold moves it here immediately.
+    prisma.property.count({
+      where: { ...propertyScope, status: { in: ['RESERVED', 'ON_HOLD'] }, archivedAt: null },
+    }),
     prisma.property.count({ where: { ...propertyScope, status: 'SOLD' } }),
     prisma.property.count({ where: { ...propertyScope, status: 'RENTED' } }),
     prisma.client.count({ where: clientScope }),

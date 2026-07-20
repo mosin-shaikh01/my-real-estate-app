@@ -4,6 +4,14 @@ import { api, qs } from '@/lib/api'
 
 const KEY = ['site-visits'] as const
 
+// A visit's schedule/status feeds the dashboard's Today's/Upcoming-visits tiles,
+// so every visit mutation must refresh both — otherwise those tiles show a stale
+// count until the query happens to refetch.
+function invalidate(qc: ReturnType<typeof useQueryClient>) {
+  void qc.invalidateQueries({ queryKey: KEY })
+  void qc.invalidateQueries({ queryKey: ['dashboard'] })
+}
+
 export function useSiteVisits(filters: { status?: string; page?: number }) {
   return useQuery({
     queryKey: [...KEY, filters],
@@ -20,7 +28,7 @@ export function useCreateSiteVisit() {
   return useMutation({
     mutationFn: (input: SiteVisitCreateInput) =>
       api.post<{ data: SiteVisitDTO }>('/site-visits', input).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => invalidate(qc),
   })
 }
 
@@ -29,7 +37,7 @@ export function useUpdateSiteVisit(id: string) {
   return useMutation({
     mutationFn: (input: SiteVisitUpdateInput) =>
       api.patch<{ data: SiteVisitDTO }>(`/site-visits/${id}`, input).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => invalidate(qc),
   })
 }
 
@@ -37,6 +45,6 @@ export function useDeleteSiteVisit() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.delete<void>(`/site-visits/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => invalidate(qc),
   })
 }

@@ -117,7 +117,7 @@ export default function DashboardPage() {
           <Tile
             label="Reserved"
             value={data?.reservedProperties}
-            hint="Properties on hold"
+            hint="Reserved or on hold"
             icon={Bookmark}
             loading={isLoading}
           />
