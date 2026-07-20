@@ -42,6 +42,76 @@ const SENSITIVE_FIELDS = new Set([
   'passwordHash',
 ])
 
+// ============================================================================
+// Human-readable field names for activity summaries
+// ============================================================================
+// The diff tracks raw column keys (rentPricePerMonth, areaSqft…). An activity
+// feed is read by people, so a summary must say "rent, area", not the code
+// identifier. Anything not overridden here falls back to a camelCase→words
+// split, which reads fine for the plain names (city, address, bedrooms…).
+// ============================================================================
+const FIELD_LABELS: Record<string, string> = {
+  assignedAgentId: 'assigned agent',
+  internalNotes: 'internal notes',
+  // property
+  salePrice: 'sale price',
+  rentPricePerMonth: 'rent',
+  securityDeposit: 'security deposit',
+  maintenanceCharges: 'maintenance',
+  pricePerSqft: 'price per sq ft',
+  governmentValue: 'government value',
+  areaSqft: 'area',
+  plotArea: 'plot area',
+  builtUpArea: 'built-up area',
+  carpetArea: 'carpet area',
+  areaUnit: 'area unit',
+  propertyType: 'type',
+  listingType: 'listing',
+  constructionStatus: 'construction status',
+  builtYear: 'built year',
+  totalFloor: 'total floors',
+  googleMapUrl: 'map link',
+  ownerId: 'owner',
+  sellerType: 'seller type',
+  surveyNumber: 'survey number',
+  propertyNumber: 'property number',
+  videoUrls: 'video links',
+  // client
+  fullName: 'name',
+  buyerType: 'buyer type',
+  importantLead: 'important lead',
+  budgetMin: 'budget',
+  budgetMax: 'budget',
+}
+
+// Derived / duplicate columns that mirror a real field — never surface them in a
+// human summary (the real field is already listed).
+const HIDDEN_SUMMARY_FIELDS = new Set(['phoneNormalized', 'mobileNormalized'])
+
+function humanizeField(key: string): string {
+  return (
+    FIELD_LABELS[key] ??
+    key
+      .replace(/_/g, ' ')
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .toLowerCase()
+  )
+}
+
+/** Turn a list of changed column keys into a human, de-duplicated field list. */
+export function humanizeFields(keys: string[]): string {
+  const labels: string[] = []
+  const seen = new Set<string>()
+  for (const key of keys) {
+    if (HIDDEN_SUMMARY_FIELDS.has(key)) continue
+    const label = humanizeField(key)
+    if (seen.has(label)) continue // phone + phoneNormalized, budgetMin + budgetMax…
+    seen.add(label)
+    labels.push(label)
+  }
+  return labels.join(', ')
+}
+
 export interface LogParams {
   actorUserId: string | null
   action: string

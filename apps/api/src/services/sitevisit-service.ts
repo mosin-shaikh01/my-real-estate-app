@@ -1,5 +1,10 @@
 import type { Request } from 'express'
-import type { SiteVisitCreateInput, SiteVisitListQuery, SiteVisitUpdateInput } from '@app/shared'
+import {
+  SITE_VISIT_STATUS_LABELS,
+  type SiteVisitCreateInput,
+  type SiteVisitListQuery,
+  type SiteVisitUpdateInput,
+} from '@app/shared'
 import type { Prisma } from '../generated/prisma/client.js'
 import type { Actor } from '../auth/permissions.js'
 import { scopeForClient, scopeForProperty } from '../auth/scope.js'
@@ -133,7 +138,7 @@ export async function updateSiteVisit(actor: Actor, id: string, input: SiteVisit
       action: 'sitevisit.updated',
       entityType: 'site_visit',
       entityId: id,
-      summary: `Updated site visit${input.status ? ` → ${input.status}` : ''}`,
+      summary: `Updated site visit${input.status ? ` → ${SITE_VISIT_STATUS_LABELS[input.status] ?? input.status}` : ''}`,
       req,
     })
     return visit

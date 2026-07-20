@@ -10,7 +10,7 @@ import { scopeForClient, scopeForProperty } from '../auth/scope.js'
 import { conflict, notFound, validationFailed } from '../lib/errors.js'
 import { prisma } from '../lib/prisma.js'
 import type { Prisma } from '../generated/prisma/client.js'
-import { diffForLog, logActivityTx } from './activity-service.js'
+import { diffForLog, humanizeFields, logActivityTx } from './activity-service.js'
 import { assignPropertiesTx } from './assignment-service.js'
 
 /** Digits only, India country code stripped. Must match the seed's normaliser. */
@@ -148,7 +148,7 @@ export async function updateClient(actor: Actor, id: string, input: ClientUpdate
         action: 'client.updated',
         entityType: 'client',
         entityId: id,
-        summary: `Updated ${client.code}: ${changed.join(', ')}`,
+        summary: `Updated ${client.code}: ${humanizeFields(changed)}`,
         metadata: { changed, values },
         req,
       })

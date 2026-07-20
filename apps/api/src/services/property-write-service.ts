@@ -1,10 +1,10 @@
-import type { PropertyCreateInput, PropertyStatus, PropertyUpdateInput } from '@app/shared'
+import { PROPERTY_STATUS_LABELS, type PropertyCreateInput, type PropertyStatus, type PropertyUpdateInput } from '@app/shared'
 import type { Request } from 'express'
 import type { Actor } from '../auth/permissions.js'
 import { scopeForProperty } from '../auth/scope.js'
 import { conflict, notFound, validationFailed } from '../lib/errors.js'
 import { prisma } from '../lib/prisma.js'
-import { diffForLog, logActivityTx } from './activity-service.js'
+import { diffForLog, humanizeFields, logActivityTx } from './activity-service.js'
 
 // ============================================================================
 // The server's refinement layer
@@ -180,7 +180,7 @@ export async function updateProperty(
         action: 'property.updated',
         entityType: 'property',
         entityId: id,
-        summary: `Updated ${property.code}: ${[...changed, ...(amenityIds ? ['amenities'] : [])].join(', ')}`,
+        summary: `Updated ${property.code}: ${humanizeFields([...changed, ...(amenityIds ? ['amenities'] : [])])}`,
         metadata: { changed, values },
         req,
       })
@@ -215,7 +215,7 @@ export async function setPropertyStatus(
       action: 'property.status.updated',
       entityType: 'property',
       entityId: id,
-      summary: `${property.code}: ${before.status} → ${status}`,
+      summary: `${property.code}: ${PROPERTY_STATUS_LABELS[before.status as PropertyStatus] ?? before.status} → ${PROPERTY_STATUS_LABELS[status] ?? status}`,
       metadata: { from: before.status, to: status },
       req,
     })
