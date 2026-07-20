@@ -135,13 +135,6 @@ export const PERMISSIONS = [
     field: 'internalNotes',
     description: 'View internal notes on a client',
   },
-  // "Edit Follow-up"
-  {
-    key: 'client.followUp.edit',
-    resource: 'client',
-    action: 'followUp.edit',
-    description: 'Update follow-up status and next follow-up date',
-  },
   {
     key: 'client.interaction.create',
     resource: 'client',
@@ -289,7 +282,6 @@ export const AGENT_PERMISSIONS: readonly PermissionKey[] = [
   'client.view',
   'client.phone.view',
   'client.email.view',
-  'client.followUp.edit',
   'client.interaction.create',
   'sitevisit.list',
   'sitevisit.create',

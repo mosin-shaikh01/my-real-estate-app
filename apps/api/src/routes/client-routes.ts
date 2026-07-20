@@ -71,9 +71,10 @@ clientRouter.patch('/:id', requirePermission('client.update'), async (req, res) 
   res.json({ data: await updateClient(req.actor!, id, input, req) })
 })
 
-// followUp.edit gates BOTH logging an interaction and moving the follow-up
-// state — an agent's core loop. Deliberately not client.update: an agent may
-// work their pipeline without being able to rename the client or reassign them.
+// client.interaction.create gates BOTH logging an interaction and moving the
+// follow-up state (the schema carries followUpStatus/nextFollowUp) — an agent's
+// core loop. Deliberately not client.update: an agent may work their pipeline
+// without being able to rename the client or reassign them.
 clientRouter.post('/:id/interactions', requirePermission('client.interaction.create'), async (req, res) => {
   const { id } = idParamSchema.parse(req.params)
   const input = interactionCreateSchema.parse(req.body)

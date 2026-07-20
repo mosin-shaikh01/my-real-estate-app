@@ -1,17 +1,16 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import type { MeResponse } from '@app/shared'
 import { PERMISSION_KEYS } from '@app/shared'
-import { ThemeProvider } from '@/app/theme-provider'
 import { AppShell } from '@/components/layout/AppShell'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import DashboardPage from '@/features/dashboard/pages/DashboardPage'
 import { formatMoney, formatMoneyShort } from '@/lib/format'
+import { renderWithProviders, withProviders } from './test-utils'
 
 // A smoke test, not a suite. It answers the one question a passing build
 // cannot: does the app actually mount, or does it white-screen?
@@ -64,23 +63,14 @@ beforeEach(() => {
   )
 })
 
-function withProviders(ui: ReactNode) {
-  const qc = new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: 0 } },
-  })
-  return (
-    <QueryClientProvider client={qc}>
-      <ThemeProvider>{ui}</ThemeProvider>
-    </QueryClientProvider>
-  )
-}
-
 function renderShell(path = '/') {
   const router = createMemoryRouter(
     [{ element: <AppShell />, children: [{ index: true, element: <DashboardPage /> }] }],
     { initialEntries: [path] },
   )
-  return render(withProviders(<RouterProvider router={router} />))
+  // Through the shared harness, so the shell's Topbar (which reaches useToast)
+  // has a ToastProvider — the regression this test now guards against.
+  return renderWithProviders(<RouterProvider router={router} />)
 }
 
 describe('app shell', () => {
@@ -129,11 +119,7 @@ describe('app shell', () => {
     const router = createMemoryRouter([{ path: '/', element: <Sidebar /> }], {
       initialEntries: ['/'],
     })
-    render(
-      <QueryClientProvider client={qc}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>,
-    )
+    render(withProviders(<RouterProvider router={router} />, qc))
     const nav = screen.getByRole('navigation', { name: 'Main' })
     for (const shown of ['Dashboard', 'Properties', 'Clients', 'Requirements', 'Agents', 'Activity log', 'Roles & access']) {
       expect(within(nav).getByRole('link', { name: new RegExp(shown) }), shown).toBeDefined()
