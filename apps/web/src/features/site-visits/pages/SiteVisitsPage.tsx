@@ -1,4 +1,4 @@
-import { CalendarClock, Loader2, Plus, Trash2 } from 'lucide-react'
+import { CalendarClock, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -6,9 +6,11 @@ import {
   SITE_VISIT_STATUS_LABELS,
   siteVisitCreateSchema,
   siteVisitStatusSchema,
+  siteVisitUpdateSchema,
   type SiteVisitCreateInput,
   type SiteVisitDTO,
   type SiteVisitStatus,
+  type SiteVisitUpdateInput,
 } from '@app/shared'
 import { Can } from '@/components/auth/Can'
 import { PageHeader } from '@/components/layout/AppShell'
@@ -42,6 +44,13 @@ const STATUS_OPTIONS = siteVisitStatusSchema.options.map((s) => ({ value: s, lab
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+/** ISO → the local 'YYYY-MM-DDTHH:mm' a datetime-local input expects. */
+function toDatetimeLocal(iso: string) {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 export default function SiteVisitsPage() {
@@ -119,6 +128,18 @@ function VisitRow({ visit, canManage }: { visit: SiteVisitDTO; canManage: boolea
   const del = useDeleteSiteVisit()
   const { toast } = useToast()
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
+
+  // The inline status change is a real modify — give it feedback (it was
+  // fire-and-forget before, so a failure looked like nothing happened).
+  const onStatusChange = async (status: SiteVisitStatus) => {
+    try {
+      await update.mutateAsync({ status })
+      toast({ variant: 'success', title: 'Status updated' })
+    } catch (err) {
+      toast({ variant: 'error', title: 'Could not update status', description: err instanceof Error ? err.message : undefined })
+    }
+  }
 
   const onConfirmDelete = async () => {
     try {
@@ -147,7 +168,8 @@ function VisitRow({ visit, canManage }: { visit: SiteVisitDTO; canManage: boolea
           <Select
             options={STATUS_OPTIONS}
             value={visit.status}
-            onChange={(e) => update.mutate({ status: e.target.value as SiteVisitStatus })}
+            onChange={(e) => void onStatusChange(e.target.value as SiteVisitStatus)}
+            disabled={update.isPending}
             aria-label="Update status"
           />
         ) : (
@@ -157,30 +179,45 @@ function VisitRow({ visit, canManage }: { visit: SiteVisitDTO; canManage: boolea
         )}
       </TD>
       <TD>
-        <Can permission="sitevisit.delete">
-          <button
-            type="button"
-            onClick={() => setConfirmOpen(true)}
-            className="rounded-md p-1 text-text-secondary hover:bg-surface-danger-soft/40 hover:text-text-danger"
-            title="Delete"
-          >
-            <Trash2 className="size-4" aria-hidden="true" />
-          </button>
-          <ConfirmDialog
-            open={confirmOpen}
-            onClose={() => setConfirmOpen(false)}
-            onConfirm={() => void onConfirmDelete()}
-            title="Delete site visit"
-            confirmLabel="Delete"
-            pendingLabel="Deleting…"
-            confirmVariant="danger"
-            pending={del.isPending}
-          >
-            Delete this scheduled visit for{' '}
-            <span className="font-medium text-text-primary">{visit.property.title}</span>? This can&rsquo;t be
-            undone.
-          </ConfirmDialog>
-        </Can>
+        <div className="flex items-center justify-end gap-0.5">
+          <Can permission="sitevisit.update">
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              aria-label="Edit visit"
+              title="Edit"
+              className="rounded-md p-1 text-text-secondary hover:bg-surface-hover hover:text-text-brand"
+            >
+              <Pencil className="size-4" aria-hidden="true" />
+            </button>
+          </Can>
+          <Can permission="sitevisit.delete">
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(true)}
+              className="rounded-md p-1 text-text-secondary hover:bg-surface-danger-soft/40 hover:text-text-danger"
+              title="Delete"
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+            </button>
+          </Can>
+        </div>
+
+        <ConfirmDialog
+          open={confirmOpen}
+          onClose={() => setConfirmOpen(false)}
+          onConfirm={() => void onConfirmDelete()}
+          title="Delete site visit"
+          confirmLabel="Delete"
+          pendingLabel="Deleting…"
+          confirmVariant="danger"
+          pending={del.isPending}
+        >
+          Delete this scheduled visit for{' '}
+          <span className="font-medium text-text-primary">{visit.property.title}</span>? This can&rsquo;t be
+          undone.
+        </ConfirmDialog>
+        {editing ? <EditVisitDialog visit={visit} onClose={() => setEditing(false)} /> : null}
       </TD>
     </TR>
   )
@@ -287,6 +324,110 @@ function ScheduleDialog({ onClose }: { onClose: () => void }) {
         <div className="sm:col-span-2">
           <FormField label="Remarks" error={form.formState.errors.remarks?.message}>
             {(p) => <Input {...p} {...form.register('remarks')} placeholder="Optional" />}
+          </FormField>
+        </div>
+
+        {form.formState.errors.root ? (
+          <p role="alert" className="text-xs text-text-danger sm:col-span-2">{form.formState.errors.root.message}</p>
+        ) : null}
+      </form>
+    </Dialog>
+  )
+}
+
+// Modify an existing visit — reschedule, reassign the agent, change status, and
+// record remarks/feedback. Property and client are fixed for a visit, so they're
+// shown for context but not editable. Backed by PATCH /site-visits/:id.
+function EditVisitDialog({ visit, onClose }: { visit: SiteVisitDTO; onClose: () => void }) {
+  const update = useUpdateSiteVisit(visit.id)
+  const { toast } = useToast()
+  const { has } = usePermissions()
+  const canPickAgent = has('property.assignAgent') || has('client.assignAgent') || has('client.assignProperty')
+  const { data: agents } = useAssignableAgents(canPickAgent)
+
+  const form = useForm<SiteVisitUpdateInput>({
+    resolver: zodResolver(siteVisitUpdateSchema),
+    defaultValues: {
+      status: visit.status as SiteVisitStatus,
+      scheduledAt: toDatetimeLocal(visit.scheduledAt),
+      agentId: visit.agent?.id ?? '',
+      remarks: visit.remarks ?? '',
+      feedback: visit.feedback ?? '',
+    },
+  })
+
+  const onSubmit = form.handleSubmit(async (values) => {
+    try {
+      await update.mutateAsync({
+        status: values.status,
+        scheduledAt: values.scheduledAt ? new Date(values.scheduledAt).toISOString() : undefined,
+        agentId: values.agentId || null,
+        remarks: values.remarks || null,
+        feedback: values.feedback || null,
+      })
+      toast({ variant: 'success', title: 'Site visit updated' })
+      onClose()
+    } catch (err) {
+      if (err instanceof ApiClientError && err.details) {
+        for (const [path, messages] of Object.entries(err.details)) {
+          form.setError(path as keyof SiteVisitUpdateInput, { message: messages[0] })
+        }
+        return
+      }
+      form.setError('root', { message: err instanceof Error ? err.message : 'Could not update the visit' })
+      toast({ variant: 'error', title: 'Could not update the visit', description: err instanceof Error ? err.message : undefined })
+    }
+  })
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title="Edit site visit"
+      description={`${visit.property.code} · ${visit.client.fullName}`}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={form.formState.isSubmitting}>Cancel</Button>
+          <Button type="submit" form="visit-edit-form" variant="primary" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
+            Save changes
+          </Button>
+        </>
+      }
+    >
+      <form id="visit-edit-form" onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2" noValidate>
+        <div className="rounded-md border border-border-subtle bg-surface-sunken px-3 py-2 text-sm sm:col-span-2">
+          <span className="font-medium text-text-primary">{visit.property.title}</span>
+          <span className="text-text-muted"> — for {visit.client.fullName}</span>
+        </div>
+        <FormField label="Date & time" error={form.formState.errors.scheduledAt?.message} required>
+          {(p) => <Input {...p} type="datetime-local" {...form.register('scheduledAt')} />}
+        </FormField>
+        <FormField label="Status" error={form.formState.errors.status?.message}>
+          {() => <Select options={STATUS_OPTIONS} {...form.register('status')} value={form.watch('status')} />}
+        </FormField>
+        {canPickAgent ? (
+          <FormField label="Agent">
+            {() => (
+              <Select
+                options={[
+                  { value: '', label: 'Unassigned' },
+                  ...(agents ?? []).map((a) => ({ value: a.id, label: a.fullName })),
+                ]}
+                {...form.register('agentId')}
+                value={form.watch('agentId') ?? ''}
+              />
+            )}
+          </FormField>
+        ) : null}
+        <div className="sm:col-span-2">
+          <FormField label="Remarks" error={form.formState.errors.remarks?.message}>
+            {(p) => <Input {...p} {...form.register('remarks')} placeholder="Notes for the team" />}
+          </FormField>
+        </div>
+        <div className="sm:col-span-2">
+          <FormField label="Feedback" error={form.formState.errors.feedback?.message}>
+            {(p) => <Input {...p} {...form.register('feedback')} placeholder="What the client thought after the visit" />}
           </FormField>
         </div>
 
