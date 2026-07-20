@@ -1,19 +1,23 @@
-import { Check, Lock, Minus } from 'lucide-react'
-import { Fragment } from 'react'
+import { Check, Lock, Minus, Pencil, Plus } from 'lucide-react'
+import { Fragment, useState } from 'react'
+import { Can } from '@/components/auth/Can'
 import { PageHeader } from '@/components/layout/AppShell'
+import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { TableWrapper } from '@/components/ui/Table'
-import { usePermissionCatalog, useRoles } from '@/features/rbac/api/use-rbac'
+import { RoleEditorDialog } from '@/features/rbac/components/RoleEditorDialog'
+import { usePermissionCatalog, useRoles, type RoleWithPermissions } from '@/features/rbac/api/use-rbac'
 
-// Read-only matrix for v1. The catalog is CODE (packages/shared) and the
-// assignment is DATA (these rows) — that split is what the grid makes visible.
-// Editing (roles × ~43 permissions) is deliberately deferred: the schema and
-// resolver already support per-role and per-user grants, so making this
-// editable later is UI work, not a rewrite. See docs/RBAC.md.
+// The catalog is CODE (packages/shared) and the assignment is DATA (these rows)
+// — that split is what the grid makes visible. Custom roles are editable here;
+// SYSTEM roles show a lock and no editor, so an admin can't lock everyone out.
+// See docs/RBAC.md.
 
 export default function RolesPage() {
   const { data: roles, isLoading: rolesLoading } = useRoles()
   const { data: catalog, isLoading: catLoading } = usePermissionCatalog()
+  // 'new' opens the create dialog; a role object opens it in edit mode.
+  const [editing, setEditing] = useState<RoleWithPermissions | 'new' | null>(null)
 
   if (rolesLoading || catLoading || !roles || !catalog) {
     return (
@@ -29,7 +33,15 @@ export default function RolesPage() {
     <>
       <PageHeader
         title="Roles & access"
-        description="Who can do what. Read-only in this version — the catalog is code; the grants are data."
+        description="Who can do what. The catalog is code; the grants are data — add or edit custom roles without a deploy."
+        action={
+          <Can permission="rbac.role.create">
+            <Button variant="primary" onClick={() => setEditing('new')}>
+              <Plus aria-hidden="true" />
+              New role
+            </Button>
+          </Can>
+        }
       />
 
       <div className="p-6">
@@ -40,9 +52,22 @@ export default function RolesPage() {
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-text-primary">{r.name}</span>
                   {r.isSystem ? (
-                    <span title="System role — cannot be deleted">
+                    <span title="System role — cannot be edited or deleted">
                       <Lock className="size-3 text-text-muted" aria-hidden="true" />
                     </span>
+                  ) : null}
+                  {!r.isSystem ? (
+                    <Can permission="rbac.role.update">
+                      <button
+                        type="button"
+                        onClick={() => setEditing(r)}
+                        aria-label={`Edit ${r.name}`}
+                        title="Edit role"
+                        className="ml-auto inline-flex rounded p-1 text-text-muted hover:bg-surface-hover hover:text-text-brand focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-500"
+                      >
+                        <Pencil className="size-3.5" aria-hidden="true" />
+                      </button>
+                    </Can>
                   ) : null}
                 </div>
                 <p className="mt-0.5 text-2xs text-text-muted">
@@ -111,6 +136,10 @@ export default function RolesPage() {
           </table>
         </TableWrapper>
       </div>
+
+      {editing ? (
+        <RoleEditorDialog role={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />
+      ) : null}
     </>
   )
 }

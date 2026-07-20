@@ -70,7 +70,18 @@ async function seedPermissions() {
       update: { resource: p.resource, action: p.action, field, description: p.description },
     })
   }
-  console.log(`  permissions: ${PERMISSIONS.length} upserted`)
+
+  // Prune permissions that have left the code catalog. Without this, a removed
+  // key lingers as an orphan row — invisible until something enumerates every
+  // Permission (the roles editor does), where it shows as a grantable-but-dead
+  // permission. Cascade clears its role/user grants too. The catalog is the
+  // single source of truth; the table must not drift above it.
+  const pruned = await prisma.permission.deleteMany({
+    where: { key: { notIn: PERMISSIONS.map((p) => p.key) } },
+  })
+  console.log(
+    `  permissions: ${PERMISSIONS.length} upserted${pruned.count ? `, ${pruned.count} stale pruned` : ''}`,
+  )
 }
 
 async function seedRole(slug: string, name: string, description: string, keys: readonly PermissionKey[]) {
