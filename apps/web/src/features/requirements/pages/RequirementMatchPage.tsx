@@ -16,6 +16,7 @@ import { FormField, Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Table, TableEmpty, TableWrapper, TD, TH, THead, TR } from '@/components/ui/Table'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/use-toast'
 import { useClient, useBulkAssign, useCreateClient, useRemoveAssignment } from '@/features/clients/api/use-client'
 import {
@@ -158,12 +159,13 @@ export default function RequirementMatchPage() {
     }
   })
 
-  const onRemove = async (propertyId: string, label: string) => {
-    if (!clientId) return
-    if (!window.confirm(`Remove "${label}" from this client's shared properties?`)) return
+  const [confirmRemove, setConfirmRemove] = useState<{ id: string; title: string } | null>(null)
+  const doRemove = async () => {
+    if (!clientId || !confirmRemove) return
     try {
-      await removeAssignment.mutateAsync(propertyId)
+      await removeAssignment.mutateAsync(confirmRemove.id)
       toast({ variant: 'success', title: 'Property removed' })
+      setConfirmRemove(null)
     } catch (err) {
       toast({ variant: 'error', title: 'Could not remove property', description: err instanceof Error ? err.message : undefined })
     }
@@ -263,7 +265,7 @@ export default function RequirementMatchPage() {
                         <StatusBadge status={p.status as PropertyStatus} />
                         <button
                           type="button"
-                          onClick={() => void onRemove(p.propertyId, p.title)}
+                          onClick={() => setConfirmRemove({ id: p.propertyId, title: p.title })}
                           disabled={removeAssignment.isPending}
                           aria-label={`Remove ${p.title}`}
                           title="Remove from client"
@@ -383,6 +385,20 @@ export default function RequirementMatchPage() {
           </Card>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(confirmRemove)}
+        onClose={() => setConfirmRemove(null)}
+        onConfirm={() => void doRemove()}
+        title="Remove shared property"
+        confirmLabel="Remove"
+        pendingLabel="Removing…"
+        confirmVariant="danger"
+        pending={removeAssignment.isPending}
+      >
+        Remove <span className="font-medium text-text-primary">{confirmRemove?.title}</span> from this
+        client&rsquo;s shared properties?
+      </ConfirmDialog>
     </>
   )
 }

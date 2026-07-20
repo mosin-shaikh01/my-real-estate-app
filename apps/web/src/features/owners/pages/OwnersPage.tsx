@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Can } from '@/components/auth/Can'
 import { PageHeader } from '@/components/layout/AppShell'
 import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Input } from '@/components/ui/Input'
 import { Table, TableEmpty, TableWrapper, TD, TH, THead, TR } from '@/components/ui/Table'
 import { useToast } from '@/components/ui/use-toast'
@@ -194,16 +195,18 @@ function EditOwnerDialog({ id, onClose }: { id: string; onClose: () => void }) {
 function DeleteOwnerButton({ id, name }: { id: string; name: string }) {
   const del = useDeleteOwner()
   const { toast } = useToast()
+  const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function onDelete() {
+  async function onConfirm() {
     setError(null)
-    if (!window.confirm(`Delete owner ${name}? They can be restored later from the Deleted view.`)) return
     try {
       await del.mutateAsync(id)
       toast({ variant: 'success', title: 'Owner deleted', description: 'Restore it from the Deleted view.' })
+      setOpen(false)
     } catch (err) {
-      // The server refuses to delete an owner who still owns properties.
+      // The server refuses to delete an owner who still owns properties — surface
+      // that inside the dialog rather than as a fleeting toast alone.
       const message = err instanceof ApiClientError ? err.message : 'Could not delete owner'
       setError(message)
       toast({ variant: 'error', title: 'Could not delete owner', description: message })
@@ -211,38 +214,61 @@ function DeleteOwnerButton({ id, name }: { id: string; name: string }) {
   }
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={onDelete}
-      disabled={del.isPending}
-      title={error ?? undefined}
-      className={error ? 'text-text-danger' : undefined}
-    >
-      <Trash2 aria-hidden="true" />
-      {error ? 'In use' : 'Delete'}
-    </Button>
+    <>
+      <Button variant="ghost" size="sm" onClick={() => { setError(null); setOpen(true) }}>
+        <Trash2 aria-hidden="true" />
+        Delete
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        onConfirm={() => void onConfirm()}
+        title="Delete owner"
+        confirmLabel="Delete owner"
+        pendingLabel="Deleting…"
+        confirmVariant="danger"
+        pending={del.isPending}
+        error={error}
+      >
+        Delete owner <span className="font-medium text-text-primary">{name}</span>? They can be restored later
+        from the Deleted view.
+      </ConfirmDialog>
+    </>
   )
 }
 
 function RestoreOwnerButton({ id, name }: { id: string; name: string }) {
   const restore = useRestoreOwner()
   const { toast } = useToast()
+  const [open, setOpen] = useState(false)
 
-  async function onRestore() {
-    if (!window.confirm(`Restore owner ${name} to the active list?`)) return
+  async function onConfirm() {
     try {
       await restore.mutateAsync(id)
       toast({ variant: 'success', title: 'Owner restored' })
+      setOpen(false)
     } catch (err) {
       toast({ variant: 'error', title: 'Could not restore owner', description: err instanceof Error ? err.message : undefined })
     }
   }
 
   return (
-    <Button variant="ghost" size="sm" onClick={onRestore} disabled={restore.isPending}>
-      <ArchiveRestore aria-hidden="true" />
-      Restore
-    </Button>
+    <>
+      <Button variant="ghost" size="sm" onClick={() => setOpen(true)} disabled={restore.isPending}>
+        <ArchiveRestore aria-hidden="true" />
+        Restore
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        onConfirm={() => void onConfirm()}
+        title="Restore owner"
+        confirmLabel="Restore owner"
+        pendingLabel="Restoring…"
+        pending={restore.isPending}
+      >
+        Restore owner <span className="font-medium text-text-primary">{name}</span> to the active list?
+      </ConfirmDialog>
+    </>
   )
 }

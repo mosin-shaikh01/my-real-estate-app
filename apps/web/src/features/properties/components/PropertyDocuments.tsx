@@ -3,6 +3,7 @@ import { useRef, useState } from 'react'
 import { DOCUMENT_TYPE_LABELS, type DocumentType } from '@app/shared'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Select } from '@/components/ui/Select'
 import { cn } from '@/lib/cn'
 import {
@@ -44,6 +45,7 @@ export function PropertyDocuments({
   const fileRef = useRef<HTMLInputElement>(null)
   const [docType, setDocType] = useState<DocumentType>('SALE_DEED')
   const [error, setError] = useState<string | null>(null)
+  const [confirmDoc, setConfirmDoc] = useState<{ id: string; name: string } | null>(null)
 
   async function onFile(file: File | undefined) {
     if (!file) return
@@ -138,9 +140,7 @@ export function PropertyDocuments({
                   {canManage ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        if (window.confirm(`Delete "${d.originalName}"?`)) void del.mutate(d.id)
-                      }}
+                      onClick={() => setConfirmDoc({ id: d.id, name: d.originalName })}
                       disabled={del.isPending}
                       className={cn(
                         'inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs',
@@ -157,6 +157,22 @@ export function PropertyDocuments({
           </ul>
         )}
       </Card.Body>
+
+      <ConfirmDialog
+        open={Boolean(confirmDoc)}
+        onClose={() => setConfirmDoc(null)}
+        onConfirm={() => {
+          if (confirmDoc) del.mutate(confirmDoc.id)
+          setConfirmDoc(null)
+        }}
+        title="Delete document"
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        pending={del.isPending}
+      >
+        Delete <span className="font-medium text-text-primary">{confirmDoc?.name}</span>? This can&rsquo;t be
+        undone.
+      </ConfirmDialog>
     </Card>
   )
 }

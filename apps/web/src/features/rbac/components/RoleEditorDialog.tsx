@@ -1,6 +1,7 @@
 import { Loader2, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Dialog } from '@/components/ui/Dialog'
 import { FormField, Input } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/use-toast'
@@ -30,6 +31,7 @@ export function RoleEditorDialog({ role, onClose }: { role?: RoleWithPermissions
   const [description, setDescription] = useState(role?.description ?? '')
   const [selected, setSelected] = useState<Set<string>>(new Set(role?.permissionKeys ?? []))
   const [nameError, setNameError] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const toggle = (key: string) =>
     setSelected((prev) => {
@@ -77,10 +79,10 @@ export function RoleEditorDialog({ role, onClose }: { role?: RoleWithPermissions
 
   const onDelete = async () => {
     if (!role) return
-    if (!window.confirm(`Delete the role "${role.name}"? This cannot be undone.`)) return
     try {
       await del.mutateAsync(role.id)
       toast({ variant: 'success', title: 'Role deleted' })
+      setConfirmDelete(false)
       onClose()
     } catch (err) {
       toast({ variant: 'error', title: 'Could not delete role', description: err instanceof Error ? err.message : undefined })
@@ -96,7 +98,7 @@ export function RoleEditorDialog({ role, onClose }: { role?: RoleWithPermissions
       footer={
         <>
           {isEdit && role && role.userCount === 0 ? (
-            <Button variant="ghost" onClick={() => void onDelete()} disabled={busy} className="mr-auto text-text-danger">
+            <Button variant="ghost" onClick={() => setConfirmDelete(true)} disabled={busy} className="mr-auto text-text-danger">
               <Trash2 aria-hidden="true" />
               Delete role
             </Button>
@@ -169,6 +171,21 @@ export function RoleEditorDialog({ role, onClose }: { role?: RoleWithPermissions
           </div>
         </div>
       </div>
+
+      {/* Nested confirmation — opens on top of this editor. */}
+      <ConfirmDialog
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={() => void onDelete()}
+        title="Delete role"
+        confirmLabel="Delete role"
+        pendingLabel="Deleting…"
+        confirmVariant="danger"
+        pending={del.isPending}
+      >
+        Delete the role <span className="font-medium text-text-primary">{role?.name}</span>? This cannot be
+        undone.
+      </ConfirmDialog>
     </Dialog>
   )
 }

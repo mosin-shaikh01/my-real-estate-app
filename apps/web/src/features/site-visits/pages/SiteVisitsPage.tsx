@@ -13,6 +13,7 @@ import {
 import { Can } from '@/components/auth/Can'
 import { PageHeader } from '@/components/layout/AppShell'
 import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Dialog } from '@/components/ui/Dialog'
 import { FormField, Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
@@ -116,6 +117,19 @@ export default function SiteVisitsPage() {
 function VisitRow({ visit, canManage }: { visit: SiteVisitDTO; canManage: boolean }) {
   const update = useUpdateSiteVisit(visit.id)
   const del = useDeleteSiteVisit()
+  const { toast } = useToast()
+  const [confirmOpen, setConfirmOpen] = useState(false)
+
+  const onConfirmDelete = async () => {
+    try {
+      await del.mutateAsync(visit.id)
+      toast({ variant: 'success', title: 'Site visit deleted' })
+      setConfirmOpen(false)
+    } catch (err) {
+      toast({ variant: 'error', title: 'Could not delete site visit', description: err instanceof Error ? err.message : undefined })
+    }
+  }
+
   return (
     <TR>
       <TD className="whitespace-nowrap text-text-secondary">
@@ -146,14 +160,26 @@ function VisitRow({ visit, canManage }: { visit: SiteVisitDTO; canManage: boolea
         <Can permission="sitevisit.delete">
           <button
             type="button"
-            onClick={() => {
-              if (window.confirm('Delete this site visit?')) void del.mutate(visit.id)
-            }}
+            onClick={() => setConfirmOpen(true)}
             className="rounded-md p-1 text-text-secondary hover:bg-surface-danger-soft/40 hover:text-text-danger"
             title="Delete"
           >
             <Trash2 className="size-4" aria-hidden="true" />
           </button>
+          <ConfirmDialog
+            open={confirmOpen}
+            onClose={() => setConfirmOpen(false)}
+            onConfirm={() => void onConfirmDelete()}
+            title="Delete site visit"
+            confirmLabel="Delete"
+            pendingLabel="Deleting…"
+            confirmVariant="danger"
+            pending={del.isPending}
+          >
+            Delete this scheduled visit for{' '}
+            <span className="font-medium text-text-primary">{visit.property.title}</span>? This can&rsquo;t be
+            undone.
+          </ConfirmDialog>
         </Can>
       </TD>
     </TR>

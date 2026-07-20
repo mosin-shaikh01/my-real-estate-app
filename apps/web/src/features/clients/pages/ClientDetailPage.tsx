@@ -1,4 +1,5 @@
 import { ArrowLeft, Mail, MessageCircle, Pencil, Phone, Wand2, X } from 'lucide-react'
+import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import {
   ASSIGNMENT_STATUS_LABELS,
@@ -11,6 +12,7 @@ import { Can, Locked } from '@/components/auth/Can'
 import { PageHeader } from '@/components/layout/AppShell'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { useToast } from '@/components/ui/use-toast'
 import { InteractionForm } from '@/features/clients/components/InteractionForm'
@@ -31,12 +33,14 @@ export default function ClientDetailPage() {
   // Called unconditionally (before the early returns) to respect the rules of
   // hooks; it's a no-op until a remove is triggered.
   const removeAssignment = useRemoveAssignment(id ?? '')
+  const [confirmRemove, setConfirmRemove] = useState<{ id: string; title: string } | null>(null)
 
-  const onRemove = async (propertyId: string, label: string) => {
-    if (!window.confirm(`Remove "${label}" from this client's shared properties?`)) return
+  const doRemove = async () => {
+    if (!confirmRemove) return
     try {
-      await removeAssignment.mutateAsync(propertyId)
+      await removeAssignment.mutateAsync(confirmRemove.id)
       toast({ variant: 'success', title: 'Property removed' })
+      setConfirmRemove(null)
     } catch (err) {
       toast({ variant: 'error', title: 'Could not remove property', description: err instanceof Error ? err.message : undefined })
     }
@@ -178,7 +182,7 @@ export default function ClientDetailPage() {
                       <Can permission="client.assignProperty">
                         <button
                           type="button"
-                          onClick={() => void onRemove(p.propertyId, p.title)}
+                          onClick={() => setConfirmRemove({ id: p.propertyId, title: p.title })}
                           disabled={removeAssignment.isPending}
                           aria-label={`Remove ${p.title}`}
                           title="Remove from client"
@@ -276,6 +280,20 @@ export default function ClientDetailPage() {
           </Card>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(confirmRemove)}
+        onClose={() => setConfirmRemove(null)}
+        onConfirm={() => void doRemove()}
+        title="Remove shared property"
+        confirmLabel="Remove"
+        pendingLabel="Removing…"
+        confirmVariant="danger"
+        pending={removeAssignment.isPending}
+      >
+        Remove <span className="font-medium text-text-primary">{confirmRemove?.title}</span> from this
+        client&rsquo;s shared properties?
+      </ConfirmDialog>
     </>
   )
 }
