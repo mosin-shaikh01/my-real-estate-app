@@ -15,6 +15,8 @@ import { amenityRouter } from './routes/amenity-routes.js'
 import { authRouter } from './routes/auth-routes.js'
 import { clientRouter } from './routes/client-routes.js'
 import { dashboardRouter } from './routes/dashboard-routes.js'
+import { dealRouter } from './routes/deal-routes.js'
+import { reportRouter } from './routes/report-routes.js'
 import { mediaRouter } from './routes/media-routes.js'
 import { meRouter } from './routes/me-routes.js'
 import { notificationRouter } from './routes/notification-routes.js'
@@ -54,6 +56,8 @@ export const ROUTE_MOUNTS: ReadonlyArray<{
   { path: '/api/site-visits', router: siteVisitRouter, requiresAuth: true },
   { path: '/api/amenities', router: amenityRouter, requiresAuth: true },
   { path: '/api/agents', router: agentRouter, requiresAuth: true },
+  { path: '/api/deals', router: dealRouter, requiresAuth: true },
+  { path: '/api/reports', router: reportRouter, requiresAuth: true },
   { path: '/api/dashboard', router: dashboardRouter, requiresAuth: true },
   { path: '/api/notifications', router: notificationRouter, requiresAuth: true },
   { path: '/api/media', router: mediaRouter, requiresAuth: true },

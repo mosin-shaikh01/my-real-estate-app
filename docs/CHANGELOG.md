@@ -7,6 +7,31 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Added — Deals & Reports (hardening Phase 6)
+
+The last roadmap gap: transactional reporting, now computable because closed
+deals are captured. Admin-only surface — agents hold no `deal.*`/`report.*`
+permission, so the route guard is the whole gate (no scope resolver).
+
+- **Deals**: `Deal` model + `deals` table already existed; this wires the
+  feature. `POST /api/deals` (deal.create) records a closed sale/rental and
+  **snapshots the agent's commission rate at close** (rates change, history must
+  not) — deriving the amount server-side. `GET /api/deals` (deal.list) paginates.
+  A new Deals page lists deals with a "Record deal" dialog (property/client/agent
+  pickers + type + price + date).
+- **Reports**: `GET /api/reports` (report.view) returns all six spec reports in
+  one payload — agent performance, client conversion, property sales, inventory
+  (by status/type), follow-up status, monthly revenue (12-month). Mostly Prisma
+  `groupBy` aggregates over Deal + existing tables. A Reports page renders them as
+  stat cards, tables and a monthly bar chart.
+- **CSV export**: `GET /api/reports/export/:report` (report.export — a separate
+  permission so a role can read reports without bulk-exfiltrating) streams RFC
+  4180 CSV with a UTF-8 BOM for the four tabular reports. New `lib/csv.ts` with
+  unit tests.
+- Nav: Deals under Manage, Reports under Admin. Route-manifest test extended for
+  both routers. 163 tests green; typecheck/lint/build clean; deal creation,
+  commission snapshot, every report and CSV export verified end-to-end.
+
 ### Performance — lean property list + trigram search indexes (hardening Phase 5)
 
 Two scale-oriented fixes; no behaviour change for the demo.

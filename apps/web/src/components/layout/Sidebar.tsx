@@ -1,10 +1,12 @@
 import {
   Bell,
   Building2,
+  ChartColumn,
   ClipboardList,
   CalendarClock,
   Cog,
   Contact,
+  Handshake,
   LayoutDashboard,
   ScrollText,
   Settings2,
@@ -66,11 +68,13 @@ const NAV: ReadonlyArray<{ heading?: string; items: readonly NavItem[] }> = [
       { to: '/agents', label: 'Agents', icon: UserSquare2, permission: 'agent.list' },
       { to: '/owners', label: 'Owners', icon: Contact, permission: 'owner.list' },
       { to: '/site-visits', label: 'Site visits', icon: CalendarClock, permission: 'sitevisit.list' },
+      { to: '/deals', label: 'Deals', icon: Handshake, permission: 'deal.list' },
     ],
   },
   {
     heading: 'Admin',
     items: [
+      { to: '/reports', label: 'Reports', icon: ChartColumn, permission: 'report.view' },
       { to: '/activity', label: 'Activity log', icon: ScrollText, permission: 'activity.list' },
       { to: '/settings/roles', label: 'Roles & access', icon: Settings2, permission: 'rbac.role.list' },
       {

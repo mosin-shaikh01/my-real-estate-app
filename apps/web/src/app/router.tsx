@@ -16,6 +16,8 @@ const PropertyEdit = lazy(() => import('@/features/properties/pages/PropertyEdit
 const Agents = lazy(() => import('@/features/agents/pages/AgentsPage'))
 const Owners = lazy(() => import('@/features/owners/pages/OwnersPage'))
 const SiteVisits = lazy(() => import('@/features/site-visits/pages/SiteVisitsPage'))
+const Deals = lazy(() => import('@/features/deals/pages/DealsPage'))
+const Reports = lazy(() => import('@/features/reports/pages/ReportsPage'))
 const RequirementMatch = lazy(() => import('@/features/requirements/pages/RequirementMatchPage'))
 const Activity = lazy(() => import('@/features/activity/pages/ActivityPage'))
 const Roles = lazy(() => import('@/features/rbac/pages/RolesPage'))
@@ -125,6 +127,22 @@ export const router = createBrowserRouter([
         element: lazyRoute(
           <RequirePermission permission="sitevisit.list">
             <SiteVisits />
+          </RequirePermission>,
+        ),
+      },
+      {
+        path: 'deals',
+        element: lazyRoute(
+          <RequirePermission permission="deal.list">
+            <Deals />
+          </RequirePermission>,
+        ),
+      },
+      {
+        path: 'reports',
+        element: lazyRoute(
+          <RequirePermission permission="report.view">
+            <Reports />
           </RequirePermission>,
         ),
       },

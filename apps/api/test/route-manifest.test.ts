@@ -8,6 +8,8 @@ import { amenityRouter } from '../src/routes/amenity-routes.js'
 import { authRouter } from '../src/routes/auth-routes.js'
 import { clientRouter } from '../src/routes/client-routes.js'
 import { dashboardRouter } from '../src/routes/dashboard-routes.js'
+import { dealRouter } from '../src/routes/deal-routes.js'
+import { reportRouter } from '../src/routes/report-routes.js'
 import { mediaRouter } from '../src/routes/media-routes.js'
 import { meRouter } from '../src/routes/me-routes.js'
 import { notificationRouter } from '../src/routes/notification-routes.js'
@@ -83,6 +85,8 @@ const ALL_ROUTES: RouteInfo[] = [
   ...routesOf(ownerRouter, '/api/owners'),
   ...routesOf(siteVisitRouter, '/api/site-visits'),
   ...routesOf(agentRouter, '/api/agents'),
+  ...routesOf(dealRouter, '/api/deals'),
+  ...routesOf(reportRouter, '/api/reports'),
   ...routesOf(amenityRouter, '/api/amenities'),
   ...routesOf(dashboardRouter, '/api/dashboard'),
   ...routesOf(notificationRouter, '/api/notifications'),
@@ -109,6 +113,7 @@ describe('route manifest', () => {
       '/api/auth',
       '/api/clients',
       '/api/dashboard',
+      '/api/deals',
       '/api/me',
       '/api/media',
       '/api/notifications',
@@ -116,6 +121,7 @@ describe('route manifest', () => {
       '/api/profile',
       '/api/properties',
       '/api/rbac',
+      '/api/reports',
       '/api/search',
       '/api/settings',
       '/api/site-visits',

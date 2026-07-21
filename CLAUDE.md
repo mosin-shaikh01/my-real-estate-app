@@ -375,7 +375,7 @@ npm run db:studio    # prisma studio
 | 5 · Requirement + match + bulk assign (core feature) | ✅ done — atomic new-client create + existing-client bulk assign, two-form matching screen, one log per assignment |
 | 6 · Activity log + dashboard | ✅ done — dashboard live since Phase 3; activity log page surfaced |
 | 7 · Global search | ✅ done — scoped, phone-normalized, properties + clients |
-| 8 · Reports | ⬜ (roles matrix done; transactional reports need a Deal-close flow) |
+| 8 · Reports + Deals | ✅ done — `Deal` close flow (commission snapshot at close), admin Deals page, six reports (agent performance, client conversion, property sales, inventory, follow-up status, monthly revenue) + CSV export. Admin-only (`deal.*`/`report.*`); route guard is the whole gate. |
 | 9 · Settings (branding + company config) | ✅ done — `AppSetting` singleton, `settings.view/update` perms, public branding (name/logo/favicon/colour read pre-auth), admin tabbed form. `GET /api/settings\|logo\|favicon` are deliberately PUBLIC; all writes need `settings.update`. |
 | 10 · Auth self-service (forgot/reset password) | ✅ done — hashed single-use tokens (30 min), always-200 (no enumeration), reset revokes all sessions, per-IP rate limiting. |
 | 11 · Notification Service | ✅ done — centralized `notificationService.send()`; **nothing calls SMTP directly**. Real email (nodemailer, retry/timeout, console fallback), DB templates + encrypted provider config + logs, Settings → Notifications admin UI, `notifications.view/manage` perms. SMS/WhatsApp/Push/In-App/Webhook are stub providers. See `docs/NOTIFICATION_SERVICE.md`. |
