@@ -7,6 +7,23 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Changed — list UX parity (hardening Phase 4)
+
+Bring the last two list surfaces up to the search + pagination standard the
+Clients/Properties/Owners lists already set.
+
+- **Agents**: `GET /api/agents` now takes `q`, `page`, `pageSize` and returns the
+  standard `{ data, meta }` envelope instead of the full array. Search matches
+  name, email, phone, profile code (AGT-…) and specialization (case-insensitive).
+  The Agents page gains a search box and a Prev/Next footer; the header count
+  reads `meta.total`. `listAgents()` → `listAgents({ q, page, pageSize })`.
+- **Site visits**: the backend already paginated; the page now carries `page`
+  state, renders the Prev/Next footer, and resets to page 1 when the status
+  filter changes.
+- No schema/permission changes. Verified end-to-end: agent search matches
+  name/surname/code, paging returns distinct rows per page; typecheck, lint (0
+  errors), 155 tests and build all clean.
+
 ### Added — Site Visit Management (CRM expansion Phase 4)
 
 Schedule and track property visits. (Follow-ups §5 and enquiry history §7 are

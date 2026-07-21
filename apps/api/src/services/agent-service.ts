@@ -7,6 +7,7 @@ import type {
 } from '@app/shared'
 import { isPermissionKey, ROLE_SLUGS } from '@app/shared'
 import type { Request } from 'express'
+import type { Prisma } from '../generated/prisma/client.js'
 import { resolvePermissions } from '../auth/permissions.js'
 import { hashPassword } from '../auth/tokens.js'
 import { conflict, notFound, validationFailed } from '../lib/errors.js'
@@ -43,12 +44,41 @@ const AGENT_SELECT = {
   },
 } as const
 
-export async function listAgents() {
-  return prisma.user.findMany({
-    where: { deletedAt: null, agentProfile: { isNot: null } },
-    select: AGENT_SELECT,
-    orderBy: { fullName: 'asc' },
-  })
+export interface AgentListParams {
+  q?: string
+  page: number
+  pageSize: number
+}
+
+export async function listAgents(params: AgentListParams) {
+  const where: Prisma.UserWhereInput = { deletedAt: null, agentProfile: { isNot: null } }
+  const q = params.q?.trim()
+  if (q) {
+    // Mirrors the owner search: name/email/specialization/profile-code plus a raw
+    // phone contains. Agents have no normalised phone column, so a fragment of the
+    // displayed number matches — good enough for an admin-only lookup.
+    where.OR = [
+      { fullName: { contains: q, mode: 'insensitive' } },
+      { email: { contains: q, mode: 'insensitive' } },
+      { phone: { contains: q } },
+      { agentProfile: { code: { contains: q, mode: 'insensitive' } } },
+      { agentProfile: { specialization: { contains: q, mode: 'insensitive' } } },
+    ]
+  }
+
+  const take = Math.min(Math.max(params.pageSize, 1), 100)
+  const page = Math.max(params.page, 1)
+  const [rows, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      select: AGENT_SELECT,
+      orderBy: { fullName: 'asc' },
+      skip: (page - 1) * take,
+      take,
+    }),
+    prisma.user.count({ where }),
+  ])
+  return { rows, total, page, pageSize: take }
 }
 
 export async function getAgent(id: string) {

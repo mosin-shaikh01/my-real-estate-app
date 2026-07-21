@@ -55,12 +55,14 @@ function toDatetimeLocal(iso: string) {
 
 export default function SiteVisitsPage() {
   const [status, setStatus] = useState('')
+  const [page, setPage] = useState(1)
   const [creating, setCreating] = useState(false)
   const { has } = usePermissions()
   const canManage = has('sitevisit.update')
 
-  const { data, isLoading, isError, error } = useSiteVisits({ status: status || undefined })
+  const { data, isLoading, isError, error } = useSiteVisits({ status: status || undefined, page })
   const rows = data?.data ?? []
+  const meta = data?.meta
 
   return (
     <>
@@ -82,7 +84,10 @@ export default function SiteVisitsPage() {
           <Select
             options={[{ value: '', label: 'All statuses' }, ...STATUS_OPTIONS]}
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => {
+              setStatus(e.target.value)
+              setPage(1)
+            }}
             aria-label="Filter by status"
           />
         </div>
@@ -114,6 +119,25 @@ export default function SiteVisitsPage() {
                 )}
               </tbody>
             </Table>
+
+            {meta && meta.totalPages > 1 ? (
+              <div className="flex items-center justify-between border-t border-border-subtle px-4 py-2.5 text-xs text-text-muted">
+                <span>Page {meta.page} of {meta.totalPages}</span>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                    Previous
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={page >= meta.totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </TableWrapper>
         )}
       </div>

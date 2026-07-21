@@ -24,8 +24,23 @@ import { toAgentDTO } from '../serializers/agent-serializer.js'
 export const agentRouter = Router()
 
 agentRouter.get('/', requirePermission('agent.list'), async (req, res) => {
-  const rows = await listAgents()
-  res.json({ data: rows.map((r) => toAgentDTO(r, req.actor!)) })
+  const page = Number(req.query.page ?? 1)
+  const pageSize = Number(req.query.pageSize ?? 25)
+  const q = typeof req.query.q === 'string' ? req.query.q : undefined
+  const result = await listAgents({
+    q,
+    page: Number.isFinite(page) ? page : 1,
+    pageSize: Number.isFinite(pageSize) ? pageSize : 25,
+  })
+  res.json({
+    data: result.rows.map((r) => toAgentDTO(r, req.actor!)),
+    meta: {
+      page: result.page,
+      pageSize: result.pageSize,
+      total: result.total,
+      totalPages: Math.ceil(result.total / result.pageSize) || 1,
+    },
+  })
 })
 
 // A lighter list for assignment dropdowns — used by BOTH "assign agent to a

@@ -4,9 +4,10 @@ import type {
   AgentPermissionsInput,
   AgentPermissionsResponse,
   AgentUpdateInput,
+  Paginated,
   UserStatus,
 } from '@app/shared'
-import { api } from '@/lib/api'
+import { api, qs } from '@/lib/api'
 
 export interface AgentDTO {
   id: string
@@ -25,11 +26,13 @@ export interface AgentDTO {
   _redacted: string[]
 }
 
-export function useAgents() {
+export function useAgents(params: { q?: string; page?: number } = {}) {
   return useQuery({
-    queryKey: ['agents'],
-    queryFn: ({ signal }) => api.get<{ data: AgentDTO[] }>('/agents', signal),
-    select: (r) => r.data,
+    queryKey: ['agents', 'list', params.q ?? '', params.page ?? 1],
+    queryFn: () =>
+      api.get<Paginated<AgentDTO>>(`/agents${qs({ q: params.q, page: params.page ?? 1, pageSize: 25 })}`),
+    // Keep the current page on screen while the next one loads — no flicker.
+    placeholderData: (prev) => prev,
   })
 }
 

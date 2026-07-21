@@ -1,8 +1,9 @@
-import { KeyRound, Pencil, Plus, UserX } from 'lucide-react'
+import { KeyRound, Pencil, Plus, Search, UserX } from 'lucide-react'
 import { useState } from 'react'
 import { Can, Locked } from '@/components/auth/Can'
 import { PageHeader } from '@/components/layout/AppShell'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { Table, TableEmpty, TableWrapper, TD, TH, THead, TR } from '@/components/ui/Table'
 import { InfoHint, Tooltip } from '@/components/ui/Tooltip'
 import { useAgents, useSetAgentStatus, type AgentDTO } from '@/features/agents/api/use-agents'
@@ -14,14 +15,19 @@ import { cn } from '@/lib/cn'
 // Admin-only surface — the route is guarded by <RequirePermission agent.list>.
 // This page never renders for an agent, so no per-row permission checks here.
 export default function AgentsPage() {
-  const { data, isLoading, isError, error } = useAgents()
+  const [q, setQ] = useState('')
+  const [page, setPage] = useState(1)
   const [creating, setCreating] = useState(false)
+
+  const { data, isLoading, isError, error } = useAgents({ q, page })
+  const rows = data?.data ?? []
+  const meta = data?.meta
 
   return (
     <>
       <PageHeader
         title="Agents"
-        description={data ? `${data.length} agent${data.length === 1 ? '' : 's'}` : undefined}
+        description={meta ? `${meta.total} agent${meta.total === 1 ? '' : 's'}` : undefined}
         action={
           <Button variant="primary" onClick={() => setCreating(true)}>
             <Plus aria-hidden="true" />
@@ -30,7 +36,24 @@ export default function AgentsPage() {
         }
       />
 
-      <div className="p-6">
+      <div className="flex flex-col gap-4 p-6">
+        <div className="relative max-w-sm">
+          <Search
+            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-text-muted"
+            aria-hidden="true"
+          />
+          <Input
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value)
+              setPage(1)
+            }}
+            placeholder="Name, email, mobile, specialization…"
+            className="pl-8"
+            aria-label="Search agents"
+          />
+        </div>
+
         {isError ? (
           <div role="alert" className="rounded-lg border border-border-danger-soft bg-surface-danger-soft/40 p-4 text-base text-text-danger">
             {(error as Error).message}
@@ -59,13 +82,36 @@ export default function AgentsPage() {
               <tbody>
                 {isLoading ? (
                   <TableEmpty colSpan={9} title="Loading…" />
-                ) : data?.length ? (
-                  data.map((a) => <AgentRow key={a.id} agent={a} />)
+                ) : rows.length ? (
+                  rows.map((a) => <AgentRow key={a.id} agent={a} />)
                 ) : (
-                  <TableEmpty colSpan={9} title="No agents yet" hint="Add your first agent to start assigning work." />
+                  <TableEmpty
+                    colSpan={9}
+                    title={q ? 'No agents match your search' : 'No agents yet'}
+                    hint={q ? undefined : 'Add your first agent to start assigning work.'}
+                  />
                 )}
               </tbody>
             </Table>
+
+            {meta && meta.totalPages > 1 ? (
+              <div className="flex items-center justify-between border-t border-border-subtle px-4 py-2.5 text-xs text-text-muted">
+                <span>Page {meta.page} of {meta.totalPages}</span>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                    Previous
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={page >= meta.totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </TableWrapper>
         )}
       </div>
