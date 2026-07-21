@@ -27,7 +27,11 @@ import {
   setPropertyStatus,
   updateProperty,
 } from '../services/property-write-service.js'
-import { toPropertyDTO, type PropertyDTO } from '../serializers/property-serializer.js'
+import {
+  toPropertyDTO,
+  toPropertyListItem,
+  type PropertyListItem,
+} from '../serializers/property-serializer.js'
 
 export const propertyRouter = Router()
 
@@ -42,8 +46,8 @@ propertyRouter.get('/', requirePermission('property.list'), async (req, res) => 
 
   const { rows, total } = await listProperties(actor, query)
 
-  const body: Paginated<PropertyDTO> = {
-    data: rows.map((r) => toPropertyDTO(r, actor)),
+  const body: Paginated<PropertyListItem> = {
+    data: rows.map((r) => toPropertyListItem(r, actor)),
     meta: {
       page: query.page,
       pageSize: query.pageSize,

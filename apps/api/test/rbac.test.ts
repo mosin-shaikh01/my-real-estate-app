@@ -12,6 +12,8 @@ import {
   canFilterByPrice,
   sortablePropertyFields,
   toPropertyDTO,
+  toPropertyListItem,
+  type PropertyListRow,
   type PropertyRow,
 } from '../src/serializers/property-serializer.js'
 import { toAgentDTO, type AgentRow } from '../src/serializers/agent-serializer.js'
@@ -454,6 +456,53 @@ describe('property serializer', () => {
     expect(typeof dto.areaSqft).toBe('string')
     // Coordinates are Decimal(9,6) — a float would drift the pin.
     expect(typeof dto.latitude).toBe('string')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Property LIST serializer — the lean shape the results table consumes. It must
+// enforce the SAME price redaction as the detail DTO: a list is just as capable
+// of leaking a price the actor may not see.
+// ---------------------------------------------------------------------------
+const PROPERTY_LIST_ROW: PropertyListRow = {
+  id: 'p1',
+  code: 'PROP-00001',
+  title: '3 BHK Sea-Facing Apartment',
+  status: 'AVAILABLE',
+  featured: true,
+  bedrooms: 3,
+  areaSqft: dec('1850.00'),
+  locality: 'Bandra West',
+  city: 'Mumbai',
+  archivedAt: null,
+  salePrice: dec('72500000.00'),
+  rentPricePerMonth: dec('185000.00'),
+  archivedBy: null,
+  assignedAgent: { id: 'agent-1', fullName: 'Rohan' },
+}
+
+describe('property list serializer', () => {
+  it('keeps pricing for an actor who holds property.price.view', () => {
+    const item = toPropertyListItem(PROPERTY_LIST_ROW, AGENT)
+    expect(item.salePrice).toBe('72500000.00')
+    expect(item.rentPricePerMonth).toBe('185000.00')
+    expect(item._redacted).toEqual([])
+  })
+
+  it('omits both price fields when property.price.view is revoked', () => {
+    const noPrice = actorWith(AGENT_PERMISSIONS.filter((p) => p !== 'property.price.view'))
+    const item = toPropertyListItem(PROPERTY_LIST_ROW, noPrice)
+    expect('salePrice' in item).toBe(false)
+    expect('rentPricePerMonth' in item).toBe(false)
+    expect(item._redacted).toEqual(['salePrice', 'rentPricePerMonth'])
+  })
+
+  it('serialises money as strings and never carries heavy detail fields', () => {
+    const item = toPropertyListItem(PROPERTY_LIST_ROW, ADMIN)
+    expect(typeof item.areaSqft).toBe('string')
+    // The lean row has no description/media/amenities to leak in the first place.
+    expect('description' in item).toBe(false)
+    expect('media' in item).toBe(false)
   })
 
   it('picks the cover image', () => {

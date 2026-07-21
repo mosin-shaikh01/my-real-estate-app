@@ -85,6 +85,26 @@ const DETAIL_SELECT = {
   _count: { select: { assignments: { where: { removedAt: null } } } },
 } satisfies Prisma.PropertySelect
 
+// Lean projection for the results table — see toPropertyListItem. No media,
+// amenities, documents, descriptions or geo: the list renders none of them, and
+// fetching them for every row of every page was the bulk of the query cost.
+const LIST_SELECT = {
+  id: true,
+  code: true,
+  title: true,
+  status: true,
+  featured: true,
+  bedrooms: true,
+  areaSqft: true,
+  locality: true,
+  city: true,
+  archivedAt: true,
+  salePrice: true,
+  rentPricePerMonth: true,
+  archivedBy: { select: { id: true, fullName: true } },
+  assignedAgent: { select: { id: true, fullName: true } },
+} satisfies Prisma.PropertySelect
+
 export async function listProperties(actor: Actor, query: PropertyListQuery) {
   const where: Record<string, unknown> = { ...scopeForProperty(actor) }
   const and: unknown[] = []
@@ -163,7 +183,7 @@ export async function listProperties(actor: Actor, query: PropertyListQuery) {
   const [rows, total] = await Promise.all([
     prisma.property.findMany({
       where: where as never,
-      select: DETAIL_SELECT,
+      select: LIST_SELECT,
       orderBy: orderBy as never,
       skip: (query.page - 1) * query.pageSize,
       take: query.pageSize,

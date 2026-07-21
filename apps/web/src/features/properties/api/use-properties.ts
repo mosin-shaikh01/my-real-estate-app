@@ -81,6 +81,32 @@ export interface PropertyDTO {
   _redacted: string[]
 }
 
+/**
+ * The results-table row — mirrors the server's PropertyListItem, a deliberately
+ * leaner shape than PropertyDTO. Same redaction contract for price (absent =
+ * redacted, null = empty). The full PropertyDTO is only fetched on the detail
+ * page.
+ */
+export interface PropertyListItem {
+  id: string
+  code: string
+  title: string
+  status: string
+  featured: boolean
+  bedrooms: number | null
+  areaSqft: string | null
+  locality: string | null
+  city: string
+  archivedAt: string | null
+  archivedBy: { id: string; fullName: string } | null
+  assignedAgent: { id: string; fullName: string } | null
+
+  salePrice?: string | null
+  rentPricePerMonth?: string | null
+
+  _redacted: string[]
+}
+
 export interface PropertyFilters {
   page?: number
   q?: string
@@ -100,7 +126,7 @@ export function useProperties(filters: PropertyFilters) {
   return useQuery({
     queryKey: ['properties', filters],
     queryFn: ({ signal }) =>
-      api.get<Paginated<PropertyDTO>>(`/properties${qs({ ...filters })}`, signal),
+      api.get<Paginated<PropertyListItem>>(`/properties${qs({ ...filters })}`, signal),
     // Keeps the previous page on screen while the next loads, instead of
     // flashing an empty table on every filter keystroke.
     placeholderData: (prev) => prev,

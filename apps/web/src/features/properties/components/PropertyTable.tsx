@@ -8,7 +8,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Table, TableEmpty, TableWrapper, TD, TH, THead, TR } from '@/components/ui/Table'
 import { useToast } from '@/components/ui/use-toast'
-import type { PropertyDTO } from '@/features/properties/api/use-properties'
+import type { PropertyListItem } from '@/features/properties/api/use-properties'
 import { useArchiveProperty, useDeleteProperty } from '@/features/properties/api/use-property-mutations'
 import { formatArea, formatMoneyShort, formatRelative } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -23,7 +23,7 @@ import { cn } from '@/lib/cn'
 // actions and the archive badge.
 // ============================================================================
 
-function priceLabel(p: PropertyDTO): string {
+function priceLabel(p: PropertyListItem): string {
   // A BOTH listing has two prices in different units. Showing one would be a
   // lie; showing "sale / rent" is the honest compact form.
   const sale = p.salePrice ? formatMoneyShort(p.salePrice) : null
@@ -42,7 +42,7 @@ export function PropertyTable({
   compact = false,
   emptyHint,
 }: {
-  rows: PropertyDTO[] | undefined
+  rows: PropertyListItem[] | undefined
   isLoading: boolean
   canSeePrice: boolean
   /** How many filters are active — drives the empty-state message. */
@@ -101,7 +101,7 @@ function PropertyRow({
   canSeePrice,
   compact,
 }: {
-  property: PropertyDTO
+  property: PropertyListItem
   canSeePrice: boolean
   compact: boolean
 }) {
@@ -168,7 +168,7 @@ function ArchiveBadge() {
 const ICON_BTN =
   'inline-flex rounded p-1 text-text-muted hover:bg-surface-hover hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-500'
 
-function PropertyRowActions({ property, archived }: { property: PropertyDTO; archived: boolean }) {
+function PropertyRowActions({ property, archived }: { property: PropertyListItem; archived: boolean }) {
   const { toast } = useToast()
   const archive = useArchiveProperty(property.id)
   const del = useDeleteProperty(property.id)

@@ -79,6 +79,80 @@ export interface PropertyRow {
   _count?: { assignments: number }
 }
 
+// ---------------------------------------------------------------------------
+// List projection — deliberately a DIFFERENT, leaner shape than the detail DTO.
+// The results table renders ~12 fields; loading every description, the full
+// media array (with storageKey/mime/size per row), amenities and documents for
+// 25 rows a page is pure waste. LIST_SELECT (property-service) fetches only what
+// this shape needs, and this serializer emits only that — with the same price
+// redaction as the detail view, since a list must not leak a price either.
+// ---------------------------------------------------------------------------
+export interface PropertyListRow {
+  id: string
+  code: string
+  title: string
+  status: string
+  featured: boolean
+  bedrooms: number | null
+  areaSqft: Decimalish
+  locality: string | null
+  city: string
+  archivedAt: Date | null
+  salePrice: Decimalish
+  rentPricePerMonth: Decimalish
+  archivedBy: { id: string; fullName: string } | null
+  assignedAgent: { id: string; fullName: string } | null
+}
+
+export interface PropertyListItem {
+  id: string
+  code: string
+  title: string
+  status: string
+  featured: boolean
+  bedrooms: number | null
+  areaSqft: string | null
+  locality: string | null
+  city: string
+  archivedAt: string | null
+  archivedBy: { id: string; fullName: string } | null
+  assignedAgent: { id: string; fullName: string } | null
+
+  // Absent = redacted. Null = empty. Same rule as the detail DTO.
+  salePrice?: string | null
+  rentPricePerMonth?: string | null
+
+  _redacted: string[]
+}
+
+export function toPropertyListItem(row: PropertyListRow, actor: Actor): PropertyListItem {
+  const redacted: string[] = []
+  const dto: PropertyListItem = {
+    id: row.id,
+    code: row.code,
+    title: row.title,
+    status: row.status,
+    featured: row.featured,
+    bedrooms: row.bedrooms,
+    areaSqft: money(row.areaSqft),
+    locality: row.locality,
+    city: row.city,
+    archivedAt: row.archivedAt?.toISOString() ?? null,
+    archivedBy: row.archivedBy ?? null,
+    assignedAgent: row.assignedAgent ?? null,
+    _redacted: redacted,
+  }
+
+  if (actor.has('property.price.view')) {
+    dto.salePrice = money(row.salePrice)
+    dto.rentPricePerMonth = money(row.rentPricePerMonth)
+  } else {
+    redacted.push('salePrice', 'rentPricePerMonth')
+  }
+
+  return dto
+}
+
 export interface PropertyDTO {
   id: string
   code: string

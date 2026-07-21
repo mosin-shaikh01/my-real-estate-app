@@ -141,8 +141,10 @@ currently zero camelCase columns; keep it that way.
 - **"Active property"** = `status = AVAILABLE AND archived_at IS NULL AND deleted_at IS NULL`.
 - Some things Prisma cannot express live in hand-written migration SQL: the code
   sequences (which must be **prepended** — Prisma inlines `nextval()` into
-  `CREATE TABLE`) and the partial unique index on `users(email)`. **If you
-  regenerate a migration, re-apply those blocks.**
+  `CREATE TABLE`), the partial unique index on `users(email)`, and the **`pg_trgm`
+  extension + GIN trigram indexes** for `ILIKE '%term%'` search
+  (`20260721120000_search_trgm_indexes`). **If you regenerate a migration,
+  re-apply those blocks.**
 - Don't over-index speculatively. No single composite serves
   budget × city × bedrooms × type × status; Postgres bitmap-ANDs. Measure.
 

@@ -7,6 +7,30 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Performance — lean property list + trigram search indexes (hardening Phase 5)
+
+Two scale-oriented fixes; no behaviour change for the demo.
+
+- **Lean property `LIST_SELECT`**: the results table reused the detail `SELECT`,
+  loading every description, the full media array (storageKey/mime/size per row),
+  amenities and documents for 25 rows a page — none of which the table renders.
+  A new `LIST_SELECT` + `PropertyListItem` DTO + `toPropertyListItem` serializer
+  fetch and emit only the ~12 fields the table shows, with the **same price
+  redaction** as the detail view (covered by a new rbac test). Frontend list rows
+  are now typed `PropertyListItem`; the full `PropertyDTO` is only fetched on the
+  detail page. The list payload dropped from the full property graph to 15 flat
+  fields per row.
+- **pg_trgm**: every list and the global search filter with `ILIKE '%term%'`
+  (Prisma `contains`), which a btree can't serve — Postgres sequential-scans.
+  A hand-written migration enables the `pg_trgm` extension and adds GIN trigram
+  indexes on the searched free-text columns (properties title/city/locality/
+  address, clients full_name/phone_normalized, property_owners full_name/
+  mobile_normalized, users full_name). Applied via `migrate deploy`. Like the
+  `users_email_active_key` partial index, this block is hand-written and must be
+  re-applied if migrations are regenerated.
+- 155 (+3) tests green; typecheck/lint/build clean; list payload + search
+  verified end-to-end against the DB.
+
 ### Changed — list UX parity (hardening Phase 4)
 
 Bring the last two list surfaces up to the search + pagination standard the
