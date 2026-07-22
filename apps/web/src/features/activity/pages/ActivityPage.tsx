@@ -1,29 +1,25 @@
-import { Building2, FileText, User, Users } from 'lucide-react'
 import { Link } from 'react-router'
 import { PageHeader } from '@/components/layout/AppShell'
+import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Select } from '@/components/ui/Select'
 import { useActivity, type ActivityEntry } from '@/features/activity/api/use-activity'
+import { activityActionLabel } from '@/features/activity/lib/activity-format'
 import { useUrlFilters } from '@/lib/use-url-filters'
-import { formatRelative } from '@/lib/format'
+import { formatDateTime, formatRelative } from '@/lib/format'
 
 // Admin-only surface (activity.list). The data has accumulated since Phase 2 —
 // every mutation wrote a row here; this just surfaces it. Note the audit trail
 // records sensitive fields by NAME, never value (see activity-service), so it
-// is safe to render in full.
+// is safe to render in full. The internal `action` key is never shown — only its
+// friendly label (activityActionLabel).
 
 const ENTITY_OPTIONS = [
   { value: 'property', label: 'Properties' },
   { value: 'client', label: 'Clients' },
   { value: 'user', label: 'Agents & auth' },
 ]
-
-const ENTITY_ICON: Record<string, typeof Building2> = {
-  property: Building2,
-  client: Users,
-  user: User,
-}
 
 function entityLink(e: ActivityEntry): string | null {
   if (e.entityType === 'property') return `/properties/${e.entityId}`
@@ -63,15 +59,19 @@ export default function ActivityPage() {
             ) : data?.data.length ? (
               <ol className="divide-y divide-border-subtle">
                 {data.data.map((e) => {
-                  const Icon = ENTITY_ICON[e.entityType] ?? FileText
                   const href = entityLink(e)
+                  const actorName = e.actor?.fullName ?? 'System'
                   return (
                     <li key={e.id} className="flex items-start gap-3 px-5 py-3">
-                      <div className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-surface-sunken">
-                        <Icon className="size-3.5 text-text-muted" aria-hidden="true" />
-                      </div>
+                      <Avatar name={e.actor?.fullName ?? null} className="mt-0.5" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-text-primary">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="text-sm font-medium text-text-primary">{actorName}</span>
+                          <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-2xs font-medium text-text-muted">
+                            {activityActionLabel(e.action)}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-sm text-text-secondary">
                           {href ? (
                             <Link to={href} className="hover:text-text-brand hover:underline">
                               {e.summary}
@@ -80,9 +80,9 @@ export default function ActivityPage() {
                             e.summary
                           )}
                         </p>
-                        <p className="mt-0.5 text-2xs text-text-muted">
-                          {e.actor?.fullName ?? 'System'} · {formatRelative(e.createdAt)} ·{' '}
-                          <span className="font-mono">{e.action}</span>
+                        {/* Exact date + time; hover reveals the relative form. */}
+                        <p className="mt-0.5 text-2xs text-text-muted" title={formatRelative(e.createdAt)}>
+                          {formatDateTime(e.createdAt)}
                         </p>
                       </div>
                     </li>

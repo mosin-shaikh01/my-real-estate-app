@@ -7,6 +7,25 @@ Versioning starts at `0.1.0` when Phase 1 completes.
 
 ## [Unreleased]
 
+### Changed — activity feed: exact time, no internal keys, avatars
+
+Polish on the Recent Activity widget and the Activity Log page.
+
+- **No internal event keys.** The Activity Log rendered the raw `action` key
+  (`property.updated`, `auth.login`) in monospace — a developer identifier that
+  must never reach a user. Replaced with a friendly label via a new
+  `activityActionLabel()` map (auth.login → "Signed in", property.updated →
+  "Property updated", …), whose fallback title-cases any unmapped key so a new
+  server-side action can never surface a raw `resource.action` string.
+- **Exact time.** Both surfaces showed only relative time ("Today"). New
+  `formatDateTime()` renders "Today • 10:42 PM" / "Yesterday • 6:15 PM" /
+  "18 Jul 2026 • 10:42 AM" (reusing `formatDate` for the absolute day, uppercased
+  meridiem); the relative form moves to a hover title.
+- **Timeline avatars.** New reusable `Avatar` initials primitive leads each row
+  (actor name + friendly label + summary + timestamp), applied consistently to
+  the dashboard widget and the Activity Log page. Friendly `summary` text was
+  already stored, so messages needed no change. Filtering/pagination unchanged.
+
 ### Added — Deals & Reports (hardening Phase 6)
 
 The last roadmap gap: transactional reporting, now computable because closed

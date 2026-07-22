@@ -73,6 +73,42 @@ export function formatDate(value: string | Date | null | undefined): string {
   return Number.isNaN(d.getTime()) ? '—' : dateFmt.format(d)
 }
 
+const timeFmt = new Intl.DateTimeFormat('en-IN', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: true,
+})
+
+/**
+ * Exact date AND time for activity/audit rows: "Today • 10:42 AM",
+ * "Yesterday • 6:15 PM", else "18 Jul 2026 • 10:42 AM". Reuses formatDate for the
+ * absolute day, so the date format stays consistent with the rest of the app.
+ */
+export function formatDateTime(value: string | Date | null | undefined): string {
+  if (!value) return '—'
+  const d = typeof value === 'string' ? new Date(value) : value
+  if (Number.isNaN(d.getTime())) return '—'
+
+  // Calendar-day difference (not a 24h window), so 11pm → 1am reads "Yesterday".
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
+  const startOfThatDay = new Date(d)
+  startOfThatDay.setHours(0, 0, 0, 0)
+  const dayDiff = Math.round((startOfThatDay.getTime() - startOfToday.getTime()) / 86_400_000)
+
+  const day =
+    dayDiff === 0
+      ? 'Today'
+      : dayDiff === -1
+        ? 'Yesterday'
+        : dayDiff === 1
+          ? 'Tomorrow'
+          : formatDate(d)
+  // en-IN renders a lowercase meridiem ("pm"); uppercase it to read "10:42 PM".
+  const time = timeFmt.format(d).replace(/\b(am|pm)\b/i, (m) => m.toUpperCase())
+  return `${day} • ${time}`
+}
+
 /** "3 days ago" / "in 2 days". Falls back to an absolute date past ~a month. */
 export function formatRelative(value: string | Date | null | undefined): string {
   if (!value) return '—'

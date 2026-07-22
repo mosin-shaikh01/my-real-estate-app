@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router'
 import { PageHeader } from '@/components/layout/AppShell'
+import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { usePermissions, useMe } from '@/features/auth/api/use-auth'
@@ -20,7 +21,7 @@ import { PropertyFilterBar } from '@/features/properties/components/PropertyFilt
 import { PropertyTable } from '@/features/properties/components/PropertyTable'
 import { useProperties } from '@/features/properties/api/use-properties'
 import { PROPERTY_FILTER_KEYS } from '@/features/properties/lib/property-filters'
-import { formatMoneyShort, formatRelative } from '@/lib/format'
+import { formatDateTime, formatMoneyShort, formatRelative } from '@/lib/format'
 import { useUrlFilters } from '@/lib/use-url-filters'
 
 // Every figure here is live and SCOPED. An agent's "properties" tile counts the
@@ -191,11 +192,17 @@ export default function DashboardPage() {
               </Card.Header>
               <Card.Body className="flex flex-col gap-3">
                 {data.recentActivity.map((a) => (
-                  <div key={a.id} className="border-b border-border-subtle pb-3 last:border-0 last:pb-0">
-                    <p className="text-xs text-text-primary">{a.summary}</p>
-                    <p className="mt-0.5 text-2xs text-text-muted">
-                      {a.actorName ?? 'System'} · {formatRelative(a.createdAt)}
-                    </p>
+                  <div
+                    key={a.id}
+                    className="flex items-start gap-2.5 border-b border-border-subtle pb-3 last:border-0 last:pb-0"
+                  >
+                    <Avatar name={a.actorName ?? null} className="mt-0.5 size-6" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-text-primary">{a.summary}</p>
+                      <p className="mt-0.5 text-2xs text-text-muted" title={formatRelative(a.createdAt)}>
+                        {a.actorName ?? 'System'} • {formatDateTime(a.createdAt)}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </Card.Body>
