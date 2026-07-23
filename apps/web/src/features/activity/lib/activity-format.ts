@@ -7,6 +7,9 @@ export const ACTIVITY_ACTION_LABELS: Record<string, string> = {
   'auth.login': 'Signed in',
   'auth.logout': 'Signed out',
   'auth.logout_all': 'Signed out everywhere',
+  'auth.password_reset.requested': 'Password reset requested',
+  'auth.password_reset.completed': 'Password reset completed',
+  'auth.refresh.reuse_detected': 'Suspicious session activity',
 
   'property.created': 'Property created',
   'property.updated': 'Property updated',
@@ -45,18 +48,19 @@ export const ACTIVITY_ACTION_LABELS: Record<string, string> = {
 
   'settings.updated': 'Settings updated',
   'profile.updated': 'Profile updated',
+  'profile.password_changed': 'Password changed',
 }
 
 /**
- * A user-facing label for an activity action. Falls back to a title-cased form of
- * the LAST key segment (e.g. an unmapped "foo.bar_baz" -> "Bar baz") so a new
- * action added server-side never surfaces as a raw `resource.action` string.
+ * A user-facing label for an activity action. For an unmapped key it title-cases
+ * the WHOLE key (all `.`/`_` segments, e.g. "foo.bar_baz" -> "Foo bar baz") — so
+ * a new action added server-side reads sensibly, never drops the resource
+ * context, and never surfaces the raw `resource.action` string.
  */
 export function activityActionLabel(action: string): string {
   const mapped = ACTIVITY_ACTION_LABELS[action]
   if (mapped) return mapped
 
-  const last = action.split('.').pop() ?? action
-  const words = last.replace(/_/g, ' ').trim()
+  const words = action.replace(/[._]+/g, ' ').trim()
   return words ? words.charAt(0).toUpperCase() + words.slice(1) : 'Activity'
 }
